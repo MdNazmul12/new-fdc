@@ -1,26 +1,215 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@theme {
+  --color-primary-50: #f5f3ff;
+  --color-primary-100: #ede9fe;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+  
+  --color-success-500: #10b981;
+  --color-warning-500: #f59e0b;
+  --color-danger-500: #f43f5e;
+  
+  --animate-fade-in-up: fade-in-up 0.4s ease-out forwards;
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
+}
+
+:root, .dark {
+  --background: #000000;
+  --foreground: #fafafa;
+  
+  --card: #09090b;
+  --card-foreground: #fafafa;
+  --card-border: #1a1a1a;
+  
+  --popover: #000000;
+  --popover-foreground: #fafafa;
+  
+  --primary: #6366f1;
+  --primary-foreground: #ffffff;
+  
+  --secondary: #121212;
+  --secondary-foreground: #fafafa;
+  
+  --muted: #161618;
+  --muted-foreground: #a1a1aa;
+  
+  --accent: #161618;
+  --accent-foreground: #fafafa;
+  
+  --border: #1c1c1e;
+  --input: #0c0c0e;
+  --ring: #6366f1;
+}
+
+.light {
+  --background: #f0f6ff;
+  --foreground: #1e293b;
+  
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --card-border: #dbeafe;
+  
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  
+  --secondary: #eff6ff;
+  --secondary-foreground: #1e40af;
+  
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  
+  --accent: #e2e8f0;
+  --accent-foreground: #0f172a;
+  
+  --border: #bfdbfe;
+  --input: #ffffff;
+  --ring: #3b82f6;
+}
+
+.night {
+  --background: #000000;
+  --foreground: #e0f2fe;
+  
+  --card: #050b14;
+  --card-foreground: #f0f9ff;
+  --card-border: #0c1a30;
+  
+  --popover: #000000;
+  --popover-foreground: #e0f2fe;
+  
+  --primary: #0ea5e9;
+  --primary-foreground: #ffffff;
+  
+  --secondary: #0c1a30;
+  --secondary-foreground: #f0f9ff;
+  
+  --muted: #081225;
+  --muted-foreground: #38bdf8;
+  
+  --accent: #0f172a;
+  --accent-foreground: #38bdf8;
+  
+  --border: #0c1a30;
+  --input: #081225;
+  --ring: #0ea5e9;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--card-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  background: rgba(24, 24, 27, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.light .glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(37, 99, 235, 0.15);
+  box-shadow: 0 4px 20px -2px rgba(37, 99, 235, 0.05);
+}
+
+.glass-card {
+  background: rgba(39, 39, 42, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.light .glass-card {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(37, 99, 235, 0.1);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.03);
+}
+
+.glass-card:hover {
+  background: rgba(39, 39, 42, 0.5);
+  border-color: rgba(99, 102, 241, 0.2);
+  transform: translateY(-2px);
+}
+
+.light .glass-card:hover {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(37, 99, 235, 0.25);
+}
+
+/* Financial Dashboard Gradients */
+.grad-primary {
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+}
+
+.grad-emerald {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.grad-amber {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.grad-rose {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+}
+
+.grad-dark {
+  background: linear-gradient(135deg, #1e1b4b 0%, #09090b 100%);
+}
+
+/* Hide print layout for standard view */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}
+
+.print-only {
+  display: none;
 }

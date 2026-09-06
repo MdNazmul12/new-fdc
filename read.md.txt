@@ -1,0 +1,441 @@
+# Foundation Investment & Fund Management System
+
+A modern web-based Foundation Management System designed to manage member collections, investments, interest income, accounting, reports, and role-based permissions.
+
+---
+
+# Features
+
+## Dashboard
+
+- Total Members
+- Total Collection
+- Total Investment
+- Total Interest Earned
+- Available Cash
+- Bank Balance
+- Pending Collection
+- Total Expenses
+- Monthly Income & Expense Chart
+- Investment Distribution Chart
+- Recent Transactions
+- Notifications
+- Quick Actions
+
+---
+
+# Member Management
+
+- Add Member
+- Edit Member
+- Delete Member
+- Member Profile
+- Member Photo
+- Member Status
+- Join Date
+- Nominee Information
+- Member Search
+- Export Members
+
+---
+
+# Collection Management
+
+- Monthly Collection
+- Collection History
+- Due Collection
+- Late Fine
+- Fine Configuration
+- Receipt Generation
+- Receipt Print
+- Collection Search
+- Collection Report
+
+---
+
+# Investment Management
+
+- Add Investment
+- Edit Investment
+- Close Investment
+- Investment Categories
+- Investment Portfolio
+- Investment Status
+- Investment History
+- Maturity Reminder
+- Investment Report
+
+Supported Investment Types
+
+- FDR
+- DPS
+- Savings
+- Business
+- Loan
+- Share Market
+- Mutual Fund
+- Others
+
+---
+
+# Interest Management
+
+- Receive Interest
+- Interest History
+- Auto Interest Calculation
+- Monthly Interest
+- Yearly Interest
+- Interest Report
+
+---
+
+# Expense Management
+
+- Office Expense
+- Staff Salary
+- Utility Bills
+- Rent
+- Maintenance
+- Misc Expense
+
+---
+
+# Fund Transfer
+
+- Cash to Bank
+- Bank to Cash
+- Cash to Investment
+- Investment Return
+- Internal Transfer
+
+---
+
+# Accounting
+
+- Cash Book
+- Bank Book
+- Ledger
+- Journal
+- Trial Balance
+- Balance Sheet
+- Income Statement
+- Profit & Loss
+
+---
+
+# Reports
+
+- Daily Report
+- Weekly Report
+- Monthly Report
+- Yearly Report
+- Member Report
+- Collection Report
+- Due Report
+- Investment Report
+- Interest Report
+- Expense Report
+- Financial Summary
+
+Export Formats
+
+- PDF
+- Excel
+- CSV
+
+---
+
+# User Management
+
+- Create User
+- Edit User
+- Delete User
+- Reset Password
+- Lock User
+- User Activity
+- Login History
+
+---
+
+# Role Based Access Control
+
+## Super Admin
+
+- Full Access
+
+## President
+
+- Dashboard
+- Reports
+- Investments
+- Members
+
+## Treasurer
+
+- Collection
+- Investments
+- Expenses
+- Accounts
+
+## Collector
+
+- Collection
+- Receipt
+- Member Search
+
+## Auditor
+
+- Reports
+- Ledger
+- Investment View
+
+## Member
+
+- Own Profile
+- Own Collection History
+- Own Due
+- Own Receipts
+
+---
+
+# Permission System
+
+Each role can have separate permissions.
+
+Permissions
+
+- View
+- Create
+- Update
+- Delete
+- Approve
+- Export
+- Print
+
+Permission can be configured module-wise.
+
+Example
+
+Members
+    View
+    Create
+    Edit
+    Delete
+
+Investments
+    View
+    Add
+    Close
+    Export
+
+Collections
+    View
+    Add
+    Print
+    Export
+
+---
+
+# Notification System
+
+- Investment Maturity Reminder
+- Monthly Due Reminder
+- Collection Reminder
+- Interest Receive Reminder
+- Low Balance Alert
+- Upcoming Expiry Alert
+
+---
+
+# Search & Filters
+
+Global Search
+
+Filter By
+
+- Date
+- Member
+- Status
+- Investment
+- Amount
+- Collection Type
+
+---
+
+# Audit Log
+
+Track every activity.
+
+Stores
+
+- User
+- Date
+- Time
+- Action
+- IP Address
+- Device
+
+---
+
+# File Manager
+
+Upload
+
+- Agreements
+- Receipts
+- Bank Statements
+- Images
+- PDFs
+- Excel Files
+
+---
+
+# Security
+
+- JWT Authentication
+- Role Based Access
+- Password Encryption
+- Session Management
+- Activity Logs
+- Backup Support
+
+---
+
+# Tech Stack
+
+Frontend
+
+- Next.js 15
+- React 19
+- TypeScript
+- Tailwind CSS
+- Shadcn UI
+
+Backend
+
+- Supabase
+- Supabase Auth
+- Supabase Storage
+- Supabase Edge Functions
+
+Charts
+
+- Recharts
+
+Deployment
+
+- Vercel
+
+---
+
+# Folder Structure
+
+```
+
+src/
+│
+├── app/
+├── components/
+├── hooks/
+├── contexts/
+├── services/
+├── utils/
+├── middleware/
+├── lib/
+├── types/
+├── actions/
+├── providers/
+├── config/
+├── styles/
+└── assets/
+
+```
+
+---
+
+# Database Modules
+
+Users
+
+Members
+
+Collections
+
+Investments
+
+Interest
+
+Expenses
+
+Banks
+
+Cash Accounts
+
+Transactions
+
+Notifications
+
+Audit Logs
+
+Permissions
+
+Roles
+
+Documents
+
+Settings
+
+---
+
+# Future Features
+
+- Mobile App
+- SMS Integration
+- Email Integration
+- WhatsApp Notification
+- QR Code Receipt
+- Barcode Receipt
+- AI Financial Prediction
+- AI Expense Analysis
+- AI Investment Recommendation
+- OCR Receipt Scanner
+- Digital Signature
+- Online Payment Gateway
+- Multi Foundation Support
+- Multi Currency
+- Multi Language
+- Offline Mode
+- API Support
+
+---
+
+# Dashboard Widgets
+
+- Total Members
+- Active Members
+- Total Collection
+- Total Investment
+- Running Investments
+- Matured Investments
+- Interest Received
+- Cash In Hand
+- Bank Balance
+- Total Expenses
+- Monthly Profit
+- Today's Collection
+- Due Amount
+- Upcoming Maturity
+
+---
+
+# License
+
+MIT License
+
+---
+
+# Developed For
+
+Foundation Investment & Fund Management System
+
+Designed to efficiently manage collections, investments, financial records, accounting, and member activities with enterprise-grade security and role-based access control.
