@@ -22,6 +22,8 @@ import {
   ChevronDown, 
   Shield, 
   AlertCircle,
+  AlertTriangle,
+  CalendarClock,
   FileCheck,
   CheckCircle,
   Info,
@@ -85,6 +87,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       permission: { module: 'members', action: 'view' as const } 
     },
     { name: 'Collections', path: '/collections', icon: DollarSign, permission: { module: 'collections', action: 'view' as const } },
+    { name: 'Due List', path: '/dues', icon: CalendarClock, permission: { module: 'collections', action: 'view' as const } },
     { name: 'Investments', path: '/investments', icon: TrendingUp, permission: { module: 'investments', action: 'view' as const } },
     { name: 'Expenses', path: '/expenses', icon: CreditCard, permission: { module: 'expenses', action: 'view' as const } },
     { name: 'Accounting', path: '/accounting', icon: BookOpen, permission: { module: 'accounting', action: 'view' as const } },
@@ -122,13 +125,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-zinc-900 border-r border-zinc-800 p-4 shrink-0 justify-between">
         <div>
           {/* Logo */}
-          <div className="flex items-center space-x-2 px-2 py-4 mb-4">
-            <div className="w-9 h-9 rounded-lg grad-primary flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <Shield className="w-5 h-5 text-white" />
+          <div className="flex items-center space-x-3 px-2 py-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-lg shadow-emerald-500/10 overflow-hidden shrink-0">
+              <img src="/logo.jpg" alt="FDC Logo" className="w-full h-full object-contain" />
             </div>
             <div>
-              <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">FDC Management</span>
-              <span className="block text-[10px] text-zinc-500 font-semibold tracking-wider uppercase">Foundation Platform</span>
+              <span className="font-extrabold text-base tracking-tight bg-gradient-to-r from-white to-zinc-300 bg-clip-text text-transparent">FDC Management</span>
+              <span className="block text-[10px] text-emerald-400 font-semibold tracking-wider uppercase">Friends Dreams Corp</span>
             </div>
           </div>
 
@@ -183,11 +186,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="w-64 bg-zinc-900 border-r border-zinc-800 p-4 flex flex-col justify-between h-full animate-fade-in-up">
             <div>
               <div className="flex items-center justify-between px-2 py-4 mb-4">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 rounded-lg grad-primary flex items-center justify-center">
-                    <Shield className="w-4 h-4 text-white" />
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-white p-0.5 flex items-center justify-center overflow-hidden shrink-0">
+                    <img src="/logo.jpg" alt="FDC Logo" className="w-full h-full object-contain" />
                   </div>
-                  <span className="font-bold text-md text-zinc-200">FDC Platform</span>
+                  <div>
+                    <span className="font-bold text-sm text-zinc-200">FDC Platform</span>
+                    <span className="block text-[9px] text-emerald-400 font-semibold">Friends Dreams Corp</span>
+                  </div>
                 </div>
                 <button 
                   onClick={() => setMobileMenuOpen(false)}

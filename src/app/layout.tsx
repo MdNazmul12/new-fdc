@@ -13,6 +13,11 @@ export const metadata: Metadata = {
   description: "Enterprise-grade financial dashboard to manage member collections, investments, interest income, double-entry accounting ledgers, and role-based permissions.",
   keywords: ["Foundation", "Investment", "Fund Management", "Accounting", "FDR", "DPS", "Ledger"],
   authors: [{ name: "FDC Foundation" }],
+  icons: {
+    icon: "/logo.jpg",
+    shortcut: "/logo.jpg",
+    apple: "/logo.jpg",
+  },
 };
 
 export const viewport = {
@@ -28,6 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} dark`}>
       <head>
+        <link rel="icon" href="/logo.jpg" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />

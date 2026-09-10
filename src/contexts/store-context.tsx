@@ -22,7 +22,7 @@ interface StoreContextProps {
   deleteMember: (id: string) => void;
   
   // Collection actions
-  addCollection: (collection: Omit<Collection, 'id' | 'receiptNo' | 'date'>) => Collection;
+  addCollection: (collection: Omit<Collection, 'id' | 'receiptNo' | 'date'> & { date?: string }) => Collection;
   importCollections: (collections: Omit<Collection, 'id' | 'receiptNo' | 'date'>[]) => Promise<Collection[]>;
   deleteCollection: (id: string) => void;
   
@@ -482,12 +482,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // ---------------- COLLECTIONS ACTIONS ----------------
-  const addCollection = (collData: Omit<Collection, 'id' | 'receiptNo' | 'date'>) => {
+  const addCollection = (collData: Omit<Collection, 'id' | 'receiptNo' | 'date'> & { date?: string }) => {
     const today = new Date().toISOString().split('T')[0];
     const newColl: Collection = {
       ...collData,
       id: `c-${Date.now()}`,
-      date: today,
+      date: collData.date || today,
       receiptNo: `REC-${collData.month.replace('-', '')}-${Math.floor(100 + Math.random() * 900)}`,
       status: 'paid'
     };
