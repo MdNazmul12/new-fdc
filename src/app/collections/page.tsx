@@ -22,7 +22,7 @@ import ExcelImportModal from '../../components/excel-import-modal';
 import ConfirmModal from '../../components/confirm-modal';
 
 export default function CollectionsPage() {
-  const { members, collections, addCollection, importCollections, deleteCollection } = useStore();
+  const { members, collections, addCollection, importCollections, deleteCollection, dueDemands } = useStore();
   const { user, hasPermission } = useAuth();
 
   // Search & Filter state
@@ -38,10 +38,8 @@ export default function CollectionsPage() {
   const [amount, setAmount] = useState(1000);
   const [lateFine, setLateFine] = useState(0);
   const [autoFineEnabled, setAutoFineEnabled] = useState(true);
-
-  // Print & action modal states
-  const [printOpen, setPrintOpen] = useState(false);
   const [activeReceipt, setActiveReceipt] = useState<Collection | null>(null);
+  const [printOpen, setPrintOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [collectionToDelete, setCollectionToDelete] = useState<Collection | null>(null);
@@ -52,29 +50,82 @@ export default function CollectionsPage() {
   };
 
   const handleConfirmDelete = () => {
-    if (!collectionToDelete) return;
-    deleteCollection(collectionToDelete.id);
-    setConfirmModalOpen(false);
-    setCollectionToDelete(null);
+    if (collectionToDelete) {
+      deleteCollection(collectionToDelete.id);
+      setConfirmModalOpen(false);
+      setCollectionToDelete(null);
+    }
   };
 
-  // Handle member selection changes (Auto populate subscription amounts)
+  // Compute unpaid due demands for currently selected member
+  const selectedMemberUnpaidDues = React.useMemo(() => {
+    if (!selectedMemberId) return [];
+    const member = members.find(m => m.id === selectedMemberId);
+    if (!member) return [];
+
+    const todayStr = paymentDate || new Date().toISOString().slice(0, 10);
+
+    return dueDemands.map(demand => {
+      const isPaid = collections.some(
+        c => c.memberId === selectedMemberId && c.month === demand.month && c.status === 'paid'
+      );
+      if (isPaid) return null;
+
+      const baseFee = demand.amountType === 'fixed' 
+        ? (demand.fixedAmount || 1000) 
+        : (member.monthlyFee || 1000);
+
+      const cutoffDay = Number(demand.dueDate.split('-')[2] || 10);
+      const payDay = Number(todayStr.split('-')[2] || 1);
+      const isOverdue = todayStr > demand.dueDate || payDay > cutoffDay;
+      const fine = isOverdue ? (demand.lateFine || 50) : 0;
+      const totalPayable = baseFee + fine;
+
+      return {
+        demand,
+        baseFee,
+        fine,
+        isOverdue,
+        totalPayable
+      };
+    }).filter(Boolean) as {
+      demand: typeof dueDemands[0];
+      baseFee: number;
+      fine: number;
+      isOverdue: boolean;
+      totalPayable: number;
+    }[];
+  }, [selectedMemberId, members, collections, dueDemands, paymentDate]);
+
+  // Handle member selection changes (Auto populate unpaid due months)
   const handleMemberChange = (id: string) => {
     setSelectedMemberId(id);
     const member = members.find(m => m.id === id);
-    if (member) {
+    if (!member) return;
+
+    // Find if member has unpaid dues
+    const unpaid = dueDemands.filter(d => {
+      return !collections.some(c => c.memberId === id && c.month === d.month && c.status === 'paid');
+    }).sort((a, b) => a.month.localeCompare(b.month));
+
+    if (unpaid.length > 0) {
+      const oldestDue = unpaid[0];
+      setTargetMonth(oldestDue.month);
+      const fee = oldestDue.amountType === 'fixed' ? (oldestDue.fixedAmount || 1000) : member.monthlyFee;
+      setAmount(fee);
+      const day = new Date(paymentDate).getDate();
+      setLateFine(day > 10 ? (oldestDue.lateFine || 50) : 0);
+    } else {
       setAmount(member.monthlyFee);
-      
-      // Auto Late Fine calculation: If payment date is after the 10th of the month
-      if (autoFineEnabled) {
-        const paymentDay = new Date(paymentDate).getDate();
-        if (paymentDay > 10) {
-          setLateFine(50); // Standard fine configuration
-        } else {
-          setLateFine(0);
-        }
-      }
+      setLateFine(0);
     }
+  };
+
+  // Quick select a specific due month
+  const handleSelectDueMonth = (dueItem: typeof selectedMemberUnpaidDues[0]) => {
+    setTargetMonth(dueItem.demand.month);
+    setAmount(dueItem.baseFee);
+    setLateFine(dueItem.fine);
   };
 
   // Adjust late fine if payment date changes
@@ -82,8 +133,10 @@ export default function CollectionsPage() {
     setPaymentDate(date);
     if (selectedMemberId && autoFineEnabled) {
       const paymentDay = new Date(date).getDate();
-      if (paymentDay > 10) {
-        setLateFine(50);
+      const matchedDue = dueDemands.find(d => d.month === targetMonth);
+      const cutoff = matchedDue ? Number(matchedDue.dueDate.split('-')[2] || 10) : 10;
+      if (paymentDay > cutoff) {
+        setLateFine(matchedDue?.lateFine || 50);
       } else {
         setLateFine(0);
       }
@@ -281,17 +334,98 @@ export default function CollectionsPage() {
                   </select>
                 </div>
 
+                {/* Unpaid Dues Box when member selected */}
+                {selectedMemberId && (
+                  <div className="p-3 bg-zinc-950/80 border border-zinc-800/80 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-zinc-300 flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                        Pending Dues ({selectedMemberUnpaidDues.length} Month{selectedMemberUnpaidDues.length !== 1 ? 's' : ''})
+                      </span>
+                      {selectedMemberUnpaidDues.length > 0 && (
+                        <span className="text-[10px] text-indigo-400 font-medium">Click month to collect</span>
+                      )}
+                    </div>
+
+                    {selectedMemberUnpaidDues.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                        {selectedMemberUnpaidDues.map((item) => {
+                          const isSelected = targetMonth === item.demand.month;
+                          return (
+                            <button
+                              key={item.demand.id || item.demand.month}
+                              type="button"
+                              onClick={() => handleSelectDueMonth(item)}
+                              className={`p-2 rounded-lg text-left border transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'bg-indigo-600/20 border-indigo-500 text-indigo-200 ring-1 ring-indigo-500'
+                                  : 'bg-zinc-900/70 border-zinc-800 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-900'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-xs">{item.demand.month}</span>
+                                <span className="text-[10px] text-zinc-300 font-semibold">{item.baseFee} TK</span>
+                              </div>
+                              <div className="flex items-center justify-between mt-1 text-[9px]">
+                                <span className="text-zinc-500">Cutoff: {item.demand.dueDate}</span>
+                                {item.fine > 0 ? (
+                                  <span className="text-rose-400 font-bold">+{item.fine} TK Fine</span>
+                                ) : (
+                                  <span className="text-emerald-400 font-medium">No Fine</span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-emerald-400 font-medium py-1">
+                        ✓ All active monthly dues are cleared for this member.
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Date & Month selections */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">Billing Month *</label>
-                    <input
-                      type="month"
-                      required
-                      value={targetMonth}
-                      onChange={(e) => setTargetMonth(e.target.value)}
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-300 focus:outline-none focus:border-indigo-500"
-                    />
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-zinc-400 font-semibold">Billing Month *</label>
+                      {selectedMemberUnpaidDues.length > 0 && (
+                        <span className="text-[9px] text-amber-400 font-semibold">Unpaid Dues</span>
+                      )}
+                    </div>
+                    {selectedMemberUnpaidDues.length > 0 ? (
+                      <select
+                        value={targetMonth}
+                        onChange={(e) => {
+                          const chosenMonth = e.target.value;
+                          setTargetMonth(chosenMonth);
+                          const matchedDue = selectedMemberUnpaidDues.find(d => d.demand.month === chosenMonth);
+                          if (matchedDue) {
+                            handleSelectDueMonth(matchedDue);
+                          }
+                        }}
+                        className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-300 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                      >
+                        {selectedMemberUnpaidDues.map((d) => (
+                          <option key={d.demand.month} value={d.demand.month}>
+                            {d.demand.month} — {d.baseFee} TK {d.fine > 0 ? `(+${d.fine} TK Fine)` : ''}
+                          </option>
+                        ))}
+                        <option value={targetMonth} disabled={selectedMemberUnpaidDues.some(d => d.demand.month === targetMonth)}>
+                          {targetMonth} (Selected)
+                        </option>
+                      </select>
+                    ) : (
+                      <input
+                        type="month"
+                        required
+                        value={targetMonth}
+                        onChange={(e) => setTargetMonth(e.target.value)}
+                        className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-300 focus:outline-none focus:border-indigo-500"
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="block text-zinc-400 font-semibold mb-1">Payment Date *</label>

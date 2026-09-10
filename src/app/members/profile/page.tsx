@@ -17,13 +17,25 @@ import {
   Mail, 
   X,
   Camera,
-  Loader2
+  Loader2,
+  Bell,
+  Check,
+  ExternalLink,
+  ShieldAlert
 } from 'lucide-react';
 import PrintableReceipt from '../../../components/receipt';
 
 export default function MemberProfilePage() {
   const { user } = useAuth();
-  const { members, collections, updateMemberPhoto } = useStore();
+  const { 
+    members, 
+    collections, 
+    updateMemberPhoto, 
+    dueDemands, 
+    notifications, 
+    markNotificationRead, 
+    markAllNotificationsRead 
+  } = useStore();
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [photoLoading, setPhotoLoading] = useState(false);
@@ -116,11 +128,37 @@ export default function MemberProfilePage() {
   // Filter collections recorded for this specific member
   const myPayments = collections.filter(c => c.memberId === memberProfile.id);
   
-  // Calculate total paid vs due months (May, June, July 2026)
-  const targetMonths = ['2026-05', '2026-06', '2026-07'];
-  const duesList = targetMonths.filter(mon => 
-    !collections.some(c => c.memberId === memberProfile.id && c.month === mon && c.status === 'paid')
-  );
+  // Real dynamic due demands for this member
+  const memberUnpaidDues = React.useMemo(() => {
+    if (!memberProfile?.id) return [];
+    return dueDemands.map(demand => {
+      const isPaid = collections.some(
+        c => c.memberId === memberProfile.id && c.month === demand.month && c.status === 'paid'
+      );
+      if (isPaid) return null;
+      const baseFee = demand.amountType === 'fixed' 
+        ? (demand.fixedAmount || 1000) 
+        : (memberProfile.monthlyFee || 1000);
+      return {
+        ...demand,
+        baseFee
+      };
+    }).filter(Boolean) as (typeof dueDemands[0] & { baseFee: number })[];
+  }, [dueDemands, collections, memberProfile]);
+
+  const totalDueAmount = memberUnpaidDues.reduce((sum, d) => sum + d.baseFee, 0);
+
+  // Filter notifications relevant to this member
+  const memberNotifications = React.useMemo(() => {
+    return notifications.filter(n => {
+      if (!n.userId || n.userId === 'all') return true;
+      if (n.userId === memberProfile.id) return true;
+      if (user?.id && n.userId === user.id) return true;
+      return false;
+    }).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  }, [notifications, memberProfile, user]);
+
+  const unreadCount = memberNotifications.filter(n => !n.read).length;
 
   const totalPaid = myPayments.reduce((sum, p) => sum + p.amount + p.lateFine, 0);
 
@@ -260,8 +298,8 @@ export default function MemberProfilePage() {
 
                 <div className="flex justify-between items-center p-3 bg-zinc-950/40 border border-zinc-850 rounded-xl">
                   <div>
-                    <p className="text-[9px] uppercase font-bold text-zinc-500">Outstanding Due Months</p>
-                    <p className="text-base font-extrabold text-amber-500 mt-0.5">{(duesList.length * memberProfile.monthlyFee).toLocaleString()} TK</p>
+                    <p className="text-[9px] uppercase font-bold text-zinc-500">Pending Dues ({memberUnpaidDues.length} Months)</p>
+                    <p className="text-base font-extrabold text-amber-500 mt-0.5">{totalDueAmount.toLocaleString()} TK</p>
                   </div>
                   <div className="p-2.5 bg-amber-500/10 text-amber-400 rounded-lg"><AlertCircle className="w-5 h-5" /></div>
                 </div>
@@ -269,14 +307,121 @@ export default function MemberProfilePage() {
             </div>
 
             <div className="text-[9px] text-zinc-500 mt-4 pt-3 border-t border-zinc-850">
-              {duesList.length > 0 ? (
-                <span className="text-amber-500 font-semibold">Dues pending for: {duesList.join(', ')}</span>
+              {memberUnpaidDues.length > 0 ? (
+                <span className="text-amber-500 font-semibold">
+                  Dues pending: {memberUnpaidDues.map(d => d.month).join(', ')}
+                </span>
               ) : (
                 <span className="text-emerald-400 font-semibold">All subscription payments are up to date!</span>
               )}
             </div>
           </div>
 
+        </div>
+
+        {/* Notifications & Messages Panel */}
+        <div className="glass-panel p-5 rounded-2xl space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2.5">
+              <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                <Bell className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <h3 className="text-xs font-bold text-zinc-200">Notifications & Society Messages</h3>
+                  {unreadCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-indigo-600 text-white animate-pulse">
+                      {unreadCount} New
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-zinc-500">Official notices regarding subscription dues, receipts, and society updates</p>
+              </div>
+            </div>
+
+            {unreadCount > 0 && (
+              <button
+                onClick={() => markAllNotificationsRead()}
+                className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center space-x-1 cursor-pointer"
+              >
+                <Check className="w-3 h-3" />
+                <span>Mark all as read</span>
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            {memberNotifications.length === 0 ? (
+              <div className="p-4 text-center text-zinc-500 text-xs border border-dashed border-zinc-800 rounded-xl">
+                No notifications or announcement messages at this time.
+              </div>
+            ) : (
+              memberNotifications.slice(0, 10).map((n) => {
+                const isDue = n.type === 'warning' || n.title.toLowerCase().includes('due');
+                const isPaid = n.type === 'success' || n.title.toLowerCase().includes('payment') || n.title.toLowerCase().includes('received');
+                
+                return (
+                  <div
+                    key={n.id}
+                    className={`p-3 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                      !n.read 
+                        ? 'bg-zinc-900/90 border-indigo-500/40 shadow-sm' 
+                        : 'bg-zinc-950/40 border-zinc-850 opacity-80'
+                    }`}
+                  >
+                    <div className="flex items-start space-x-3">
+                      <div className={`p-2 rounded-lg mt-0.5 shrink-0 ${
+                        isPaid
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          : isDue
+                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                          : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                      }`}>
+                        {isPaid ? (
+                          <CheckCircle2 className="w-4 h-4" />
+                        ) : isDue ? (
+                          <AlertCircle className="w-4 h-4" />
+                        ) : (
+                          <Bell className="w-4 h-4" />
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex items-center space-x-2 flex-wrap">
+                          <span className="text-xs font-bold text-zinc-200">{n.title}</span>
+                          <span className="text-[9px] text-zinc-500">{n.date}</span>
+                          {!n.read && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 ring-2 ring-indigo-500/30"></span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-zinc-400 leading-relaxed">{n.message}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2 shrink-0 self-end sm:self-center">
+                      {n.link && (
+                        <a
+                          href={n.link}
+                          className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold flex items-center space-x-1"
+                        >
+                          <span>View</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                      {!n.read && (
+                        <button
+                          onClick={() => markNotificationRead(n.id)}
+                          className="px-2.5 py-1 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 text-[10px] font-bold cursor-pointer"
+                        >
+                          Mark Read
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
 
         {/* Payment History List */}

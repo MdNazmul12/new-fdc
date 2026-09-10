@@ -105,11 +105,13 @@ export interface AuditLog {
 
 export interface SystemNotification {
   id: string;
+  userId?: string; // specific memberId or 'all'
   title: string;
   message: string;
   type: 'info' | 'warning' | 'success' | 'alert';
   date: string;
   read: boolean;
+  link?: string;
 }
 
 export interface DocumentFile {

@@ -101,7 +101,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     hasPermission(item.permission.module, item.permission.action)
   );
 
-  const unreadNotifications = notifications.filter(n => !n.read);
+  const userNotifications = notifications.filter(n => {
+    if (user.role !== 'member') return true;
+    return !n.userId || n.userId === 'all' || n.userId === user.id || n.userId === user.id.replace('u-', 'm-');
+  });
+
+  const unreadNotifications = userNotifications.filter(n => !n.read);
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -393,10 +398,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </div>
                   
                   <div className="max-h-72 overflow-y-auto divide-y divide-zinc-800">
-                    {notifications.length === 0 ? (
+                    {userNotifications.length === 0 ? (
                       <div className="p-4 text-center text-xs text-zinc-500">No notifications</div>
                     ) : (
-                      notifications.map((n) => (
+                      userNotifications.map((n) => (
                         <div 
                           key={n.id} 
                           onClick={() => {

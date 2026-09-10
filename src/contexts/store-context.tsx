@@ -46,6 +46,7 @@ interface StoreContextProps {
   
   // System actions
   addAuditLog: (action: string, role: UserRole, userName: string) => void;
+  addNotification: (notif: Omit<SystemNotification, 'id' | 'date' | 'read'>) => Promise<SystemNotification>;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
   
@@ -188,10 +189,13 @@ const initialAuditLogs: AuditLog[] = [
 ];
 
 const initialNotifications: SystemNotification[] = [
-  { id: 'n-1', title: 'Upcoming FDR Maturity', message: 'FDR of 5,00,000 TK at City Bank Ltd will mature on 2027-01-15.', type: 'info', date: '2026-08-01', read: false },
-  { id: 'n-2', title: 'Low Cash Balance Alert', message: 'Office cash drawer is below 20,000 TK. Please transfer funds from Bank.', type: 'warning', date: '2026-07-10', read: true },
-  { id: 'n-3', title: 'Late Payment Fine Configuration', message: 'Fines have been configured. 50 TK applied after 10th of each month.', type: 'success', date: '2026-05-01', read: true },
-  { id: 'n-4', title: 'Maturity Alert: Loan Return Due', message: 'Business loan of 3,00,000 TK to Rahman Electronics matures in 30 days.', type: 'alert', date: '2026-08-02', read: false },
+  { id: 'n-1', userId: 'all', title: 'Upcoming FDR Maturity', message: 'FDR of 5,00,000 TK at City Bank Ltd will mature on 2027-01-15.', type: 'info', date: '2026-08-01', read: false },
+  { id: 'n-2', userId: 'all', title: 'Low Cash Balance Alert', message: 'Office cash drawer is below 20,000 TK. Please transfer funds from Bank.', type: 'warning', date: '2026-07-10', read: true },
+  { id: 'n-3', userId: 'all', title: 'Late Payment Fine Configuration', message: 'Fines have been configured. 50 TK applied after 10th of each month.', type: 'success', date: '2026-05-01', read: true },
+  { id: 'n-4', userId: 'all', title: 'Maturity Alert: Loan Return Due', message: 'Business loan of 3,00,000 TK to Rahman Electronics matures in 30 days.', type: 'alert', date: '2026-08-02', read: false },
+  { id: 'n-5', userId: 'all', title: 'Monthly Due Demand (2026-08)', message: 'Monthly subscription for August 2026 is due. Cutoff date: 2026-08-10.', type: 'warning', date: '2026-08-01', read: false, link: '/dues' },
+  { id: 'n-6', userId: 'm-1', title: 'Payment Received (2026-07)', message: 'Tk 1000 deposited for 2026-07 via CASH. Receipt No: REC-202607-001.', type: 'success', date: '2026-07-02', read: false, link: '/members/profile' },
+  { id: 'n-7', userId: 'm-2', title: 'Payment Received (2026-07)', message: 'Tk 1000 deposited for 2026-07 via BANK. Receipt No: REC-202607-002.', type: 'success', date: '2026-07-03', read: true, link: '/members/profile' },
 ];
 
 const initialDocuments: DocumentFile[] = [
@@ -524,6 +528,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     );
 
     addAuditLog(`Recorded Collection: ${newColl.amount} TK for ${newColl.memberName}`, 'treasurer', 'System Log');
+    
+    // Auto-dispatch confirmation notification to member profile
+    addNotification({
+      userId: newColl.memberId,
+      title: `Payment Received (${newColl.month})`,
+      message: `Tk ${newColl.amount + (newColl.lateFine || 0)} deposited for ${newColl.month} via ${newColl.paymentType.toUpperCase()}. Receipt No: ${newColl.receiptNo}.`,
+      type: 'success',
+      link: '/members/profile'
+    });
+
     return newColl;
   };
 
@@ -602,6 +616,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setDueDemands(updated);
     await syncToDbAndLocal('due_demands', updated, 'create', newDemand);
     addAuditLog(`Generated Due Demand for ${newDemand.month}: ${newDemand.title}`, 'super_admin', 'System Log');
+    
+    // Auto-dispatch notification for monthly due demand
+    addNotification({
+      userId: 'all',
+      title: `New Monthly Due Demand (${newDemand.month})`,
+      message: `Subscription due demand for ${newDemand.month} (${newDemand.amountType === 'fixed' ? newDemand.fixedAmount + ' TK' : 'Individual Member Fee'}) has been generated. Due cutoff: ${newDemand.dueDate}.`,
+      type: 'warning',
+      link: '/dues'
+    });
+
     return newDemand;
   };
 
@@ -842,6 +866,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   };
 
+  // ---------------- NOTIFICATIONS ACTIONS ----------------
+  const addNotification = async (notifData: Omit<SystemNotification, 'id' | 'date' | 'read'>): Promise<SystemNotification> => {
+    const newNotif: SystemNotification = {
+      ...notifData,
+      id: `notif-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      date: new Date().toISOString().split('T')[0],
+      read: false
+    };
+    const updated = [newNotif, ...notifications];
+    setNotifications(updated);
+    await syncToDbAndLocal('notifications', updated, 'create', newNotif);
+    return newNotif;
+  };
+
   const markNotificationRead = (id: string) => {
     const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
     setNotifications(updated);
@@ -1056,6 +1094,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         deleteExpense,
         transferFund,
         addAuditLog,
+        addNotification,
         markNotificationRead,
         markAllNotificationsRead,
         addDocument,
