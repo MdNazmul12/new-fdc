@@ -101,10 +101,19 @@ export default function DuesPage() {
     return day > cutoff;
   }, [selectedDate, activeDemand]);
 
-  // Active members only
+  // Active members only (filtered to single member if logged in as member)
   const activeMembers = useMemo(() => {
+    if (user?.role === 'member') {
+      const myM = members.find(
+        m => (user?.id && (m.id === user.id || m.id === user.id.replace('u-', 'm-'))) ||
+             (user?.email && m.email?.toLowerCase() === user.email?.toLowerCase()) ||
+             (user?.phone && m.phone === user.phone) ||
+             (user?.name && m.name?.toLowerCase().includes(user.name?.toLowerCase().replace(' (member)', '')))
+      ) || members[0];
+      return myM ? [myM] : [];
+    }
     return members.filter(m => m.status === 'active');
-  }, [members]);
+  }, [members, user]);
 
   // Compute Dues status for all active members for targetMonth
   const duesList = useMemo(() => {
@@ -653,6 +662,10 @@ export default function DuesPage() {
                                 <div className="text-[11px] text-zinc-500">
                                   <span className="font-mono text-[10px]">{item.paidRecord?.receiptNo}</span>
                                 </div>
+                              ) : user?.role === 'member' ? (
+                                <span className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 text-xs font-semibold">
+                                  Payment Due
+                                </span>
                               ) : (
                                 <button
                                   type="button"

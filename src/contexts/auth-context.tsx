@@ -236,9 +236,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         setUser(updatedUserObj);
-        return true;
       }
     }
+
+    // Check if matching registered member in MongoDB or local storage
+    try {
+      let membersList: any[] = [];
+      try {
+        const mRes = await fetch('/api/db/members');
+        if (mRes.ok) {
+          membersList = await mRes.json();
+        }
+      } catch (err) {}
+
+      if (!membersList || membersList.length === 0) {
+        if (typeof window !== 'undefined') {
+          const storedMembersText = localStorage.getItem('fdc_members');
+          if (storedMembersText) {
+            try {
+              membersList = JSON.parse(storedMembersText);
+            } catch (e) {}
+          }
+        }
+      }
+
+      if (membersList && membersList.length > 0) {
+        const memberMatch = membersList.find(
+          (m: any) => m.email?.toLowerCase() === email.toLowerCase() || m.phone === email || m.id?.toLowerCase() === email.toLowerCase()
+        );
+        if (memberMatch) {
+          if (memberMatch.status === 'suspended') {
+            alert('This member account is suspended. Please contact administration.');
+            return false;
+          }
+          const expectedMemberPassword = memberMatch.password || 'password123';
+          if (password === expectedMemberPassword || password === memberMatch.phone) {
+            const lastLoginTime = new Date().toLocaleString();
+            const memberUserObj: User = {
+              id: memberMatch.id,
+              name: memberMatch.name,
+              email: memberMatch.email,
+              phone: memberMatch.phone,
+              role: 'member',
+              status: 'active',
+              lastLogin: lastLoginTime
+            };
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('fdc_current_user', JSON.stringify(memberUserObj));
+            }
+            setUser(memberUserObj);
+            return true;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Member lookup during login failed:', e);
+    }
+
     return false;
   };
 

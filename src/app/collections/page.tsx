@@ -206,8 +206,19 @@ export default function CollectionsPage() {
     setLateFine(0);
   };
 
+  // Resolve logged-in member for member role
+  const myMember = members.find(
+    m => (user?.id && (m.id === user.id || m.id === user.id.replace('u-', 'm-'))) ||
+         (user?.email && m.email?.toLowerCase() === user.email?.toLowerCase()) ||
+         (user?.phone && m.phone === user.phone) ||
+         (user?.name && m.name?.toLowerCase().includes(user.name?.toLowerCase().replace(' (member)', '')))
+  ) || members[0];
+
   // Filter collections
   const filteredCollections = collections.filter(c => {
+    if (user?.role === 'member') {
+      if (!myMember || c.memberId !== myMember.id) return false;
+    }
     const matchesSearch = c.memberName.toLowerCase().includes(searchQuery.toLowerCase()) || c.receiptNo.includes(searchQuery);
     const matchesMonth = monthFilter === 'all' || c.month === monthFilter;
     const matchesType = paymentTypeFilter === 'all' || c.paymentType === paymentTypeFilter;

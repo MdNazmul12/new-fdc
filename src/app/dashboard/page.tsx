@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import DashboardLayout from '../../components/dashboard-layout';
 import { useStore } from '../../contexts/store-context';
 import { useAuth } from '../../contexts/auth-context';
+import { Collection } from '../../types';
 import { 
   Users, 
   TrendingUp, 
@@ -20,11 +21,14 @@ import {
   CheckCircle2,
   Receipt,
   UserCheck,
-  ShieldCheck,
-  Clock,
   ChevronRight,
-  ExternalLink,
-  Shield
+  Printer,
+  X,
+  FileText,
+  Building2,
+  Calendar,
+  CheckCircle,
+  Clock
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -48,6 +52,9 @@ export default function Dashboard() {
   const { user, hasPermission } = useAuth();
   const [mounted, setMounted] = useState(false);
 
+  // Modal state for viewing money receipt
+  const [viewReceipt, setViewReceipt] = useState<Collection | null>(null);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -60,39 +67,74 @@ export default function Dashboard() {
   };
 
   // Find linked member record for regular member role
-  const myMember = members.find(
-    m => (user?.id && m.id === user.id) ||
-         (user?.email && m.email?.toLowerCase() === user.email?.toLowerCase()) ||
-         (user?.phone && m.phone === user.phone) ||
-         (user?.name && m.name?.toLowerCase() === user.name?.toLowerCase())
-  ) || members[0]; // fallback to first member for preview if not linked
+  const myMember = useMemo(() => {
+    return members.find(
+      m => (user?.id && (m.id === user.id || m.id === user.id.replace('u-', 'm-'))) ||
+           (user?.email && m.email?.toLowerCase() === user.email?.toLowerCase()) ||
+           (user?.phone && m.phone === user.phone) ||
+           (user?.name && m.name?.toLowerCase().includes(user.name?.toLowerCase().replace(' (member)', '')))
+    ) || members.find(m => m.name.toLowerCase().includes('kabir')) || members[0];
+  }, [members, user]);
 
-  // Member-specific metrics
-  const myPaidCollections = collections
-    .filter(c => myMember && c.memberId === myMember.id && c.status === 'paid')
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  // Member-specific collections (Paid)
+  const myPaidCollections = useMemo(() => {
+    if (!myMember) return [];
+    return collections
+      .filter(c => c.memberId === myMember.id && c.status === 'paid')
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [collections, myMember]);
 
-  const myTotalPaid = myPaidCollections.reduce(
-    (sum, c) => sum + (c.amount || 0) + (c.lateFine || 0), 0
-  );
-
-  const myUnpaidDemands = dueDemands.filter(demand => {
-    const isPaid = collections.some(
-      c => myMember && c.memberId === myMember.id && c.month === demand.month && c.status === 'paid'
+  const myTotalPaid = useMemo(() => {
+    return myPaidCollections.reduce(
+      (sum, c) => sum + (c.amount || 0) + (c.lateFine || 0), 0
     );
-    return !isPaid;
-  });
+  }, [myPaidCollections]);
 
-  const myDueAmount = myUnpaidDemands.reduce((sum, d) => {
-    return sum + (d.amountType === 'fixed' ? (d.fixedAmount || 0) : (myMember?.monthlyFee || 500));
-  }, 0);
+  // Member-specific monthly due breakdown for all generated active demands
+  const myDuesBreakdown = useMemo(() => {
+    if (!myMember) return [];
+    const today = new Date().toISOString().slice(0, 10);
+
+    return dueDemands.map(demand => {
+      const paidRecord = collections.find(
+        c => c.memberId === myMember.id && c.month === demand.month && c.status === 'paid'
+      );
+      const isPaid = !!paidRecord;
+      const baseFee = demand.amountType === 'fixed' 
+        ? (demand.fixedAmount || 0) 
+        : (myMember.monthlyFee || 500);
+      const isOverdue = !isPaid && today > demand.dueDate;
+      const fine = isOverdue ? (demand.lateFine || 50) : 0;
+      const totalAmount = isPaid 
+        ? (paidRecord.amount + (paidRecord.lateFine || 0)) 
+        : (baseFee + fine);
+
+      return {
+        demand,
+        paidRecord,
+        isPaid,
+        isOverdue,
+        baseFee,
+        fine,
+        totalAmount
+      };
+    }).sort((a, b) => b.demand.month.localeCompare(a.demand.month));
+  }, [dueDemands, collections, myMember]);
+
+  const myUnpaidDuesList = useMemo(() => {
+    return myDuesBreakdown.filter(item => !item.isPaid);
+  }, [myDuesBreakdown]);
+
+  const myTotalDueWithFines = useMemo(() => {
+    return myUnpaidDuesList.reduce((sum, item) => sum + item.totalAmount, 0);
+  }, [myUnpaidDuesList]);
 
   // Collector-specific metrics
   const currentMonthStr = new Date().toISOString().slice(0, 7);
   const thisMonthCollections = collections.filter(c => c.month === currentMonthStr && c.status === 'paid');
   const thisMonthCollectedAmount = thisMonthCollections.reduce((sum, c) => sum + (c.amount || 0) + (c.lateFine || 0), 0);
 
-  // Chart data for admins / auditors
+  // Chart data for admins / management
   const getChartData = () => {
     const months = ['2026-05', '2026-06', '2026-07'];
     
@@ -154,7 +196,7 @@ export default function Dashboard() {
       case 'collector':
         return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Collection Officer</span>;
       default:
-        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-zinc-700/50 text-zinc-300 border border-zinc-600/30">Club Member</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Club Member</span>;
     }
   };
 
@@ -166,11 +208,11 @@ export default function Dashboard() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
           <div>
             <div className="flex items-center space-x-2">
-              <h2 className="text-xl font-bold text-zinc-100">Assalamu Alaikum, {user?.name}</h2>
+              <h2 className="text-xl font-bold text-zinc-100">Assalamu Alaikum, {role === 'member' ? (myMember?.name || user?.name) : user?.name}</h2>
               {getRoleBadge(role)}
             </div>
             <p className="text-xs text-zinc-400 mt-1">
-              {role === 'member' && 'Welcome to your member portal. Check your contributions, monthly dues, and membership profile.'}
+              {role === 'member' && 'Welcome to your personal member portal. View your user-wise dues, collections, and money receipts.'}
               {role === 'collector' && 'Field collection center. Monitor member subscription dues and record new cash receipts.'}
               {['super_admin', 'president', 'treasurer', 'auditor'].includes(role) && 'Financial command center. Real-time overview of collections, assets, and liquidity.'}
             </p>
@@ -179,13 +221,18 @@ export default function Dashboard() {
           {/* Role-based Header Quick Actions */}
           <div className="flex items-center space-x-2">
             {role === 'member' && (
-              <Link 
-                href="/dues"
-                className="flex items-center space-x-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/20 transition-all"
-              >
-                <CalendarClock className="w-3.5 h-3.5" />
-                <span>View Monthly Dues</span>
-              </Link>
+              <div className="flex items-center space-x-2">
+                <span className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs font-mono font-medium">
+                  ID: {myMember?.id}
+                </span>
+                <Link 
+                  href="/dues"
+                  className="flex items-center space-x-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/20 transition-all"
+                >
+                  <CalendarClock className="w-3.5 h-3.5" />
+                  <span>My Dues</span>
+                </Link>
+              </div>
             )}
 
             {role === 'collector' && (
@@ -257,53 +304,54 @@ export default function Dashboard() {
         )}
 
         {/* ========================================================================= */}
-        {/* CASE 1: MEMBER DASHBOARD VIEW */}
+        {/* CASE 1: MEMBER DASHBOARD VIEW (USER-WISE DUES & COLLECTIONS ONLY) */}
         {/* ========================================================================= */}
         {role === 'member' && (
           <div className="space-y-6">
-            {/* Member KPI Cards */}
+            
+            {/* Member KPI Cards - Strictly User-Wise */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               
-              {/* Card 1: My Total Paid */}
+              {/* Card 1: My Total Paid Collections */}
               <div className="glass-card p-4 rounded-2xl relative overflow-hidden border border-emerald-500/20">
                 <div className="absolute top-0 right-0 w-24 h-24 grad-emerald opacity-10 blur-2xl rounded-full"></div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-zinc-400">Total Paid Contribution</span>
+                  <span className="text-xs font-semibold text-zinc-400">Total Collections (Paid)</span>
                   <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg"><DollarSign className="w-4 h-4" /></div>
                 </div>
                 <p className="text-lg lg:text-2xl font-black text-white mt-3">{formatCurrency(myTotalPaid)}</p>
                 <div className="flex items-center space-x-1 text-[10px] text-emerald-400 mt-1">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>{myPaidCollections.length} monthly installments deposited</span>
+                  <span>{myPaidCollections.length} verified money receipts</span>
                 </div>
               </div>
 
               {/* Card 2: My Outstanding Dues */}
-              <div className={`glass-card p-4 rounded-2xl relative overflow-hidden border ${myDueAmount > 0 ? 'border-amber-500/30' : 'border-zinc-800'}`}>
+              <div className={`glass-card p-4 rounded-2xl relative overflow-hidden border ${myTotalDueWithFines > 0 ? 'border-amber-500/30' : 'border-zinc-800'}`}>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-zinc-400">Outstanding Dues</span>
-                  <div className={`p-2 rounded-lg ${myDueAmount > 0 ? 'bg-amber-500/10 text-amber-400' : 'bg-zinc-800 text-zinc-400'}`}>
+                  <span className="text-xs font-semibold text-zinc-400">Total Outstanding Due</span>
+                  <div className={`p-2 rounded-lg ${myTotalDueWithFines > 0 ? 'bg-amber-500/10 text-amber-400' : 'bg-zinc-800 text-zinc-400'}`}>
                     <AlertTriangle className="w-4 h-4" />
                   </div>
                 </div>
-                <p className={`text-lg lg:text-2xl font-black mt-3 ${myDueAmount > 0 ? 'text-amber-400' : 'text-white'}`}>
-                  {formatCurrency(myDueAmount)}
+                <p className={`text-lg lg:text-2xl font-black mt-3 ${myTotalDueWithFines > 0 ? 'text-amber-400' : 'text-white'}`}>
+                  {formatCurrency(myTotalDueWithFines)}
                 </p>
                 <p className="text-[10px] text-zinc-500 mt-1">
-                  {myUnpaidDemands.length > 0 ? `${myUnpaidDemands.length} month(s) pending payment` : 'All monthly dues are cleared!'}
+                  {myUnpaidDuesList.length > 0 ? `${myUnpaidDuesList.length} month(s) pending payment` : 'All monthly dues are cleared!'}
                 </p>
               </div>
 
-              {/* Card 3: Monthly Subscription Plan */}
+              {/* Card 3: Monthly Subscription Fee */}
               <div className="glass-card p-4 rounded-2xl relative overflow-hidden">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-zinc-400">Monthly Contribution Plan</span>
+                  <span className="text-xs font-semibold text-zinc-400">Monthly Subscription Plan</span>
                   <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg"><CalendarClock className="w-4 h-4" /></div>
                 </div>
                 <p className="text-lg lg:text-2xl font-black text-white mt-3">
                   {formatCurrency(myMember?.monthlyFee || 500)} <span className="text-xs font-normal text-zinc-400">/ mo</span>
                 </p>
-                <p className="text-[10px] text-zinc-500 mt-1">Payable on every 10th of the month</p>
+                <p className="text-[10px] text-zinc-500 mt-1">Due cutoff by the 10th of every month</p>
               </div>
 
               {/* Card 4: Membership Status */}
@@ -324,48 +372,164 @@ export default function Dashboard() {
 
             </div>
 
-            {/* Member Details: Payments History & Nominee Information */}
+            {/* Section 1: User-Wise Monthly Dues Status */}
+            <div className="glass-panel p-5 rounded-2xl">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-zinc-800 gap-2">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <h3 className="text-sm font-bold text-zinc-100">My Monthly Dues Status (User-Wise)</h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                      {myUnpaidDuesList.length} Unpaid / {myDuesBreakdown.length} Total Demand(s)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    Official record of active foundation due demands issued for your membership account
+                  </p>
+                </div>
+                <Link 
+                  href="/dues" 
+                  className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-1"
+                >
+                  <span>Detailed Due List</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+
+              {myDuesBreakdown.length > 0 ? (
+                <div className="overflow-x-auto mt-4">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-zinc-800 text-zinc-400">
+                        <th className="pb-3 font-semibold">Billing Month</th>
+                        <th className="pb-3 font-semibold">Demand Title</th>
+                        <th className="pb-3 font-semibold">Cutoff Date</th>
+                        <th className="pb-3 font-semibold">Base Fee</th>
+                        <th className="pb-3 font-semibold">Late Fine</th>
+                        <th className="pb-3 font-semibold">Total Payable</th>
+                        <th className="pb-3 font-semibold text-center">Status</th>
+                        <th className="pb-3 font-semibold text-right">Payment Info</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-850">
+                      {myDuesBreakdown.map((item) => (
+                        <tr key={item.demand.id} className="hover:bg-zinc-850/40 transition-colors">
+                          <td className="py-3 text-zinc-200 font-bold font-mono text-xs">{item.demand.month}</td>
+                          <td className="py-3 text-zinc-300 text-xs">{item.demand.title}</td>
+                          <td className="py-3 text-zinc-400 text-[11px]">
+                            <div className="flex items-center space-x-1">
+                              <Calendar className="w-3 h-3 text-zinc-500" />
+                              <span>{item.demand.dueDate}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 text-zinc-300 text-xs">{formatCurrency(item.baseFee)}</td>
+                          <td className="py-3 text-xs">
+                            {item.fine > 0 ? (
+                              <span className="text-rose-400 font-semibold">+{formatCurrency(item.fine)}</span>
+                            ) : (
+                              <span className="text-zinc-500">0 TK</span>
+                            )}
+                          </td>
+                          <td className="py-3 font-bold text-xs text-zinc-100">
+                            {formatCurrency(item.totalAmount)}
+                          </td>
+                          <td className="py-3 text-center">
+                            {item.isPaid ? (
+                              <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>PAID</span>
+                              </span>
+                            ) : item.isOverdue ? (
+                              <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30 animate-pulse">
+                                <AlertTriangle className="w-3 h-3" />
+                                <span>OVERDUE</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                                <Clock className="w-3 h-3" />
+                                <span>DUE</span>
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 text-right">
+                            {item.isPaid && item.paidRecord ? (
+                              <button
+                                type="button"
+                                onClick={() => setViewReceipt(item.paidRecord || null)}
+                                className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] font-medium transition-all cursor-pointer inline-flex items-center space-x-1"
+                              >
+                                <Receipt className="w-3 h-3 text-emerald-400" />
+                                <span className="font-mono">{item.paidRecord.receiptNo}</span>
+                              </button>
+                            ) : (
+                              <span className="text-[11px] text-zinc-500">
+                                Pay to Collector / Bank
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="py-8 text-center text-zinc-500 text-xs">
+                  <CalendarClock className="w-8 h-8 mx-auto mb-2 text-zinc-600 opacity-60" />
+                  <p>No monthly due demands have been issued yet by administration.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Section 2: User-Wise Collections & Money Receipts History */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
               {/* Payment Receipts History */}
               <div className="glass-panel p-5 rounded-2xl lg:col-span-2">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between pb-4 border-b border-zinc-800">
                   <div>
-                    <h3 className="text-xs font-bold text-zinc-200">My Payment Receipts & History</h3>
-                    <p className="text-[10px] text-zinc-500">Official club contribution deposits registered under your profile</p>
+                    <h3 className="text-sm font-bold text-zinc-100">My Collections & Payment Receipts</h3>
+                    <p className="text-[11px] text-zinc-400 mt-0.5">Verified payment deposits registered under your member account</p>
                   </div>
-                  <Link 
-                    href="/dues" 
-                    className="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 flex items-center space-x-1"
-                  >
-                    <span>View Dues Breakdown</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    {myPaidCollections.length} Receipts
+                  </span>
                 </div>
 
                 {myPaidCollections.length > 0 ? (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto mt-4">
                     <table className="w-full text-left text-xs">
                       <thead>
                         <tr className="border-b border-zinc-800 text-zinc-400">
-                          <th className="pb-2 font-semibold">Date</th>
-                          <th className="pb-2 font-semibold">Month</th>
-                          <th className="pb-2 font-semibold">Method</th>
-                          <th className="pb-2 font-semibold">Receipt No</th>
-                          <th className="pb-2 font-semibold text-right">Amount</th>
+                          <th className="pb-2.5 font-semibold">Date</th>
+                          <th className="pb-2.5 font-semibold">Month</th>
+                          <th className="pb-2.5 font-semibold">Method</th>
+                          <th className="pb-2.5 font-semibold">Receipt No</th>
+                          <th className="pb-2.5 font-semibold">Collected By</th>
+                          <th className="pb-2.5 font-semibold text-right">Amount</th>
+                          <th className="pb-2.5 font-semibold text-right">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-850">
-                        {myPaidCollections.slice(0, 8).map((c) => (
+                        {myPaidCollections.map((c) => (
                           <tr key={c.id} className="hover:bg-zinc-850/40 transition-colors">
-                            <td className="py-2.5 text-zinc-400 text-[10px]">{c.date}</td>
-                            <td className="py-2.5 text-zinc-200 font-semibold text-[10px]">{c.month}</td>
-                            <td className="py-2.5 text-[10px]">
+                            <td className="py-2.5 text-zinc-400 text-[11px]">{c.date}</td>
+                            <td className="py-2.5 text-zinc-200 font-semibold text-[11px]">{c.month}</td>
+                            <td className="py-2.5 text-[11px]">
                               <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 capitalize">{c.paymentType}</span>
                             </td>
-                            <td className="py-2.5 text-zinc-400 font-mono text-[10px]">{c.receiptNo || `REC-${c.id.slice(-5)}`}</td>
-                            <td className="py-2.5 font-bold text-right text-[11px] text-emerald-400">
+                            <td className="py-2.5 text-zinc-300 font-mono text-[11px]">{c.receiptNo || `REC-${c.id.slice(-5)}`}</td>
+                            <td className="py-2.5 text-zinc-400 text-[11px]">{c.collectedBy || 'Treasurer'}</td>
+                            <td className="py-2.5 font-bold text-right text-xs text-emerald-400">
                               {formatCurrency(c.amount + (c.lateFine || 0))}
+                            </td>
+                            <td className="py-2.5 text-right">
+                              <button
+                                type="button"
+                                onClick={() => setViewReceipt(c)}
+                                className="px-2 py-1 rounded bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 text-[11px] font-semibold transition-all cursor-pointer inline-flex items-center space-x-1"
+                              >
+                                <Receipt className="w-3 h-3" />
+                                <span>Receipt</span>
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -383,22 +547,22 @@ export default function Dashboard() {
               {/* Profile & Nominee Information */}
               <div className="glass-panel p-5 rounded-2xl flex flex-col justify-between">
                 <div>
-                  <h3 className="text-xs font-bold text-zinc-200 mb-1">My Member Profile</h3>
-                  <p className="text-[10px] text-zinc-500 mb-4">Registered membership & nominee records</p>
+                  <h3 className="text-sm font-bold text-zinc-100 mb-1">My Member Profile</h3>
+                  <p className="text-[11px] text-zinc-400 mb-4">Official registered membership & nominee records</p>
                   
                   <div className="space-y-3 text-xs">
-                    <div className="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800/80">
+                    <div className="p-3 bg-zinc-900/80 rounded-xl border border-zinc-800/80">
                       <span className="text-[10px] text-zinc-500 block uppercase font-bold">Full Name</span>
                       <span className="text-zinc-200 font-semibold">{myMember?.name || user?.name}</span>
                     </div>
 
-                    <div className="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800/80">
+                    <div className="p-3 bg-zinc-900/80 rounded-xl border border-zinc-800/80">
                       <span className="text-[10px] text-zinc-500 block uppercase font-bold">Contact Phone & Email</span>
-                      <span className="text-zinc-200">{myMember?.phone || user?.phone || 'N/A'}</span>
+                      <span className="text-zinc-200 font-medium">{myMember?.phone || user?.phone || 'N/A'}</span>
                       <span className="text-zinc-400 block text-[11px] mt-0.5">{myMember?.email || user?.email}</span>
                     </div>
 
-                    <div className="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800/80">
+                    <div className="p-3 bg-zinc-900/80 rounded-xl border border-zinc-800/80">
                       <span className="text-[10px] text-zinc-500 block uppercase font-bold">Nominee Designation</span>
                       <div className="flex items-center justify-between mt-1">
                         <span className="text-zinc-200 font-semibold">{myMember?.nomineeName || 'Not Appointed'}</span>
@@ -409,15 +573,17 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="pt-4 mt-4 border-t border-zinc-850 flex items-center justify-between text-[10px] text-zinc-500">
+                <div className="pt-4 mt-4 border-t border-zinc-850 flex items-center justify-between text-[11px] text-zinc-500">
                   <span>Member ID: {myMember?.id || user?.id}</span>
-                  <Link href="/members/profile" className="text-indigo-400 hover:text-indigo-300 font-medium">
-                    Edit Profile
+                  <Link href="/members/profile" className="text-indigo-400 hover:text-indigo-300 font-medium flex items-center space-x-0.5">
+                    <span>Edit Profile</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
               </div>
 
             </div>
+
           </div>
         )}
 
@@ -890,6 +1056,101 @@ export default function Dashboard() {
 
             </div>
           </>
+        )}
+
+        {/* ========================================================================= */}
+        {/* OFFICIAL MONEY RECEIPT POPUP MODAL */}
+        {/* ========================================================================= */}
+        {viewReceipt && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-lg w-full p-6 relative text-zinc-100 shadow-2xl">
+              
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setViewReceipt(null)}
+                className="absolute top-4 right-4 p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              {/* Receipt Header */}
+              <div className="flex items-center space-x-3 pb-4 border-b border-zinc-800">
+                <div className="w-12 h-12 rounded-xl bg-white p-1 flex items-center justify-center shrink-0">
+                  <img src="/logo.jpg" alt="FDC Logo" className="w-full h-full object-contain" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold tracking-tight text-white uppercase">Foundation Development Cooperative</h3>
+                  <p className="text-[11px] text-emerald-400 font-semibold">Official Money Receipt / ভাউচার</p>
+                </div>
+              </div>
+
+              {/* Receipt Details Body */}
+              <div className="my-5 space-y-3 text-xs bg-zinc-950/70 p-4 rounded-xl border border-zinc-850">
+                <div className="flex justify-between items-center pb-2 border-b border-zinc-850 text-zinc-400">
+                  <span>Receipt No:</span>
+                  <span className="font-mono text-zinc-100 font-bold text-xs">{viewReceipt.receiptNo || `REC-${viewReceipt.id}`}</span>
+                </div>
+
+                <div className="flex justify-between items-center pb-2 border-b border-zinc-850">
+                  <span className="text-zinc-400">Member Name:</span>
+                  <span className="font-bold text-zinc-200">{viewReceipt.memberName}</span>
+                </div>
+
+                <div className="flex justify-between items-center pb-2 border-b border-zinc-850">
+                  <span className="text-zinc-400">Member ID:</span>
+                  <span className="font-mono text-zinc-300">{viewReceipt.memberId}</span>
+                </div>
+
+                <div className="flex justify-between items-center pb-2 border-b border-zinc-850">
+                  <span className="text-zinc-400">Billing Period:</span>
+                  <span className="font-semibold text-indigo-400">{viewReceipt.month}</span>
+                </div>
+
+                <div className="flex justify-between items-center pb-2 border-b border-zinc-850">
+                  <span className="text-zinc-400">Payment Date:</span>
+                  <span className="text-zinc-300">{viewReceipt.date}</span>
+                </div>
+
+                <div className="flex justify-between items-center pb-2 border-b border-zinc-850">
+                  <span className="text-zinc-400">Payment Mode:</span>
+                  <span className="capitalize px-2 py-0.5 rounded bg-zinc-800 text-zinc-200 font-semibold text-[10px]">
+                    {viewReceipt.paymentType}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center pt-1 text-sm font-bold">
+                  <span className="text-zinc-300">Total Amount Paid:</span>
+                  <span className="text-emerald-400 text-base">{formatCurrency(viewReceipt.amount + (viewReceipt.lateFine || 0))}</span>
+                </div>
+              </div>
+
+              {/* Footer and Print Button */}
+              <div className="pt-2 flex items-center justify-between">
+                <div className="text-[10px] text-zinc-500">
+                  Verified by {viewReceipt.collectedBy || 'Treasurer'}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 transition-all inline-flex items-center space-x-1.5 cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Print Receipt</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewReceipt(null)}
+                    className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium transition-all cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
         )}
 
       </div>
