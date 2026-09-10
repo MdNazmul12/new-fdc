@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Member, Collection, Investment, Expense, Transaction, AuditLog, SystemNotification, DocumentFile, UserRole, User } from '../types';
+import { Member, Collection, Investment, Expense, Transaction, AuditLog, SystemNotification, DocumentFile, UserRole, User, DueDemand } from '../types';
 
 interface StoreContextProps {
   members: Member[];
@@ -13,6 +13,11 @@ interface StoreContextProps {
   notifications: SystemNotification[];
   documents: DocumentFile[];
   users: User[];
+  dueDemands: DueDemand[];
+  
+  // Due actions
+  addDueDemand: (demand: Omit<DueDemand, 'id' | 'createdAt'>) => Promise<DueDemand>;
+  deleteDueDemand: (id: string) => Promise<void>;
   
   // Member actions
   addMember: (member: Omit<Member, 'id'>) => Member;
@@ -205,6 +210,14 @@ const initialUsers: User[] = [
   { id: 'u-6', name: 'Kabir Ahmed', email: 'kabir@fdc.org', role: 'member', phone: '+8801711223344', status: 'active', lastLogin: '2026-08-01 07:15 PM', password: 'password123' },
 ];
 
+const initialDueDemands: DueDemand[] = [
+  { id: 'dd-2026-05', month: '2026-05', title: 'Monthly Subscription Fee - May 2026', dueDate: '2026-05-10', amountType: 'member_fee', lateFine: 50, applicableTo: 'all', createdAt: '2026-05-01', createdBy: 'Super Admin' },
+  { id: 'dd-2026-06', month: '2026-06', title: 'Monthly Subscription Fee - June 2026', dueDate: '2026-06-10', amountType: 'member_fee', lateFine: 50, applicableTo: 'all', createdAt: '2026-06-01', createdBy: 'Super Admin' },
+  { id: 'dd-2026-07', month: '2026-07', title: 'Monthly Subscription Fee - July 2026', dueDate: '2026-07-10', amountType: 'member_fee', lateFine: 50, applicableTo: 'all', createdAt: '2026-07-01', createdBy: 'Super Admin' },
+  { id: 'dd-2026-08', month: '2026-08', title: 'Monthly Subscription Fee - August 2026', dueDate: '2026-08-10', amountType: 'member_fee', lateFine: 50, applicableTo: 'all', createdAt: '2026-08-01', createdBy: 'Super Admin' },
+  { id: 'dd-2026-09', month: '2026-09', title: 'Monthly Subscription Fee - September 2026', dueDate: '2026-09-10', amountType: 'member_fee', lateFine: 50, applicableTo: 'all', createdAt: '2026-09-01', createdBy: 'Super Admin' },
+];
+
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [members, setMembers] = useState<Member[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -215,12 +228,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [notifications, setNotifications] = useState<SystemNotification[]>([]);
   const [documents, setDocuments] = useState<DocumentFile[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [dueDemands, setDueDemands] = useState<DueDemand[]>(initialDueDemands);
   const [loaded, setLoaded] = useState(false);
 
   // Initialize from MongoDB (with LocalStorage fallback)
   useEffect(() => {
     const initDb = async () => {
-      const collectionsToFetch = ['members', 'collections', 'investments', 'expenses', 'transactions', 'auditLogs', 'notifications', 'documents', 'users', 'permissions'];
+      const collectionsToFetch = ['members', 'collections', 'investments', 'expenses', 'transactions', 'auditLogs', 'notifications', 'documents', 'users', 'permissions', 'due_demands'];
 
       try {
         const dbStates: Record<string, any[]> = {};
@@ -266,6 +280,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setNotifications(dbStates['notifications'] || []);
         setDocuments(dbStates['documents'] || []);
 
+        const loadedDueDemands = dbStates['due_demands'] || [];
+        setDueDemands(loadedDueDemands.length > 0 ? loadedDueDemands : initialDueDemands);
+
         // For users: if completely empty, initialize default users list so admin is never locked out
         const loadedUsers = dbStates['users'] || [];
         setUsers(loadedUsers.length > 0 ? loadedUsers : initialUsers);
@@ -294,6 +311,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setNotifications(loadLocal('notifications', []));
         setDocuments(loadLocal('documents', []));
         setUsers(loadLocal('users', initialUsers));
+        setDueDemands(loadLocal('due_demands', initialDueDemands));
       } finally {
         setLoaded(true);
       }
@@ -571,6 +589,30 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     );
 
     addAuditLog(`Reversed Collection Receipt: ${col.receiptNo}`, 'treasurer', 'System Log');
+  };
+
+  // ---------------- DUE DEMANDS ACTIONS ----------------
+  const addDueDemand = async (demandData: Omit<DueDemand, 'id' | 'createdAt'>): Promise<DueDemand> => {
+    const newDemand: DueDemand = {
+      ...demandData,
+      id: `dd-${Date.now()}`,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    const updated = [newDemand, ...dueDemands.filter(d => d.month !== newDemand.month || d.applicableTo !== newDemand.applicableTo)];
+    setDueDemands(updated);
+    await syncToDbAndLocal('due_demands', updated, 'create', newDemand);
+    addAuditLog(`Generated Due Demand for ${newDemand.month}: ${newDemand.title}`, 'super_admin', 'System Log');
+    return newDemand;
+  };
+
+  const deleteDueDemand = async (id: string): Promise<void> => {
+    const demandToDelete = dueDemands.find(d => d.id === id);
+    const updated = dueDemands.filter(d => d.id !== id);
+    setDueDemands(updated);
+    await syncToDbAndLocal('due_demands', updated, 'delete', { id });
+    if (demandToDelete) {
+      addAuditLog(`Deleted Due Demand for ${demandToDelete.month}`, 'super_admin', 'System Log');
+    }
   };
 
   // ---------------- INVESTMENTS ACTIONS ----------------
@@ -960,9 +1002,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const availableCash = getCashBalance();
   const bankBalance = getBankBalance();
 
-  // Dues calculation
-  const dueCollection = members.reduce((sum, m) => {
-    return sum + m.monthlyFee;
+  // Dues calculation: sum of unpaid dues across all active demands
+  const dueCollection = dueDemands.reduce((sum, demand) => {
+    return sum + members.filter(m => m.status === 'active').reduce((mSum, m) => {
+      const isPaid = collections.some(c => c.memberId === m.id && c.month === demand.month && c.status === 'paid');
+      if (isPaid) return mSum;
+      const fee = demand.amountType === 'fixed' ? (demand.fixedAmount || 0) : m.monthlyFee;
+      return mSum + fee;
+    }, 0);
   }, 0);
 
   const stats = {
@@ -990,6 +1037,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         notifications,
         documents,
         users,
+        dueDemands,
+        addDueDemand,
+        deleteDueDemand,
         addMember,
         importMembers,
         updateMember,

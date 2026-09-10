@@ -40,6 +40,19 @@ export interface Collection {
   collectedBy: string; // Collector's name or Treasurer's name
 }
 
+export interface DueDemand {
+  id: string;
+  month: string; // "YYYY-MM"
+  title: string;
+  dueDate: string; // "YYYY-MM-DD"
+  amountType: 'member_fee' | 'fixed';
+  fixedAmount?: number;
+  lateFine: number;
+  applicableTo: 'all' | string; // 'all' or specific memberId
+  createdAt: string;
+  createdBy: string;
+}
+
 export type InvestmentType = 'FDR' | 'DPS' | 'Savings' | 'Business' | 'Loan' | 'Share Market' | 'Mutual Fund' | 'Others';
 
 export interface Investment {
