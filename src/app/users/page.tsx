@@ -78,6 +78,77 @@ export default function UsersPage() {
   // Local state for RBAC permissions editing
   const [localPermissions, setLocalPermissions] = useState<Record<UserRole, Record<string, string[]>> | null>(null);
 
+  // Create Role modal state
+  const [createRoleModalOpen, setCreateRoleModalOpen] = useState(false);
+  const [newRoleName, setNewRoleName] = useState('');
+  const [newRoleKey, setNewRoleKey] = useState('');
+  const [cloneFromRole, setCloneFromRole] = useState<UserRole>('collector');
+
+  // Compute all available roles (default + custom)
+  const allAvailableRoles = React.useMemo(() => {
+    const defaultRoles: { key: UserRole; name: string }[] = [
+      { key: 'super_admin', name: 'Super Admin' },
+      { key: 'president', name: 'President' },
+      { key: 'treasurer', name: 'Treasurer' },
+      { key: 'collector', name: 'Collector' },
+      { key: 'auditor', name: 'Auditor' },
+      { key: 'member', name: 'Member' }
+    ];
+    const combined = { ...(permissions || {}), ...(localPermissions || {}) };
+    const customKeys = Object.keys(combined).filter(
+      k => !defaultRoles.some(d => d.key === k)
+    );
+    return [
+      ...defaultRoles,
+      ...customKeys.map(k => ({
+        key: k as UserRole,
+        name: k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+      }))
+    ];
+  }, [localPermissions, permissions]);
+
+  const handleCreateRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRoleName.trim() || !newRoleKey.trim()) return;
+    const formattedKey = newRoleKey.trim().toLowerCase().replace(/[\s-]+/g, '_');
+    
+    const basePerms = localPermissions?.[cloneFromRole] || permissions?.[cloneFromRole] || {
+      dashboard: ['view'],
+      members: ['view'],
+      collections: ['view'],
+      investments: [],
+      expenses: [],
+      accounting: [],
+      reports: [],
+      users: [],
+      audit: [],
+      documents: ['view']
+    };
+
+    const updated = {
+      ...(localPermissions || permissions || {}),
+      [formattedKey]: JSON.parse(JSON.stringify(basePerms))
+    };
+
+    setLocalPermissions(updated as any);
+    setSelectedRoleForPerms(formattedKey as UserRole);
+    setCreateRoleModalOpen(false);
+    setNewRoleName('');
+    setNewRoleKey('');
+
+    try {
+      await fetch('/api/db/permissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: formattedKey, modules: basePerms })
+      });
+      localStorage.setItem('fdc_permissions', JSON.stringify(updated));
+      showFeedback(`Custom Role "${newRoleName}" created successfully! Configure permissions below.`);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   // Sync localPermissions when permissions from useAuth() loads
   useEffect(() => {
     if (permissions && !localPermissions) {
@@ -437,7 +508,7 @@ export default function UsersPage() {
                 <p className="text-[10px] text-zinc-500">Toggle screen views or CRUD permissions dynamically below. Changes apply instantly.</p>
               </div>
               
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-wrap items-center gap-2">
                 <div className="flex items-center space-x-2">
                   <span className="text-xs text-zinc-400 font-semibold">Configuring Role:</span>
                   <select
@@ -445,14 +516,21 @@ export default function UsersPage() {
                     onChange={(e) => setSelectedRoleForPerms(e.target.value as UserRole)}
                     className="bg-zinc-950 border border-zinc-850 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none cursor-pointer"
                   >
-                    <option value="super_admin">Super Admin</option>
-                    <option value="president">President</option>
-                    <option value="treasurer">Treasurer</option>
-                    <option value="collector">Collector</option>
-                    <option value="auditor">Auditor</option>
-                    <option value="member">Member</option>
+                    {allAvailableRoles.map((r) => (
+                      <option key={r.key} value={r.key}>{r.name}</option>
+                    ))}
                   </select>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => setCreateRoleModalOpen(true)}
+                  className="px-3 py-2 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-indigo-400 text-xs font-semibold rounded-xl transition-all cursor-pointer inline-flex items-center space-x-1.5"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>+ Create Role</span>
+                </button>
+
                 {currentUser?.role === 'super_admin' && (
                   <button
                     onClick={handleSavePermissions}
@@ -675,10 +753,9 @@ export default function UsersPage() {
                       onChange={(e) => setNewUserRole(e.target.value as UserRole)}
                       className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-300 focus:outline-none cursor-pointer"
                     >
-                      <option value="president">President</option>
-                      <option value="treasurer">Treasurer</option>
-                      <option value="collector">Collector</option>
-                      <option value="auditor">Auditor</option>
+                      {allAvailableRoles.map((r) => (
+                        <option key={r.key} value={r.key}>{r.name}</option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -845,11 +922,9 @@ export default function UsersPage() {
                       onChange={(e) => setEditUserRole(e.target.value as UserRole)}
                       className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-300 focus:outline-none cursor-pointer"
                     >
-                      <option value="super_admin">Super Admin</option>
-                      <option value="president">President</option>
-                      <option value="treasurer">Treasurer</option>
-                      <option value="collector">Collector</option>
-                      <option value="auditor">Auditor</option>
+                      {allAvailableRoles.map((r) => (
+                        <option key={r.key} value={r.key}>{r.name}</option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -890,6 +965,91 @@ export default function UsersPage() {
                   <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold">Save Changes</button>
                 </div>
 
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ---------------- MODAL: CREATE ROLE ---------------- */}
+        {createRoleModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl p-5">
+              <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+                <div className="flex items-center space-x-2">
+                  <div className="p-1.5 rounded-lg bg-indigo-600/15 text-indigo-400">
+                    <PlusCircle className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-sm font-bold text-white">Create New Role</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCreateRoleModalOpen(false)}
+                  className="p-1 text-zinc-400 hover:text-white rounded-lg"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateRole} className="space-y-4 mt-4 text-xs">
+                <div>
+                  <label className="block text-zinc-300 font-semibold mb-1">Role Display Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Field Manager, Assistant Treasurer"
+                    value={newRoleName}
+                    onChange={(e) => {
+                      setNewRoleName(e.target.value);
+                      if (!newRoleKey || newRoleKey === newRoleName.toLowerCase().replace(/[\s-]+/g, '_')) {
+                        setNewRoleKey(e.target.value.toLowerCase().replace(/[\s-]+/g, '_'));
+                      }
+                    }}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-zinc-200 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-zinc-300 font-semibold mb-1">Role Unique Key *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. field_manager"
+                    value={newRoleKey}
+                    onChange={(e) => setNewRoleKey(e.target.value.toLowerCase().replace(/[\s-]+/g, '_'))}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-zinc-200 font-mono focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-zinc-300 font-semibold mb-1">Clone Base Permissions From</label>
+                  <select
+                    value={cloneFromRole}
+                    onChange={(e) => setCloneFromRole(e.target.value as UserRole)}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-zinc-300 focus:outline-none cursor-pointer"
+                  >
+                    <option value="collector">Collector (Collections & Dues view)</option>
+                    <option value="treasurer">Treasurer (Accounting & Collections)</option>
+                    <option value="auditor">Auditor (View-only financial)</option>
+                    <option value="president">President (Executive view & approval)</option>
+                    <option value="member">Member (Personal portal)</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-end space-x-2 pt-3 border-t border-zinc-800">
+                  <button
+                    type="button"
+                    onClick={() => setCreateRoleModalOpen(false)}
+                    className="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-md shadow-indigo-600/20 cursor-pointer"
+                  >
+                    Create Role
+                  </button>
+                </div>
               </form>
             </div>
           </div>

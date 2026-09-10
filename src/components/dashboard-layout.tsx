@@ -24,6 +24,7 @@ import {
   AlertCircle,
   AlertTriangle,
   CalendarClock,
+  PlusCircle,
   FileCheck,
   CheckCircle,
   Info,
@@ -88,6 +89,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     },
     { name: 'Collections', path: '/collections', icon: DollarSign, permission: { module: 'collections', action: 'view' as const } },
     { name: 'Due List', path: '/dues', icon: CalendarClock, permission: { module: 'collections', action: 'view' as const } },
+    { name: 'Generate Dues', path: '/generate-dues', icon: PlusCircle, permission: { module: 'collections', action: 'create' as const } },
     { name: 'Investments', path: '/investments', icon: TrendingUp, permission: { module: 'investments', action: 'view' as const } },
     { name: 'Expenses', path: '/expenses', icon: CreditCard, permission: { module: 'expenses', action: 'view' as const } },
     { name: 'Accounting', path: '/accounting', icon: BookOpen, permission: { module: 'accounting', action: 'view' as const } },
@@ -483,7 +485,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Content Section */}
-        <main className="flex-1 p-4 lg:p-6 animate-fade-in-up">
+        <main className="flex-1 p-4 lg:p-6">
           {children}
         </main>
       </div>
