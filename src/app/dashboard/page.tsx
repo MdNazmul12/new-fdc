@@ -68,12 +68,26 @@ export default function Dashboard() {
 
   // Find linked member record for regular member role
   const myMember = useMemo(() => {
-    return members.find(
-      m => (user?.id && (m.id === user.id || m.id === user.id.replace('u-', 'm-'))) ||
-           (user?.email && m.email?.toLowerCase() === user.email?.toLowerCase()) ||
-           (user?.phone && m.phone === user.phone) ||
-           (user?.name && m.name?.toLowerCase().includes(user.name?.toLowerCase().replace(' (member)', '')))
-    ) || members.find(m => m.name.toLowerCase().includes('kabir')) || members[0];
+    if (!user) return null;
+    // 1. Exact memberId link (stored at login)
+    if (user.memberId) {
+      const found = members.find(m => m.id === user.memberId);
+      if (found) return found;
+    }
+    // 2. Direct id match
+    const byId = members.find(m => m.id === user.id);
+    if (byId) return byId;
+    // 3. Email match
+    if (user.email) {
+      const byEmail = members.find(m => m.email?.toLowerCase() === user.email?.toLowerCase());
+      if (byEmail) return byEmail;
+    }
+    // 4. Phone match
+    if (user.phone) {
+      const byPhone = members.find(m => m.phone === user.phone);
+      if (byPhone) return byPhone;
+    }
+    return null;
   }, [members, user]);
 
   // Member-specific collections (Paid)

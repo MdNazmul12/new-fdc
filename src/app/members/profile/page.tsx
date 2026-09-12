@@ -41,20 +41,30 @@ export default function MemberProfilePage() {
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoSuccess, setPhotoSuccess] = useState(false);
   
-  // Find matching member profile based on user details
-  const memberProfile = members.find(m => m.email.toLowerCase() === user?.email.toLowerCase()) || members[0] || {
-    id: user?.id || 'm-temp',
-    name: user?.name || 'Member',
-    email: user?.email || '',
-    phone: user?.phone || '',
-    joinDate: new Date().toISOString().split('T')[0],
-    status: 'active' as const,
-    monthlyFee: 1000,
-    nomineeName: '',
-    nomineeRelation: '',
-    nomineePhone: '',
-    photoUrl: user?.avatar
-  };
+  // Find matching member profile based on user details — most specific first
+  const memberProfile = React.useMemo(() => {
+    if (!user) return null;
+    // 1. Exact memberId link (set during login)
+    if (user.memberId) {
+      const found = members.find(m => m.id === user.memberId);
+      if (found) return found;
+    }
+    // 2. Direct id match (member id === user id)
+    const byId = members.find(m => m.id === user.id);
+    if (byId) return byId;
+    // 3. Email match
+    if (user.email) {
+      const byEmail = members.find(m => m.email?.toLowerCase() === user.email.toLowerCase());
+      if (byEmail) return byEmail;
+    }
+    // 4. Phone match
+    if (user.phone) {
+      const byPhone = members.find(m => m.phone === user.phone);
+      if (byPhone) return byPhone;
+    }
+    // 5. No match found — return null (avoid showing wrong member)
+    return null;
+  }, [user, members]);
   
   // States for print dialog
   const [selectedReceipt, setSelectedReceipt] = useState<Collection | null>(null);
@@ -97,8 +107,10 @@ export default function MemberProfilePage() {
         ctx?.drawImage(img, 0, 0, width, height);
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
 
-        // Update photo in MongoDB and state
-        updateMemberPhoto(memberProfile.id, dataUrl);
+        // Update photo in MongoDB and state (guard against null memberProfile)
+        if (memberProfile) {
+          updateMemberPhoto(memberProfile.id, dataUrl);
+        }
 
         // Also update local storage session if currently logged-in user
         if (typeof window !== 'undefined' && user) {
@@ -115,20 +127,7 @@ export default function MemberProfilePage() {
     reader.readAsDataURL(file);
   };
 
-  if (!memberProfile) {
-    return (
-      <DashboardLayout>
-        <div className="p-4 bg-rose-500/10 text-rose-400 rounded-lg text-xs">
-          Member profile record not found. Please log in or switch roles.
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  // Filter collections recorded for this specific member
-  const myPayments = collections.filter(c => c.memberId === memberProfile.id);
-  
-  // Real dynamic due demands for this member
+  // Real dynamic due demands for this member (must be before early return — React hooks order)
   const memberUnpaidDues = React.useMemo(() => {
     if (!memberProfile?.id) return [];
     return dueDemands.map(demand => {
@@ -136,20 +135,18 @@ export default function MemberProfilePage() {
         c => c.memberId === memberProfile.id && c.month === demand.month && c.status === 'paid'
       );
       if (isPaid) return null;
-      const baseFee = demand.amountType === 'fixed' 
-        ? (demand.fixedAmount || 1000) 
+      const baseFee = demand.amountType === 'fixed'
+        ? (demand.fixedAmount || 1000)
         : (memberProfile.monthlyFee || 1000);
-      return {
-        ...demand,
-        baseFee
-      };
+      return { ...demand, baseFee };
     }).filter(Boolean) as (typeof dueDemands[0] & { baseFee: number })[];
   }, [dueDemands, collections, memberProfile]);
 
   const totalDueAmount = memberUnpaidDues.reduce((sum, d) => sum + d.baseFee, 0);
 
-  // Filter notifications relevant to this member
+  // Filter notifications relevant to this member (must be before early return)
   const memberNotifications = React.useMemo(() => {
+    if (!memberProfile?.id) return [];
     return notifications.filter(n => {
       if (!n.userId || n.userId === 'all') return true;
       if (n.userId === memberProfile.id) return true;
@@ -160,12 +157,28 @@ export default function MemberProfilePage() {
 
   const unreadCount = memberNotifications.filter(n => !n.read).length;
 
+  // Filter collections recorded for this specific member
+  const myPayments = (memberProfile ? collections.filter(c => c.memberId === memberProfile.id) : []);
   const totalPaid = myPayments.reduce((sum, p) => sum + p.amount + p.lateFine, 0);
 
   const handlePrintReceipt = (receipt: Collection) => {
     setSelectedReceipt(receipt);
     setPrintOpen(true);
   };
+
+  if (!memberProfile) {
+    return (
+      <DashboardLayout>
+        <div className="p-8 text-center space-y-3">
+          <div className="text-4xl">🔍</div>
+          <p className="text-zinc-300 font-semibold text-sm">No member profile linked to your account.</p>
+          <p className="text-zinc-500 text-xs">
+            Ask the administrator to register your email <strong className="text-indigo-400">{user?.email}</strong> in the Members list.
+          </p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

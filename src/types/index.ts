@@ -10,6 +10,7 @@ export interface User {
   lastLogin?: string;
   password?: string;
   avatar?: string;
+  memberId?: string; // Links user account to a Member record (for role === 'member')
 }
 
 export interface Member {

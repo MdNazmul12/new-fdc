@@ -279,7 +279,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               phone: memberMatch.phone,
               role: 'member',
               status: 'active',
-              lastLogin: lastLoginTime
+              lastLogin: lastLoginTime,
+              memberId: memberMatch.id  // Explicit link to member record
             };
             if (typeof window !== 'undefined') {
               localStorage.setItem('fdc_current_user', JSON.stringify(memberUserObj));

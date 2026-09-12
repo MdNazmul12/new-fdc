@@ -259,13 +259,25 @@ export default function CollectionsPage() {
     setLateFine(0);
   };
 
-  // Resolve logged-in member for member role
-  const myMember = members.find(
-    m => (user?.id && (m.id === user.id || m.id === user.id.replace('u-', 'm-'))) ||
-         (user?.email && m.email?.toLowerCase() === user.email?.toLowerCase()) ||
-         (user?.phone && m.phone === user.phone) ||
-         (user?.name && m.name?.toLowerCase().includes(user.name?.toLowerCase().replace(' (member)', '')))
-  ) || members[0];
+  // Resolve logged-in member for member role — most specific first
+  const myMember = React.useMemo(() => {
+    if (!user) return null;
+    if (user.memberId) {
+      const found = members.find(m => m.id === user.memberId);
+      if (found) return found;
+    }
+    const byId = members.find(m => m.id === user.id);
+    if (byId) return byId;
+    if (user.email) {
+      const byEmail = members.find(m => m.email?.toLowerCase() === user.email?.toLowerCase());
+      if (byEmail) return byEmail;
+    }
+    if (user.phone) {
+      const byPhone = members.find(m => m.phone === user.phone);
+      if (byPhone) return byPhone;
+    }
+    return null;
+  }, [members, user]);
 
   // Filter collections
   const filteredCollections = collections.filter(c => {
