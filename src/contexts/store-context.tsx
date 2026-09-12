@@ -211,7 +211,7 @@ const initialUsers: User[] = [
   { id: 'u-3', name: 'Treasurer Account', email: 'treasurer@fdc.org', role: 'treasurer', phone: '+8801700000003', status: 'active', lastLogin: '2026-08-03 11:15 AM', password: 'password123' },
   { id: 'u-4', name: 'Collector Account', email: 'collector@fdc.org', role: 'collector', phone: '+8801700000004', status: 'active', lastLogin: '2026-08-03 08:45 AM', password: 'password123' },
   { id: 'u-5', name: 'Auditor Account', email: 'auditor@fdc.org', role: 'auditor', phone: '+8801700000005', status: 'active', lastLogin: '2026-07-31 02:10 PM', password: 'password123' },
-  { id: 'u-6', name: 'Kabir Ahmed', email: 'kabir@fdc.org', role: 'member', phone: '+8801711223344', status: 'active', lastLogin: '2026-08-01 07:15 PM', password: 'password123' },
+  { id: 'u-6', name: 'Kabir Ahmed', email: 'kabir@fdc.org', role: 'member', phone: '+8801711223344', status: 'active', lastLogin: '2026-08-01 07:15 PM', password: 'password123', memberId: 'm-1' },
 ];
 
 const initialDueDemands: DueDemand[] = [
@@ -433,7 +433,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       role: 'member',
       phone: newMember.phone,
       status: 'active',
-      password: 'member123'
+      password: 'password123',  // Consistent with member-only login default
+      memberId: newMember.id    // Link directly to member record so dashboard/profile works
     };
     const updatedUsers = [...users, newUser];
     setUsers(updatedUsers);
@@ -454,10 +455,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       id: `u-${timestamp}-${idx}`,
       name: m.name,
       email: m.email,
-      role: 'member',
+      role: 'member' as const,
       phone: m.phone,
-      status: 'active',
-      password: 'member123'
+      status: 'active' as const,
+      password: 'password123',
+      memberId: m.id  // Link to member record
     }));
 
     const updatedMembers = [...newMembers, ...members];

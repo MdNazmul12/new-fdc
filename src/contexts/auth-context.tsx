@@ -202,64 +202,74 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         { id: 'u-3', name: 'Treasurer Account', email: 'treasurer@fdc.org', role: 'treasurer', status: 'active', password: 'password123' },
         { id: 'u-4', name: 'Collector Account', email: 'collector@fdc.org', role: 'collector', status: 'active', password: 'password123' },
         { id: 'u-5', name: 'Auditor Account', email: 'auditor@fdc.org', role: 'auditor', status: 'active', password: 'password123' },
-        { id: 'u-6', name: 'Kabir Ahmed', email: 'kabir@fdc.org', role: 'member', status: 'active', password: 'password123' },
+        { id: 'u-6', name: 'Kabir Ahmed', email: 'kabir@fdc.org', role: 'member', status: 'active', password: 'password123', memberId: 'm-1' },
       ];
     }
 
+    // Fetch members list once — used for memberId linking AND member-only login
+    let membersList: any[] = [];
+    try {
+      const mRes = await fetch('/api/db/members');
+      if (mRes.ok) membersList = await mRes.json();
+    } catch (err) {}
+    if (!membersList || membersList.length === 0) {
+      if (typeof window !== 'undefined') {
+        const storedMembersText = localStorage.getItem('fdc_members');
+        if (storedMembersText) {
+          try { membersList = JSON.parse(storedMembersText); } catch (e) {}
+        }
+      }
+    }
+
+    // ── PATH 1: Match against Users table ──
     const match = usersList.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (match) {
       if (match.status === 'locked') {
         alert('This user account has been locked by administration.');
         return false;
       }
-      
-      const expectedPassword = match.password || 'password123';
-      if (password === expectedPassword) {
-        const lastLoginTime = new Date().toLocaleString();
-        const updatedUserObj = { ...match, lastLogin: lastLoginTime };
-        
-        // Update user lastLogin timestamp inside MongoDB asynchronously
-        fetch('/api/db/users', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filter: { id: match.id },
-            update: { lastLogin: lastLoginTime }
-          })
-        }).catch(err => console.error('Failed to sync login timestamp to MongoDB:', err));
 
-        // Sync to local storage
-        const updatedUsersList = usersList.map(u => u.id === match.id ? updatedUserObj : u);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('fdc_users', JSON.stringify(updatedUsersList));
-          localStorage.setItem('fdc_current_user', JSON.stringify(updatedUserObj));
-        }
-        
-        setUser(updatedUserObj);
+      const expectedPassword = match.password || 'password123';
+      if (password !== expectedPassword) {
+        // Found user but wrong password — stop here
+        return false;
       }
+
+      const lastLoginTime = new Date().toLocaleString();
+      let updatedUserObj: User = { ...match, lastLogin: lastLoginTime };
+
+      // For member-role users: attach memberId from members table so profile/dashboard can find the right record
+      if (match.role === 'member' && !updatedUserObj.memberId) {
+        const memberRecord = membersList.find(
+          (m: any) =>
+            m.email?.toLowerCase() === email.toLowerCase() ||
+            (match.phone && m.phone === match.phone)
+        );
+        if (memberRecord) {
+          updatedUserObj = { ...updatedUserObj, memberId: memberRecord.id };
+        }
+      }
+
+      // Update lastLogin in MongoDB asynchronously
+      fetch('/api/db/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filter: { id: match.id }, update: { lastLogin: lastLoginTime } })
+      }).catch(err => console.error('Failed to sync login timestamp to MongoDB:', err));
+
+      // Sync to local storage
+      const updatedUsersList = usersList.map(u => u.id === match.id ? updatedUserObj : u);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('fdc_users', JSON.stringify(updatedUsersList));
+        localStorage.setItem('fdc_current_user', JSON.stringify(updatedUserObj));
+      }
+
+      setUser(updatedUserObj);
+      return true; // ← Always return true after successful users-table match
     }
 
-    // Check if matching registered member in MongoDB or local storage
+    // ── PATH 2: Member-only login (no user account in users table) ──
     try {
-      let membersList: any[] = [];
-      try {
-        const mRes = await fetch('/api/db/members');
-        if (mRes.ok) {
-          membersList = await mRes.json();
-        }
-      } catch (err) {}
-
-      if (!membersList || membersList.length === 0) {
-        if (typeof window !== 'undefined') {
-          const storedMembersText = localStorage.getItem('fdc_members');
-          if (storedMembersText) {
-            try {
-              membersList = JSON.parse(storedMembersText);
-            } catch (e) {}
-          }
-        }
-      }
-
       if (membersList && membersList.length > 0) {
         const memberMatch = membersList.find(
           (m: any) => m.email?.toLowerCase() === email.toLowerCase() || m.phone === email || m.id?.toLowerCase() === email.toLowerCase()
