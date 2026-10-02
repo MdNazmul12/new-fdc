@@ -308,6 +308,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         setMembers(loadedMembers);
         setUsers(loadedUsers);
+        setCollections(dbStates['collections'] || []);
+        setInvestments(dbStates['investments'] || []);
+        setExpenses(dbStates['expenses'] || []);
+        setTransactions(dbStates['transactions'] || []);
+        setAuditLogs(dbStates['auditLogs'] || []);
+        setNotifications(dbStates['notifications'] || []);
+        setDocuments(dbStates['documents'] || []);
+
+        const loadedDueDemands = dbStates['due_demands'] || [];
+        setDueDemands(loadedDueDemands.length > 0 ? loadedDueDemands : initialDueDemands);
 
         // Sync to LocalStorage
         Object.keys(dbStates).forEach(key => {
