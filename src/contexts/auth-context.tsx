@@ -106,28 +106,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const storedUser = localStorage.getItem('fdc_current_user');
       if (storedUser) {
         try {
-          const parsedUser = JSON.parse(storedUser);
+          const parsedUser: User = JSON.parse(storedUser);
           setUser(parsedUser); // Temporary optimistic set
-          
+
           // Refetch from MongoDB to check active status and updated roles in real-time
-          fetch('/api/db/users')
-            .then(res => res.ok ? res.json() : null)
-            .then(usersList => {
-              if (usersList && Array.isArray(usersList)) {
-                const freshUser = usersList.find(u => u.id === parsedUser.id);
-                if (freshUser) {
-                  if (freshUser.status === 'locked') {
-                    setUser(null);
-                    localStorage.removeItem('fdc_current_user');
-                    alert('Your account has been locked by administration.');
-                  } else {
-                    setUser(freshUser);
-                    localStorage.setItem('fdc_current_user', JSON.stringify(freshUser));
-                  }
+          const syncUser = async () => {
+            try {
+              // Fetch users list
+              const usersRes = await fetch('/api/db/users');
+              const usersList: User[] = usersRes.ok ? await usersRes.json() : [];
+
+              // Try to find by id (users table) OR by email (member login stores id = member id)
+              let freshUser = usersList.find(u => u.id === parsedUser.id) ||
+                              usersList.find(u => u.email?.toLowerCase() === parsedUser.email?.toLowerCase());
+
+              if (freshUser) {
+                if (freshUser.status === 'locked') {
+                  setUser(null);
+                  localStorage.removeItem('fdc_current_user');
+                  alert('Your account has been locked by administration.');
+                  return;
                 }
+
+                // For member-role users: ensure memberId is attached
+                if (freshUser.role === 'member' && !freshUser.memberId) {
+                  try {
+                    const membersRes = await fetch('/api/db/members');
+                    const membersList: any[] = membersRes.ok ? await membersRes.json() : [];
+                    const memberRecord = membersList.find(
+                      (m: any) =>
+                        m.email?.toLowerCase() === freshUser!.email?.toLowerCase() ||
+                        (freshUser!.phone && m.phone === freshUser!.phone)
+                    );
+                    if (memberRecord) {
+                      freshUser = { ...freshUser, memberId: memberRecord.id };
+                    }
+                  } catch (e) {}
+                }
+
+                setUser(freshUser);
+                localStorage.setItem('fdc_current_user', JSON.stringify(freshUser));
+              } else if (parsedUser.role === 'member' && !parsedUser.memberId) {
+                // parsedUser not found in users table — it's a member-only session
+                // Try to attach memberId from members table
+                try {
+                  const membersRes = await fetch('/api/db/members');
+                  const membersList: any[] = membersRes.ok ? await membersRes.json() : [];
+                  const memberRecord = membersList.find(
+                    (m: any) =>
+                      m.email?.toLowerCase() === parsedUser.email?.toLowerCase() ||
+                      m.id === parsedUser.id
+                  );
+                  if (memberRecord) {
+                    const updatedUser = { ...parsedUser, memberId: memberRecord.id };
+                    setUser(updatedUser);
+                    localStorage.setItem('fdc_current_user', JSON.stringify(updatedUser));
+                  }
+                } catch (e) {}
               }
-            })
-            .catch(err => console.warn('Could not sync user details with MongoDB on mount:', err));
+            } catch (err) {
+              console.warn('Could not sync user details with MongoDB on mount:', err);
+            }
+          };
+          syncUser();
         } catch (e) {
           console.error(e);
         }

@@ -222,7 +222,7 @@ export default function Dashboard() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
           <div>
             <div className="flex items-center space-x-2">
-              <h2 className="text-xl font-bold text-zinc-100">Assalamu Alaikum, {role === 'member' ? (myMember?.name || user?.name) : user?.name}</h2>
+              <h2 className="text-xl font-bold text-zinc-100">Assalamu Alaikum, {user?.name}</h2>
               {getRoleBadge(role)}
             </div>
             <p className="text-xs text-zinc-400 mt-1">
