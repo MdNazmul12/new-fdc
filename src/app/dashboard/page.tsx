@@ -75,7 +75,7 @@ export default function Dashboard() {
       if (found) return found;
     }
     // 2. Direct id match
-    const byId = members.find(m => m.id === user.id);
+    const byId = members.find(m => m.id === user.id || m.id === user.id.replace('u-', 'm-'));
     if (byId) return byId;
     // 3. Email match
     if (user.email) {
@@ -87,16 +87,40 @@ export default function Dashboard() {
       const byPhone = members.find(m => m.phone === user.phone);
       if (byPhone) return byPhone;
     }
-    return null;
+    // 5. Name match
+    if (user.name) {
+      const byName = members.find(m => m.name?.toLowerCase() === user.name?.toLowerCase());
+      if (byName) return byName;
+    }
+    // 6. Synthesize from logged-in user so member dashboard always has the current user's profile
+    return {
+      id: user.memberId || user.id.replace('u-', 'm-') || `m-${user.id}`,
+      name: user.name,
+      email: user.email,
+      phone: user.phone || '',
+      status: 'active' as const,
+      joinDate: new Date().toISOString().split('T')[0],
+      monthlyFee: 1000,
+      nomineeName: '',
+      nomineeRelation: '',
+      nomineePhone: ''
+    };
   }, [members, user]);
 
   // Member-specific collections (Paid)
   const myPaidCollections = useMemo(() => {
     if (!myMember) return [];
     return collections
-      .filter(c => c.memberId === myMember.id && c.status === 'paid')
+      .filter(c => 
+        (c.memberId === myMember.id || 
+         (user?.memberId && c.memberId === user.memberId) ||
+         (user?.id && (c.memberId === user.id || c.memberId === user.id.replace('u-', 'm-'))) ||
+         (myMember.name && c.memberName?.toLowerCase() === myMember.name.toLowerCase()) ||
+         (user?.name && c.memberName?.toLowerCase() === user.name.toLowerCase())) && 
+        c.status === 'paid'
+      )
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [collections, myMember]);
+  }, [collections, myMember, user]);
 
   const myTotalPaid = useMemo(() => {
     return myPaidCollections.reduce(
@@ -111,7 +135,13 @@ export default function Dashboard() {
 
     return dueDemands.map(demand => {
       const paidRecord = collections.find(
-        c => c.memberId === myMember.id && c.month === demand.month && c.status === 'paid'
+        c => (c.memberId === myMember.id || 
+              (user?.memberId && c.memberId === user.memberId) ||
+              (user?.id && (c.memberId === user.id || c.memberId === user.id.replace('u-', 'm-'))) ||
+              (myMember.name && c.memberName?.toLowerCase() === myMember.name.toLowerCase()) ||
+              (user?.name && c.memberName?.toLowerCase() === user.name.toLowerCase())) && 
+             c.month === demand.month && 
+             c.status === 'paid'
       );
       const isPaid = !!paidRecord;
       const baseFee = demand.amountType === 'fixed' 

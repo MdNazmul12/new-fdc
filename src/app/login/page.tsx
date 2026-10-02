@@ -9,7 +9,7 @@ export default function LoginPage() {
   const { user, login, loading } = useAuth();
   const router = useRouter();
   
-  const [email, setEmail] = useState('');
+  const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('password123'); // Default mock password
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -25,8 +25,8 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
-      setError('Please enter your email address');
+    if (!loginId.trim()) {
+      setError('Please enter your User ID, Email or Phone Number');
       return;
     }
     
@@ -35,14 +35,14 @@ export default function LoginPage() {
     setSubmitting(true);
     
     try {
-      const success = await login(email, password);
+      const success = await login(loginId.trim(), password);
       if (success) {
         setSuccessMsg('Login Successful! Redirecting to dashboard...');
         setTimeout(() => {
           router.push('/dashboard');
-        }, 1500);
+        }, 800);
       } else {
-        setError('Invalid login credentials. Check your email and password.');
+        setError('Invalid login credentials. Please check your User ID / Email and password.');
       }
     } catch (err) {
       setError('An error occurred during authentication.');
@@ -86,14 +86,14 @@ export default function LoginPage() {
         {/* Credentials Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-zinc-400 mb-1.5">Email Address</label>
+            <label className="block text-xs font-semibold text-zinc-400 mb-1.5">User ID / Email / Phone</label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
               <input
-                type="email"
-                placeholder="email@fdc.org"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                placeholder="User ID (e.g. u-6, m-1), Email or Phone"
+                value={loginId}
+                onChange={(e) => setLoginId(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 bg-zinc-950 border border-zinc-850 rounded-xl text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
               />
             </div>

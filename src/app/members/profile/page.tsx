@@ -50,7 +50,7 @@ export default function MemberProfilePage() {
       if (found) return found;
     }
     // 2. Direct id match (member id === user id)
-    const byId = members.find(m => m.id === user.id);
+    const byId = members.find(m => m.id === user.id || m.id === user.id.replace('u-', 'm-'));
     if (byId) return byId;
     // 3. Email match
     if (user.email) {
@@ -62,8 +62,25 @@ export default function MemberProfilePage() {
       const byPhone = members.find(m => m.phone === user.phone);
       if (byPhone) return byPhone;
     }
-    // 5. No match found — return null (avoid showing wrong member)
-    return null;
+    // 5. Name match
+    if (user.name) {
+      const byName = members.find(m => m.name?.toLowerCase() === user.name.toLowerCase());
+      if (byName) return byName;
+    }
+    // 6. Synthesize profile directly from logged-in user so the right name ALWAYS shows
+    return {
+      id: user.memberId || user.id.replace('u-', 'm-') || `m-${user.id}`,
+      name: user.name,
+      email: user.email,
+      phone: user.phone || '',
+      joinDate: new Date().toISOString().split('T')[0],
+      status: 'active' as const,
+      monthlyFee: 1000,
+      nomineeName: '',
+      nomineeRelation: '',
+      nomineePhone: '',
+      photoUrl: user.avatar
+    };
   }, [user, members]);
   
   // States for print dialog
@@ -132,7 +149,13 @@ export default function MemberProfilePage() {
     if (!memberProfile?.id) return [];
     return dueDemands.map(demand => {
       const isPaid = collections.some(
-        c => c.memberId === memberProfile.id && c.month === demand.month && c.status === 'paid'
+        c => (
+          c.memberId === memberProfile.id || 
+          (user?.memberId && c.memberId === user.memberId) ||
+          (user?.id && (c.memberId === user.id || c.memberId === user.id.replace('u-', 'm-'))) ||
+          (memberProfile.name && c.memberName?.toLowerCase() === memberProfile.name.toLowerCase()) ||
+          (user?.name && c.memberName?.toLowerCase() === user.name.toLowerCase())
+        ) && c.month === demand.month && c.status === 'paid'
       );
       if (isPaid) return null;
       const baseFee = demand.amountType === 'fixed'
@@ -140,7 +163,7 @@ export default function MemberProfilePage() {
         : (memberProfile.monthlyFee || 1000);
       return { ...demand, baseFee };
     }).filter(Boolean) as (typeof dueDemands[0] & { baseFee: number })[];
-  }, [dueDemands, collections, memberProfile]);
+  }, [dueDemands, collections, memberProfile, user]);
 
   const totalDueAmount = memberUnpaidDues.reduce((sum, d) => sum + d.baseFee, 0);
 
@@ -158,7 +181,16 @@ export default function MemberProfilePage() {
   const unreadCount = memberNotifications.filter(n => !n.read).length;
 
   // Filter collections recorded for this specific member
-  const myPayments = (memberProfile ? collections.filter(c => c.memberId === memberProfile.id) : []);
+  const myPayments = React.useMemo(() => {
+    if (!memberProfile) return [];
+    return collections.filter(c => 
+      c.memberId === memberProfile.id || 
+      (user?.memberId && c.memberId === user.memberId) ||
+      (user?.id && (c.memberId === user.id || c.memberId === user.id.replace('u-', 'm-'))) ||
+      (memberProfile.name && c.memberName?.toLowerCase() === memberProfile.name.toLowerCase()) ||
+      (user?.name && c.memberName?.toLowerCase() === user.name.toLowerCase())
+    );
+  }, [collections, memberProfile, user]);
   const totalPaid = myPayments.reduce((sum, p) => sum + p.amount + p.lateFine, 0);
 
   const handlePrintReceipt = (receipt: Collection) => {

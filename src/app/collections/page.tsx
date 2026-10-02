@@ -266,7 +266,7 @@ export default function CollectionsPage() {
       const found = members.find(m => m.id === user.memberId);
       if (found) return found;
     }
-    const byId = members.find(m => m.id === user.id);
+    const byId = members.find(m => m.id === user.id || m.id === user.id.replace('u-', 'm-'));
     if (byId) return byId;
     if (user.email) {
       const byEmail = members.find(m => m.email?.toLowerCase() === user.email?.toLowerCase());
@@ -276,13 +276,34 @@ export default function CollectionsPage() {
       const byPhone = members.find(m => m.phone === user.phone);
       if (byPhone) return byPhone;
     }
-    return null;
+    if (user.name) {
+      const byName = members.find(m => m.name?.toLowerCase() === user.name?.toLowerCase());
+      if (byName) return byName;
+    }
+    return {
+      id: user.memberId || user.id.replace('u-', 'm-') || `m-${user.id}`,
+      name: user.name,
+      email: user.email,
+      phone: user.phone || '',
+      status: 'active' as const,
+      joinDate: new Date().toISOString().split('T')[0],
+      monthlyFee: 1000,
+      nomineeName: '',
+      nomineeRelation: '',
+      nomineePhone: ''
+    };
   }, [members, user]);
 
   // Filter collections
   const filteredCollections = collections.filter(c => {
     if (user?.role === 'member') {
-      if (!myMember || c.memberId !== myMember.id) return false;
+      const isMine = 
+        (myMember && c.memberId === myMember.id) ||
+        (user?.memberId && c.memberId === user.memberId) ||
+        (user?.id && (c.memberId === user.id || c.memberId === user.id.replace('u-', 'm-'))) ||
+        (myMember?.name && c.memberName?.toLowerCase() === myMember.name.toLowerCase()) ||
+        (user?.name && c.memberName?.toLowerCase() === user.name.toLowerCase());
+      if (!isMine) return false;
     }
     const matchesSearch = c.memberName.toLowerCase().includes(searchQuery.toLowerCase()) || c.receiptNo.includes(searchQuery);
     const matchesMonth = monthFilter === 'all' || c.month === monthFilter;

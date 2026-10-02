@@ -105,12 +105,29 @@ export default function DuesPage() {
   const activeMembers = useMemo(() => {
     if (user?.role === 'member') {
       const myM = members.find(
-        m => (user?.id && (m.id === user.id || m.id === user.id.replace('u-', 'm-'))) ||
+        m => (user?.memberId && m.id === user.memberId) ||
+             (user?.id && (m.id === user.id || m.id === user.id.replace('u-', 'm-'))) ||
              (user?.email && m.email?.toLowerCase() === user.email?.toLowerCase()) ||
              (user?.phone && m.phone === user.phone) ||
              (user?.name && m.name?.toLowerCase().includes(user.name?.toLowerCase().replace(' (member)', '')))
-      ) || members[0];
-      return myM ? [myM] : [];
+      );
+
+      if (myM) return [myM];
+
+      // Synthesize profile from logged-in user if not yet in members array
+      const fallbackM: Member = {
+        id: user?.memberId || user?.id?.replace('u-', 'm-') || `m-${user?.id || Date.now()}`,
+        name: user?.name || 'Member',
+        email: user?.email || '',
+        phone: user?.phone || '',
+        status: 'active',
+        joinDate: new Date().toISOString().split('T')[0],
+        monthlyFee: 1000,
+        nomineeName: '',
+        nomineeRelation: '',
+        nomineePhone: ''
+      };
+      return [fallbackM];
     }
     return members.filter(m => m.status === 'active');
   }, [members, user]);
@@ -124,7 +141,12 @@ export default function DuesPage() {
     return activeMembers.map((member) => {
       // Find if there is a paid collection for this member in targetMonth
       const paidRecord = collections.find(
-        c => c.memberId === member.id && c.month === targetMonth && c.status === 'paid'
+        c => (c.memberId === member.id || 
+              (user?.memberId && c.memberId === user.memberId) || 
+              (user?.id && c.memberId === user.id) ||
+              (member.name && c.memberName?.toLowerCase() === member.name?.toLowerCase())) && 
+             c.month === targetMonth && 
+             c.status === 'paid'
       );
 
       const isPaid = !!paidRecord;

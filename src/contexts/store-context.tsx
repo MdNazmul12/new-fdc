@@ -274,27 +274,35 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           dbStates[name] = data;
         }
 
-        // Set state directly from database results
-        setMembers(dbStates['members'] || []);
-        setCollections(dbStates['collections'] || []);
-        setInvestments(dbStates['investments'] || []);
-        setExpenses(dbStates['expenses'] || []);
-        setTransactions(dbStates['transactions'] || []);
-        setAuditLogs(dbStates['auditLogs'] || []);
-        setNotifications(dbStates['notifications'] || []);
-        setDocuments(dbStates['documents'] || []);
+        let loadedMembers = dbStates['members'] || [];
+        let loadedUsers = dbStates['users'] || [];
 
-        const loadedDueDemands = dbStates['due_demands'] || [];
-        setDueDemands(loadedDueDemands.length > 0 ? loadedDueDemands : initialDueDemands);
+        if (loadedMembers.length === 0) loadedMembers = initialMembers;
+        if (loadedUsers.length === 0) loadedUsers = initialUsers;
 
-        // For users: if completely empty, initialize default users list so admin is never locked out
-        const loadedUsers = dbStates['users'] || [];
-        setUsers(loadedUsers.length > 0 ? loadedUsers : initialUsers);
+        // Ensure every member has memberId linked to user account
+        loadedUsers.forEach(u => {
+          if (u.role === 'member' && !u.memberId) {
+            const m = loadedMembers.find(rec => 
+              (rec.email && u.email && rec.email.toLowerCase() === u.email.toLowerCase()) ||
+              (rec.phone && u.phone && rec.phone === u.phone) ||
+              (rec.name && u.name && rec.name.toLowerCase() === u.name.toLowerCase())
+            );
+            if (m) {
+              u.memberId = m.id;
+            }
+          }
+        });
+
+        setMembers(loadedMembers);
+        setUsers(loadedUsers);
 
         // Sync to LocalStorage
         Object.keys(dbStates).forEach(key => {
           localStorage.setItem(`fdc_${key}`, JSON.stringify(dbStates[key]));
         });
+        localStorage.setItem('fdc_members', JSON.stringify(loadedMembers));
+        localStorage.setItem('fdc_users', JSON.stringify(loadedUsers));
       } catch (err) {
         console.warn('MongoDB connection failed. Using local storage fallback.', err);
         const loadLocal = <T,>(key: string, initial: T): T => {
@@ -425,20 +433,32 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setMembers(updated);
     syncToDbAndLocal('members', updated, 'create', newMember);
     
-    // Auto Create Member Login User Profile
-    const newUser: User = {
-      id: `u-${Date.now()}`,
-      name: newMember.name,
-      email: newMember.email,
-      role: 'member',
-      phone: newMember.phone,
-      status: 'active',
-      password: 'password123',  // Consistent with member-only login default
-      memberId: newMember.id    // Link directly to member record so dashboard/profile works
-    };
-    const updatedUsers = [...users, newUser];
-    setUsers(updatedUsers);
-    syncToDbAndLocal('users', updatedUsers, 'create', newUser);
+    // Auto Link or Create Member Login User Profile
+    const existingUser = users.find(u => 
+      (newMember.email && u.email && u.email.toLowerCase() === newMember.email.toLowerCase()) ||
+      (newMember.phone && u.phone && u.phone === newMember.phone)
+    );
+
+    let updatedUsers = users;
+    if (existingUser) {
+      updatedUsers = users.map(u => u.id === existingUser.id ? { ...u, memberId: newMember.id, name: newMember.name } : u);
+      setUsers(updatedUsers);
+      syncToDbAndLocal('users', updatedUsers, 'update', { filter: { id: existingUser.id }, update: { memberId: newMember.id, name: newMember.name } });
+    } else {
+      const newUser: User = {
+        id: `u-${Date.now()}`,
+        name: newMember.name,
+        email: newMember.email,
+        role: 'member',
+        phone: newMember.phone,
+        status: 'active',
+        password: 'password123',
+        memberId: newMember.id
+      };
+      updatedUsers = [...users, newUser];
+      setUsers(updatedUsers);
+      syncToDbAndLocal('users', updatedUsers, 'create', newUser);
+    }
 
     addAuditLog(`Created Member Profile & User Account: ${newMember.name}`, 'super_admin', 'System Log');
     return newMember;
@@ -921,9 +941,42 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // ---------------- USER MANAGEMENT ----------------
   const addUser = (userData: Omit<User, 'id'>) => {
+    let linkedMemberId = userData.memberId;
+
+    if (userData.role === 'member') {
+      const existingMember = members.find(m => 
+        (userData.email && m.email?.toLowerCase() === userData.email.toLowerCase()) ||
+        (userData.phone && m.phone === userData.phone) ||
+        (userData.name && m.name.toLowerCase() === userData.name.toLowerCase())
+      );
+
+      if (existingMember) {
+        linkedMemberId = existingMember.id;
+      } else {
+        const autoMemberId = `m-${Date.now()}`;
+        const autoMember: Member = {
+          id: autoMemberId,
+          name: userData.name,
+          email: userData.email,
+          phone: userData.phone || '',
+          status: 'active',
+          joinDate: new Date().toISOString().split('T')[0],
+          monthlyFee: 1000,
+          nomineeName: '',
+          nomineeRelation: '',
+          nomineePhone: ''
+        };
+        const updatedMembers = [autoMember, ...members];
+        setMembers(updatedMembers);
+        syncToDbAndLocal('members', updatedMembers, 'create', autoMember);
+        linkedMemberId = autoMemberId;
+      }
+    }
+
     const newUser: User = {
       ...userData,
       id: `u-${Date.now()}`,
+      memberId: linkedMemberId,
     };
     const updated = [...users, newUser];
     setUsers(updated);

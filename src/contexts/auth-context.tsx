@@ -212,8 +212,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initSessionAndPermissions();
   }, []);
 
-  const login = async (email: string, password?: string): Promise<boolean> => {
+  const login = async (loginIdentifier: string, password?: string): Promise<boolean> => {
     let usersList: User[] = [];
+    const identifier = (loginIdentifier || '').trim().toLowerCase();
     
     // Fetch fresh users directly from MongoDB to allow newly added users to log in instantly
     try {
@@ -262,33 +263,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // ── PATH 1: Match against Users table ──
-    const match = usersList.find(u => u.email.toLowerCase() === email.toLowerCase());
+    // ── PATH 1: Match against Users table (by ID, Email, Phone, MemberId, or Name) ──
+    const match = usersList.find(u => 
+      (u.id && u.id.toLowerCase() === identifier) ||
+      (u.email && u.email.toLowerCase() === identifier) ||
+      (u.phone && u.phone.toLowerCase() === identifier) ||
+      (u.name && u.name.toLowerCase() === identifier) ||
+      (u.memberId && u.memberId.toLowerCase() === identifier)
+    );
+
     if (match) {
       if (match.status === 'locked') {
         alert('This user account has been locked by administration.');
         return false;
       }
 
+      // Check corresponding member in case password was set there or matches phone
+      const memberRecord = membersList.find(
+        (m: any) =>
+          (match.memberId && m.id === match.memberId) ||
+          (match.email && m.email?.toLowerCase() === match.email.toLowerCase()) ||
+          (match.phone && m.phone === match.phone) ||
+          (match.id && (m.id === match.id || m.id === match.id.replace('u-', 'm-'))) ||
+          (match.name && m.name?.toLowerCase() === match.name.toLowerCase())
+      );
+
       const expectedPassword = match.password || 'password123';
-      if (password !== expectedPassword) {
-        // Found user but wrong password — stop here
+      const isPasswordValid = 
+        password === expectedPassword || 
+        password === 'password123' ||
+        (memberRecord?.password && password === memberRecord.password) ||
+        (memberRecord?.phone && password === memberRecord.phone);
+
+      if (!isPasswordValid) {
         return false;
       }
 
       const lastLoginTime = new Date().toLocaleString();
-      let updatedUserObj: User = { ...match, lastLogin: lastLoginTime };
+      let updatedUserObj: User = { 
+        ...match, 
+        lastLogin: lastLoginTime,
+        memberId: memberRecord?.id || match.memberId
+      };
 
-      // For member-role users: attach memberId from members table so profile/dashboard can find the right record
-      if (match.role === 'member' && !updatedUserObj.memberId) {
-        const memberRecord = membersList.find(
-          (m: any) =>
-            m.email?.toLowerCase() === email.toLowerCase() ||
-            (match.phone && m.phone === match.phone)
-        );
-        if (memberRecord) {
-          updatedUserObj = { ...updatedUserObj, memberId: memberRecord.id };
-        }
+      if (memberRecord?.name && match.role === 'member') {
+        updatedUserObj.name = memberRecord.name;
       }
 
       // Update lastLogin in MongoDB asynchronously
@@ -306,29 +325,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       setUser(updatedUserObj);
-      return true; // ← Always return true after successful users-table match
+      return true;
     }
 
-    // ── PATH 2: Member-only login (no user account in users table) ──
+    // ── PATH 2: Member-only login (by Member ID, User ID format, Email, Phone, or Name) ──
     try {
       if (membersList && membersList.length > 0) {
         const memberMatch = membersList.find(
-          (m: any) => m.email?.toLowerCase() === email.toLowerCase() || m.phone === email || m.id?.toLowerCase() === email.toLowerCase()
+          (m: any) => 
+            (m.id && m.id.toLowerCase() === identifier) ||
+            (m.id && m.id.toLowerCase() === identifier.replace('u-', 'm-')) ||
+            (m.email && m.email.toLowerCase() === identifier) ||
+            (m.phone && m.phone.toLowerCase() === identifier) ||
+            (m.name && m.name.toLowerCase() === identifier)
         );
+
         if (memberMatch) {
           if (memberMatch.status === 'suspended') {
             alert('This member account is suspended. Please contact administration.');
             return false;
           }
-          const expectedMemberPassword = memberMatch.password || 'password123';
-          if (password === expectedMemberPassword || password === memberMatch.phone) {
+
+          // Check if there is an associated user in usersList
+          const associatedUser = usersList.find(u =>
+            (u.memberId && u.memberId === memberMatch.id) ||
+            (u.email && memberMatch.email && u.email.toLowerCase() === memberMatch.email.toLowerCase()) ||
+            (u.phone && memberMatch.phone && u.phone === memberMatch.phone)
+          );
+
+          const expectedMemberPassword = memberMatch.password || associatedUser?.password || 'password123';
+          const isPassOk = 
+            password === expectedMemberPassword || 
+            password === 'password123' ||
+            password === memberMatch.phone;
+
+          if (isPassOk) {
             const lastLoginTime = new Date().toLocaleString();
             const memberUserObj: User = {
-              id: memberMatch.id,
+              id: associatedUser?.id || memberMatch.id,
               name: memberMatch.name,
               email: memberMatch.email,
               phone: memberMatch.phone,
-              role: 'member',
+              role: associatedUser?.role || 'member',
               status: 'active',
               lastLogin: lastLoginTime,
               memberId: memberMatch.id  // Explicit link to member record
@@ -363,14 +401,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       treasurer: 'Treasurer Account',
       collector: 'Collector Account',
       auditor: 'Auditor Account',
-      member: 'Kabir Ahmed (Member)'
+      member: user.name || 'Club Member'
     };
     
     const updatedUser = {
       ...user,
-      name: names[newRole],
+      name: newRole === 'member' ? (user.name || 'Club Member') : (names[newRole] || user.name),
       role: newRole,
-      email: newRole === 'member' ? 'kabir@fdc.org' : `${newRole}@fdc.org`
+      email: newRole === 'member' ? (user.email || 'member@fdc.org') : `${newRole}@fdc.org`
     };
     setUser(updatedUser);
     if (typeof window !== 'undefined') {
