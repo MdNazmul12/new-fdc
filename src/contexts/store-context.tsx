@@ -222,6 +222,16 @@ const initialDueDemands: DueDemand[] = [
   { id: 'dd-2026-09', month: '2026-09', title: 'Monthly Subscription Fee - September 2026', dueDate: '2026-09-10', amountType: 'member_fee', lateFine: 50, applicableTo: 'all', createdAt: '2026-09-01', createdBy: 'Super Admin' },
 ];
 
+const isRealPhone = (phone?: string): boolean => {
+  if (!phone) return false;
+  const cleaned = phone.replace(/[^0-9]/g, '');
+  if (!cleaned || cleaned.length < 8) return false;
+  if (/^0+$/.test(cleaned)) return false;
+  if (/^0170{5,}/.test(cleaned)) return false;
+  if (/^880170{5,}/.test(cleaned)) return false;
+  return true;
+};
+
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [members, setMembers] = useState<Member[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -282,11 +292,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         // Ensure every member has memberId linked to user account
         loadedUsers.forEach(u => {
-          if (u.role === 'member' && !u.memberId) {
+          if (u.role === 'member') {
             const m = loadedMembers.find(rec => 
+              (u.memberId && rec.id === u.memberId) ||
+              (u.id && (rec.id === u.id || rec.id === u.id.replace('u-', 'm-'))) ||
+              (u.name && rec.name && rec.name.trim().toLowerCase() === u.name.trim().toLowerCase()) ||
               (rec.email && u.email && rec.email.toLowerCase() === u.email.toLowerCase()) ||
-              (rec.phone && u.phone && rec.phone === u.phone) ||
-              (rec.name && u.name && rec.name.toLowerCase() === u.name.toLowerCase())
+              (isRealPhone(u.phone) && rec.phone === u.phone)
             );
             if (m) {
               u.memberId = m.id;

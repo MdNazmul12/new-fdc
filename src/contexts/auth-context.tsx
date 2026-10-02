@@ -93,6 +93,17 @@ const DEFAULT_PERMISSIONS: Record<UserRole, Record<string, string[]>> = {
   }
 };
 
+export const isRealPhone = (phone?: string): boolean => {
+  if (!phone) return false;
+  const cleaned = phone.replace(/[^0-9]/g, '');
+  if (!cleaned || cleaned.length < 8) return false;
+  // Ignore dummy placeholder phones like 01700000000, +8801700000000, 00000000
+  if (/^0+$/.test(cleaned)) return false;
+  if (/^0170{5,}/.test(cleaned)) return false;
+  if (/^880170{5,}/.test(cleaned)) return false;
+  return true;
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -128,15 +139,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   return;
                 }
 
-                // For member-role users: ensure memberId is attached
-                if (freshUser.role === 'member' && !freshUser.memberId) {
+                // For member-role users: ensure memberId is attached accurately (matching ID or Name first, never dummy phone)
+                if (freshUser.role === 'member') {
                   try {
                     const membersRes = await fetch('/api/db/members');
                     const membersList: any[] = membersRes.ok ? await membersRes.json() : [];
                     const memberRecord = membersList.find(
                       (m: any) =>
-                        m.email?.toLowerCase() === freshUser!.email?.toLowerCase() ||
-                        (freshUser!.phone && m.phone === freshUser!.phone)
+                        (freshUser!.memberId && m.id === freshUser!.memberId) ||
+                        (freshUser!.id && (m.id === freshUser!.id || m.id === freshUser!.id.replace('u-', 'm-'))) ||
+                        (freshUser!.name && m.name?.trim().toLowerCase() === freshUser!.name.trim().toLowerCase()) ||
+                        (freshUser!.email && m.email?.trim().toLowerCase() === freshUser!.email.trim().toLowerCase()) ||
+                        (isRealPhone(freshUser!.phone) && m.phone === freshUser!.phone)
                     );
                     if (memberRecord) {
                       freshUser = { ...freshUser, memberId: memberRecord.id };
@@ -146,7 +160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                 setUser(freshUser);
                 localStorage.setItem('fdc_current_user', JSON.stringify(freshUser));
-              } else if (parsedUser.role === 'member' && !parsedUser.memberId) {
+              } else if (parsedUser.role === 'member') {
                 // parsedUser not found in users table — it's a member-only session
                 // Try to attach memberId from members table
                 try {
@@ -154,11 +168,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   const membersList: any[] = membersRes.ok ? await membersRes.json() : [];
                   const memberRecord = membersList.find(
                     (m: any) =>
-                      m.email?.toLowerCase() === parsedUser.email?.toLowerCase() ||
-                      m.id === parsedUser.id
+                      (parsedUser.memberId && m.id === parsedUser.memberId) ||
+                      (parsedUser.id && (m.id === parsedUser.id || m.id === parsedUser.id.replace('u-', 'm-'))) ||
+                      (parsedUser.name && m.name?.trim().toLowerCase() === parsedUser.name.trim().toLowerCase()) ||
+                      (parsedUser.email && m.email?.trim().toLowerCase() === parsedUser.email.trim().toLowerCase()) ||
+                      (isRealPhone(parsedUser.phone) && m.phone === parsedUser.phone)
                   );
                   if (memberRecord) {
-                    const updatedUser = { ...parsedUser, memberId: memberRecord.id };
+                    const updatedUser = { ...parsedUser, memberId: memberRecord.id, name: parsedUser.name || memberRecord.name };
                     setUser(updatedUser);
                     localStorage.setItem('fdc_current_user', JSON.stringify(updatedUser));
                   }
@@ -282,10 +299,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const memberRecord = membersList.find(
         (m: any) =>
           (match.memberId && m.id === match.memberId) ||
-          (match.email && m.email?.toLowerCase() === match.email.toLowerCase()) ||
-          (match.phone && m.phone === match.phone) ||
           (match.id && (m.id === match.id || m.id === match.id.replace('u-', 'm-'))) ||
-          (match.name && m.name?.toLowerCase() === match.name.toLowerCase())
+          (match.name && m.name?.trim().toLowerCase() === match.name.trim().toLowerCase()) ||
+          (match.email && m.email?.trim().toLowerCase() === match.email.trim().toLowerCase()) ||
+          (isRealPhone(match.phone) && m.phone === match.phone)
       );
 
       const expectedPassword = match.password || 'password123';
@@ -293,7 +310,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password === expectedPassword || 
         password === 'password123' ||
         (memberRecord?.password && password === memberRecord.password) ||
-        (memberRecord?.phone && password === memberRecord.phone);
+        (isRealPhone(memberRecord?.phone) && password === memberRecord.phone);
 
       if (!isPasswordValid) {
         return false;
@@ -305,10 +322,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         lastLogin: lastLoginTime,
         memberId: memberRecord?.id || match.memberId
       };
-
-      if (memberRecord?.name && match.role === 'member') {
-        updatedUserObj.name = memberRecord.name;
-      }
 
       // Update lastLogin in MongoDB asynchronously
       fetch('/api/db/users', {
@@ -335,9 +348,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           (m: any) => 
             (m.id && m.id.toLowerCase() === identifier) ||
             (m.id && m.id.toLowerCase() === identifier.replace('u-', 'm-')) ||
+            (m.name && m.name.trim().toLowerCase() === identifier) ||
             (m.email && m.email.toLowerCase() === identifier) ||
-            (m.phone && m.phone.toLowerCase() === identifier) ||
-            (m.name && m.name.toLowerCase() === identifier)
+            (isRealPhone(m.phone) && m.phone === identifier)
         );
 
         if (memberMatch) {
@@ -349,15 +362,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Check if there is an associated user in usersList
           const associatedUser = usersList.find(u =>
             (u.memberId && u.memberId === memberMatch.id) ||
+            (u.id && (u.id === memberMatch.id || u.id === memberMatch.id.replace('m-', 'u-'))) ||
+            (u.name && memberMatch.name && u.name.trim().toLowerCase() === memberMatch.name.trim().toLowerCase()) ||
             (u.email && memberMatch.email && u.email.toLowerCase() === memberMatch.email.toLowerCase()) ||
-            (u.phone && memberMatch.phone && u.phone === memberMatch.phone)
+            (isRealPhone(u.phone) && u.phone === memberMatch.phone)
           );
 
           const expectedMemberPassword = memberMatch.password || associatedUser?.password || 'password123';
           const isPassOk = 
             password === expectedMemberPassword || 
             password === 'password123' ||
-            password === memberMatch.phone;
+            (isRealPhone(memberMatch.phone) && password === memberMatch.phone);
 
           if (isPassOk) {
             const lastLoginTime = new Date().toLocaleString();

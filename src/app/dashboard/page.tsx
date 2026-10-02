@@ -77,20 +77,24 @@ export default function Dashboard() {
     // 2. Direct id match
     const byId = members.find(m => m.id === user.id || m.id === user.id.replace('u-', 'm-'));
     if (byId) return byId;
-    // 3. Email match
+    // 3. Name match (Highest priority for identity over shared phone numbers)
+    if (user.name) {
+      const byName = members.find(m => m.name?.trim().toLowerCase() === user.name?.trim().toLowerCase());
+      if (byName) return byName;
+    }
+    // 4. Email match
     if (user.email) {
       const byEmail = members.find(m => m.email?.toLowerCase() === user.email?.toLowerCase());
       if (byEmail) return byEmail;
     }
-    // 4. Phone match
+    // 5. Phone match (Only if real non-dummy phone number)
     if (user.phone) {
-      const byPhone = members.find(m => m.phone === user.phone);
-      if (byPhone) return byPhone;
-    }
-    // 5. Name match
-    if (user.name) {
-      const byName = members.find(m => m.name?.toLowerCase() === user.name?.toLowerCase());
-      if (byName) return byName;
+      const cleaned = user.phone.replace(/[^0-9]/g, '');
+      const isReal = cleaned.length >= 8 && !/^0+$/.test(cleaned) && !/^0170{5,}/.test(cleaned) && !/^880170{5,}/.test(cleaned);
+      if (isReal) {
+        const byPhone = members.find(m => m.phone === user.phone);
+        if (byPhone) return byPhone;
+      }
     }
     // 6. Synthesize from logged-in user so member dashboard always has the current user's profile
     return {

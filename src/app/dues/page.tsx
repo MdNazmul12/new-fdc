@@ -104,12 +104,18 @@ export default function DuesPage() {
   // Active members only (filtered to single member if logged in as member)
   const activeMembers = useMemo(() => {
     if (user?.role === 'member') {
+      const isReal = (p?: string) => {
+        if (!p) return false;
+        const c = p.replace(/[^0-9]/g, '');
+        return c.length >= 8 && !/^0+$/.test(c) && !/^0170{5,}/.test(c) && !/^880170{5,}/.test(c);
+      };
+
       const myM = members.find(
         m => (user?.memberId && m.id === user.memberId) ||
              (user?.id && (m.id === user.id || m.id === user.id.replace('u-', 'm-'))) ||
-             (user?.email && m.email?.toLowerCase() === user.email?.toLowerCase()) ||
-             (user?.phone && m.phone === user.phone) ||
-             (user?.name && m.name?.toLowerCase().includes(user.name?.toLowerCase().replace(' (member)', '')))
+             (user?.name && m.name?.trim().toLowerCase() === user.name.trim().toLowerCase()) ||
+             (user?.email && m.email?.toLowerCase() === user.email.toLowerCase()) ||
+             (isReal(user?.phone) && m.phone === user.phone)
       );
 
       if (myM) return [myM];
