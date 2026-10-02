@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/auth-context';
-import { Shield, Mail, KeyRound, AlertCircle, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { Mail, KeyRound, AlertCircle, Eye, EyeOff, CheckCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const { user, login, loading } = useAuth();
@@ -62,8 +62,8 @@ export default function LoginPage() {
         
         {/* Logo and Header */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-xl grad-primary flex items-center justify-center shadow-lg shadow-indigo-500/20 mb-4">
-            <Shield className="w-6 h-6 text-white" />
+          <div className="w-20 h-20 rounded-2xl bg-white border border-[var(--border)] flex items-center justify-center shadow-lg shadow-blue-500/10 mb-4 overflow-hidden p-1">
+            <img src="/logo.jpg" alt="FDC Logo" className="w-full h-full object-contain" />
           </div>
           <h2 className="text-2xl font-extrabold tracking-tight text-[var(--foreground)]">FDC Foundation</h2>
           <p className="text-xs text-[var(--muted-foreground)] mt-1 text-center">Investment & Fund Management Platform</p>
