@@ -315,11 +315,11 @@ export default function UsersPage() {
       <div className="space-y-6">
 
         {/* Tab switcher headers */}
-        <div className="flex border-b border-zinc-800 space-x-4">
+        <div className="flex border-b border-[var(--border)] space-x-4">
           <button
             onClick={() => setActiveTab('users')}
             className={`pb-2.5 text-xs font-bold transition-all relative ${
-              activeTab === 'users' ? 'text-indigo-400 border-b-2 border-indigo-500 font-extrabold' : 'text-zinc-400 hover:text-zinc-200'
+              activeTab === 'users' ? 'text-indigo-400 border-b-2 border-indigo-500 font-extrabold' : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)]'
             }`}
           >
             User Accounts Directory
@@ -327,7 +327,7 @@ export default function UsersPage() {
           <button
             onClick={() => setActiveTab('rbac')}
             className={`pb-2.5 text-xs font-bold transition-all relative ${
-              activeTab === 'rbac' ? 'text-indigo-400 border-b-2 border-indigo-500 font-extrabold' : 'text-zinc-400 hover:text-zinc-200'
+              activeTab === 'rbac' ? 'text-indigo-400 border-b-2 border-indigo-500 font-extrabold' : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)]'
             }`}
           >
             RBAC Permission Matrix
@@ -335,7 +335,7 @@ export default function UsersPage() {
           <button
             onClick={() => setActiveTab('files')}
             className={`pb-2.5 text-xs font-bold transition-all relative ${
-              activeTab === 'files' ? 'text-indigo-400 border-b-2 border-indigo-500 font-extrabold' : 'text-zinc-400 hover:text-zinc-200'
+              activeTab === 'files' ? 'text-indigo-400 border-b-2 border-indigo-500 font-extrabold' : 'text-[var(--muted-foreground)] hover:text-[var(--card-foreground)]'
             }`}
           >
             File Repository Manager
@@ -357,8 +357,8 @@ export default function UsersPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-xs font-bold text-zinc-200">System Logins Directory</h3>
-                <p className="text-[10px] text-zinc-500">Manage authorization roles for treasury & auditors</p>
+                <h3 className="text-xs font-bold text-[var(--card-foreground)]">System Logins Directory</h3>
+                <p className="text-[10px] text-[var(--muted-foreground)]/70">Manage authorization roles for treasury & auditors</p>
               </div>
               
               {hasPermission('users', 'create') && (
@@ -377,7 +377,7 @@ export default function UsersPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-zinc-800 bg-zinc-900/40 text-zinc-400">
+                    <tr className="border-b border-[var(--border)] bg-[var(--secondary)]/40 text-[var(--muted-foreground)]">
                       <th className="p-4 font-semibold">User Info</th>
                       <th className="p-4 font-semibold">System Role</th>
                       <th className="p-4 font-semibold">Phone Number</th>
@@ -386,13 +386,13 @@ export default function UsersPage() {
                       <th className="p-4 font-semibold text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-850">
+                  <tbody className="divide-y divide-[var(--border)]">
                     {users.map((u) => (
-                      <tr key={u.id} className="hover:bg-zinc-900/30 transition-colors">
+                      <tr key={u.id} className="hover:bg-[var(--secondary)]/30 transition-colors">
                         
                         <td className="p-4">
-                          <p className="font-bold text-zinc-200">{u.name}</p>
-                          <p className="text-[10px] text-zinc-500">{u.email}</p>
+                          <p className="font-bold text-[var(--card-foreground)]">{u.name}</p>
+                          <p className="text-[10px] text-[var(--muted-foreground)]/70">{u.email}</p>
                         </td>
 
                         <td className="p-4">
@@ -401,8 +401,8 @@ export default function UsersPage() {
                           </span>
                         </td>
 
-                        <td className="p-4 text-zinc-300">{u.phone || 'N/A'}</td>
-                        <td className="p-4 text-zinc-500 text-[10px]">{u.lastLogin || 'Never'}</td>
+                        <td className="p-4 text-[var(--foreground)]/80">{u.phone || 'N/A'}</td>
+                        <td className="p-4 text-[var(--muted-foreground)]/70 text-[10px]">{u.lastLogin || 'Never'}</td>
 
                         <td className="p-4 text-center">
                           <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
@@ -430,7 +430,7 @@ export default function UsersPage() {
                                   setEditUserPassword(u.password || '');
                                   setEditModalOpen(true);
                                 }}
-                                className="p-1.5 bg-zinc-800 text-zinc-400 hover:text-white rounded-lg cursor-pointer"
+                                className="p-1.5 bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-white rounded-lg cursor-pointer"
                                 title="Edit User Details & Password"
                               >
                                 <Edit2 className="w-3.5 h-3.5 text-indigo-400" />
@@ -450,7 +450,7 @@ export default function UsersPage() {
                                     }
                                   );
                                 }}
-                                className="p-1.5 bg-zinc-800 hover:bg-zinc-750 text-rose-450 hover:text-rose-400 rounded-lg cursor-pointer transition-colors"
+                                className="p-1.5 bg-[var(--accent)] hover:bg-zinc-750 text-rose-450 hover:text-rose-400 rounded-lg cursor-pointer transition-colors"
                                 title="Delete User Account"
                               >
                                 <Trash2 className="w-3.5 h-3.5 text-rose-400" />
@@ -463,7 +463,7 @@ export default function UsersPage() {
                                 resetUserPassword(u.id);
                                 showFeedback(`Password reset email triggered for ${u.email}`);
                               }}
-                              className="p-1.5 bg-zinc-800 text-zinc-400 hover:text-white rounded-lg cursor-pointer"
+                              className="p-1.5 bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-white rounded-lg cursor-pointer"
                               title="Reset Password credentials"
                             >
                               <RefreshCw className="w-3.5 h-3.5" />
@@ -477,7 +477,7 @@ export default function UsersPage() {
                                   updateUserStatus(u.id, targetStatus);
                                   showFeedback(`User ${u.email} status set to ${targetStatus}`);
                                 }}
-                                className="p-1.5 bg-zinc-800 text-zinc-300 hover:text-white rounded-lg cursor-pointer"
+                                className="p-1.5 bg-[var(--accent)] text-[var(--foreground)]/80 hover:text-white rounded-lg cursor-pointer"
                                 title={u.status === 'active' ? 'Lock User Profile' : 'Unlock User Profile'}
                               >
                                 {u.status === 'active' ? <Lock className="w-3.5 h-3.5 text-rose-400" /> : <Unlock className="w-3.5 h-3.5 text-emerald-400" />}
@@ -502,19 +502,19 @@ export default function UsersPage() {
           <div className="space-y-6 animate-fade-in-up">
             
             {/* Header selector */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-zinc-800 pb-4 space-y-3 sm:space-y-0 text-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-[var(--border)] pb-4 space-y-3 sm:space-y-0 text-xs">
               <div>
-                <h3 className="text-xs font-bold text-zinc-200">Role Permissions Configurator</h3>
-                <p className="text-[10px] text-zinc-500">Toggle screen views or CRUD permissions dynamically below. Changes apply instantly.</p>
+                <h3 className="text-xs font-bold text-[var(--card-foreground)]">Role Permissions Configurator</h3>
+                <p className="text-[10px] text-[var(--muted-foreground)]/70">Toggle screen views or CRUD permissions dynamically below. Changes apply instantly.</p>
               </div>
               
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs text-zinc-400 font-semibold">Configuring Role:</span>
+                  <span className="text-xs text-[var(--muted-foreground)] font-semibold">Configuring Role:</span>
                   <select
                     value={selectedRoleForPerms}
                     onChange={(e) => setSelectedRoleForPerms(e.target.value as UserRole)}
-                    className="bg-zinc-950 border border-zinc-850 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none cursor-pointer"
+                    className="bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--foreground)]/80 focus:outline-none cursor-pointer"
                   >
                     {allAvailableRoles.map((r) => (
                       <option key={r.key} value={r.key}>{r.name}</option>
@@ -525,7 +525,7 @@ export default function UsersPage() {
                 <button
                   type="button"
                   onClick={() => setCreateRoleModalOpen(true)}
-                  className="px-3 py-2 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-indigo-400 text-xs font-semibold rounded-xl transition-all cursor-pointer inline-flex items-center space-x-1.5"
+                  className="px-3 py-2 bg-[var(--secondary)] border border-[var(--border)] hover:bg-[var(--accent)] text-indigo-400 text-xs font-semibold rounded-xl transition-all cursor-pointer inline-flex items-center space-x-1.5"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
                   <span>+ Create Role</span>
@@ -549,8 +549,8 @@ export default function UsersPage() {
                 const moduleActions = rolePermissions[mod.key] || [];
 
                 return (
-                  <div key={mod.key} className="bg-zinc-900 border border-zinc-850 rounded-xl p-4 space-y-3 shadow-sm">
-                    <h4 className="font-bold text-xs text-zinc-100 flex items-center space-x-2 border-b border-zinc-850 pb-2">
+                  <div key={mod.key} className="bg-[var(--secondary)] border border-[var(--border)] rounded-xl p-4 space-y-3 shadow-sm">
+                    <h4 className="font-bold text-xs text-[var(--foreground)] flex items-center space-x-2 border-b border-[var(--border)] pb-2">
                       <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0"></span>
                       <span>{mod.name}</span>
                     </h4>
@@ -561,7 +561,7 @@ export default function UsersPage() {
                         return (
                           <label 
                             key={act.key} 
-                            className="flex items-center space-x-2 p-2 bg-zinc-950/40 hover:bg-zinc-950 rounded border border-zinc-850/50 cursor-pointer select-none"
+                            className="flex items-center space-x-2 p-2 bg-[var(--background)]/40 hover:bg-[var(--background)] rounded border border-[var(--border)]/50 cursor-pointer select-none"
                           >
                             <input
                               type="checkbox"
@@ -569,9 +569,9 @@ export default function UsersPage() {
                               onChange={(e) => {
                                 handleToggleLocalPermission(selectedRoleForPerms, mod.key, act.key, e.target.checked);
                               }}
-                              className="rounded border-zinc-700 bg-zinc-900 text-indigo-500 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
+                              className="rounded border-[var(--border)] bg-[var(--secondary)] text-indigo-500 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
                             />
-                            <span className="text-[10px] text-zinc-400 font-semibold">{act.key.toUpperCase()}</span>
+                            <span className="text-[10px] text-[var(--muted-foreground)] font-semibold">{act.key.toUpperCase()}</span>
                           </label>
                         );
                       })}
@@ -581,7 +581,7 @@ export default function UsersPage() {
               })}
             </div>
 
-            <div className="p-3.5 bg-zinc-950 border border-zinc-850 text-[10px] text-zinc-400 rounded-xl leading-relaxed text-center">
+            <div className="p-3.5 bg-[var(--background)] border border-[var(--border)] text-[10px] text-[var(--muted-foreground)] rounded-xl leading-relaxed text-center">
               ⚠️ Warning: Restricting View permissions for any module will instantly hide that section from the user sidebar menu.
             </div>
 
@@ -594,8 +594,8 @@ export default function UsersPage() {
             
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-xs font-bold text-zinc-200">Document Repository</h3>
-                <p className="text-[10px] text-zinc-500">Upload and storage for agreements, receipts, bank statements</p>
+                <h3 className="text-xs font-bold text-[var(--card-foreground)]">Document Repository</h3>
+                <p className="text-[10px] text-[var(--muted-foreground)]/70">Upload and storage for agreements, receipts, bank statements</p>
               </div>
               
               {hasPermission('documents', 'create') && (
@@ -617,8 +617,8 @@ export default function UsersPage() {
                   <div key={folder} className="glass-card p-4 rounded-xl flex items-center space-x-3.5">
                     <FolderOpen className="w-9 h-9 text-indigo-400 shrink-0" />
                     <div>
-                      <h4 className="font-bold text-zinc-200 text-xs">{folder}</h4>
-                      <p className="text-[10px] text-zinc-500 mt-0.5">{count} registered files</p>
+                      <h4 className="font-bold text-[var(--card-foreground)] text-xs">{folder}</h4>
+                      <p className="text-[10px] text-[var(--muted-foreground)]/70 mt-0.5">{count} registered files</p>
                     </div>
                   </div>
                 );
@@ -629,7 +629,7 @@ export default function UsersPage() {
             <div className="glass-panel rounded-2xl overflow-hidden mt-4">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-zinc-800 bg-zinc-900/40 text-zinc-400">
+                  <tr className="border-b border-[var(--border)] bg-[var(--secondary)]/40 text-[var(--muted-foreground)]">
                     <th className="p-4 font-semibold">Document Name</th>
                     <th className="p-4 font-semibold">Category</th>
                     <th className="p-4 font-semibold">File Size</th>
@@ -638,29 +638,29 @@ export default function UsersPage() {
                     <th className="p-4 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-850">
+                <tbody className="divide-y divide-[var(--border)]">
                   {documents.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="p-8 text-center text-zinc-500">No documents uploaded</td>
+                      <td colSpan={6} className="p-8 text-center text-[var(--muted-foreground)]/70">No documents uploaded</td>
                     </tr>
                   ) : (
                     documents.map((doc) => (
-                      <tr key={doc.id} className="hover:bg-zinc-900/30 transition-colors">
+                      <tr key={doc.id} className="hover:bg-[var(--secondary)]/30 transition-colors">
                         
                         <td className="p-4">
                           <div className="flex items-center space-x-3">
                             <span className="shrink-0">{getDocIcon(doc.type)}</span>
                             <div>
-                              <p className="font-bold text-zinc-200">{doc.name}</p>
-                              <p className="text-[9px] text-zinc-500 uppercase">{doc.type}</p>
+                              <p className="font-bold text-[var(--card-foreground)]">{doc.name}</p>
+                              <p className="text-[9px] text-[var(--muted-foreground)]/70 uppercase">{doc.type}</p>
                             </div>
                           </div>
                         </td>
 
-                        <td className="p-4 text-zinc-400">{doc.category}</td>
-                        <td className="p-4 text-zinc-300">{doc.size}</td>
-                        <td className="p-4 text-zinc-300">{doc.uploadedBy}</td>
-                        <td className="p-4 text-zinc-500 text-[10px]">{doc.uploadDate}</td>
+                        <td className="p-4 text-[var(--muted-foreground)]">{doc.category}</td>
+                        <td className="p-4 text-[var(--foreground)]/80">{doc.size}</td>
+                        <td className="p-4 text-[var(--foreground)]/80">{doc.uploadedBy}</td>
+                        <td className="p-4 text-[var(--muted-foreground)]/70 text-[10px]">{doc.uploadDate}</td>
 
                         {/* Actions */}
                         <td className="p-4 text-right">
@@ -670,7 +670,7 @@ export default function UsersPage() {
                               <a
                                 href="#"
                                 onClick={(e) => { e.preventDefault(); alert(`Downloading mock file: ${doc.name}`); }}
-                                className="p-1.5 bg-zinc-850 hover:bg-zinc-800 text-zinc-300 rounded-lg cursor-pointer"
+                                className="p-1.5 bg-[var(--muted)] hover:bg-[var(--accent)] text-[var(--foreground)]/80 rounded-lg cursor-pointer"
                                 title="Download document copy"
                               >
                                 <Download className="w-3.5 h-3.5" />
@@ -689,7 +689,7 @@ export default function UsersPage() {
                                     }
                                   );
                                 }}
-                                className="p-1.5 bg-zinc-850 hover:bg-zinc-850 text-zinc-500 hover:text-rose-400 rounded-lg cursor-pointer"
+                                className="p-1.5 bg-[var(--muted)] hover:bg-[var(--muted)] text-[var(--muted-foreground)]/70 hover:text-rose-400 rounded-lg cursor-pointer"
                                 title="Delete document copy"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -712,46 +712,46 @@ export default function UsersPage() {
         {/* ---------------- MODAL: ADD USER ---------------- */}
         {userModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl">
+            <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-2xl w-full max-w-sm shadow-2xl">
               
-              <div className="flex items-center justify-between p-4 border-b border-zinc-850">
-                <h3 className="text-sm font-bold text-zinc-200">Register System User</h3>
-                <button onClick={() => setUserModalOpen(false)} className="p-1 text-zinc-400 hover:text-white rounded-lg"><X className="w-5 h-5" /></button>
+              <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
+                <h3 className="text-sm font-bold text-[var(--card-foreground)]">Register System User</h3>
+                <button onClick={() => setUserModalOpen(false)} className="p-1 text-[var(--muted-foreground)] hover:text-white rounded-lg"><X className="w-5 h-5" /></button>
               </div>
 
               <form onSubmit={handleAddUser} className="p-4 space-y-4 text-xs">
                 
                 <div>
-                  <label className="block text-zinc-400 font-semibold mb-1">User Full Name *</label>
+                  <label className="block text-[var(--muted-foreground)] font-semibold mb-1">User Full Name *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Asif Chowdhury"
                     value={newUserName}
                     onChange={(e) => setNewUserName(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-200 placeholder-zinc-650 focus:outline-none"
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--card-foreground)] placeholder-zinc-650 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-zinc-400 font-semibold mb-1">Email Address *</label>
+                  <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Email Address *</label>
                   <input
                     type="email"
                     required
                     placeholder="asif@fdc.org"
                     value={newUserEmail}
                     onChange={(e) => setNewUserEmail(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-200 placeholder-zinc-650 focus:outline-none"
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--card-foreground)] placeholder-zinc-650 focus:outline-none"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">Assign Role</label>
+                    <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Assign Role</label>
                     <select
                       value={newUserRole}
                       onChange={(e) => setNewUserRole(e.target.value as UserRole)}
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-300 focus:outline-none cursor-pointer"
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--foreground)]/80 focus:outline-none cursor-pointer"
                     >
                       {allAvailableRoles.map((r) => (
                         <option key={r.key} value={r.key}>{r.name}</option>
@@ -759,19 +759,19 @@ export default function UsersPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">Contact Phone</label>
+                    <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Contact Phone</label>
                     <input
                       type="text"
                       placeholder="+8801XXXXXXXXX"
                       value={newUserPhone}
                       onChange={(e) => setNewUserPhone(e.target.value)}
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-200 focus:outline-none"
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--card-foreground)] focus:outline-none"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-zinc-400 font-semibold mb-1">Assign Login Password *</label>
+                  <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Assign Login Password *</label>
                   <div className="relative">
                     <input
                       type={showNewUserPassword ? 'text' : 'password'}
@@ -779,20 +779,20 @@ export default function UsersPage() {
                       placeholder="Enter login password"
                       value={newUserPassword}
                       onChange={(e) => setNewUserPassword(e.target.value)}
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 pr-10 text-zinc-200 focus:outline-none"
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 pr-10 text-[var(--card-foreground)] focus:outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => setShowNewUserPassword(!showNewUserPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white focus:outline-none cursor-pointer"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-white focus:outline-none cursor-pointer"
                     >
-                      {showNewUserPassword ? <EyeOff className="w-4 h-4 text-zinc-400" /> : <Eye className="w-4 h-4 text-zinc-400" />}
+                      {showNewUserPassword ? <EyeOff className="w-4 h-4 text-[var(--muted-foreground)]" /> : <Eye className="w-4 h-4 text-[var(--muted-foreground)]" />}
                     </button>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end space-x-2 pt-4 border-t border-zinc-850">
-                  <button type="button" onClick={() => setUserModalOpen(false)} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-lg font-bold transition-colors cursor-pointer">Cancel</button>
+                <div className="flex items-center justify-end space-x-2 pt-4 border-t border-[var(--border)]">
+                  <button type="button" onClick={() => setUserModalOpen(false)} className="px-4 py-2 bg-[var(--accent)] hover:bg-zinc-700 text-[var(--card-foreground)] border border-[var(--border)] rounded-lg font-bold transition-colors cursor-pointer">Cancel</button>
                   <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold">Register User</button>
                 </div>
 
@@ -804,34 +804,34 @@ export default function UsersPage() {
         {/* ---------------- MODAL: UPLOAD FILE ---------------- */}
         {fileModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl">
+            <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-2xl w-full max-w-sm shadow-2xl">
               
-              <div className="flex items-center justify-between p-4 border-b border-zinc-850">
-                <h3 className="text-sm font-bold text-zinc-200">Upload Agreement / Receipt</h3>
-                <button onClick={() => setFileModalOpen(false)} className="p-1 text-zinc-400 hover:text-white rounded-lg"><X className="w-5 h-5" /></button>
+              <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
+                <h3 className="text-sm font-bold text-[var(--card-foreground)]">Upload Agreement / Receipt</h3>
+                <button onClick={() => setFileModalOpen(false)} className="p-1 text-[var(--muted-foreground)] hover:text-white rounded-lg"><X className="w-5 h-5" /></button>
               </div>
 
               <form onSubmit={handleUploadFile} className="p-4 space-y-4 text-xs">
                 
                 <div>
-                  <label className="block text-zinc-400 font-semibold mb-1">Document File Name *</label>
+                  <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Document File Name *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Bank_Deposit_Slip_August"
                     value={fileName}
                     onChange={(e) => setFileName(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-200 focus:outline-none"
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--card-foreground)] focus:outline-none"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">Category Folder</label>
+                    <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Category Folder</label>
                     <select
                       value={fileCategory}
                       onChange={(e) => setFileCategory(e.target.value as any)}
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-350 focus:outline-none cursor-pointer"
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-zinc-350 focus:outline-none cursor-pointer"
                     >
                       <option value="Agreements">Agreements</option>
                       <option value="Receipts">Receipts</option>
@@ -840,14 +840,14 @@ export default function UsersPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">File Extension Format</label>
+                    <label className="block text-[var(--muted-foreground)] font-semibold mb-1">File Extension Format</label>
                     <select
                       value={fileType}
                       onChange={(e) => {
                         setFileType(e.target.value as any);
                         setFileSize(e.target.value === 'image' ? '820 KB' : '1.5 MB');
                       }}
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-350 focus:outline-none cursor-pointer"
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-zinc-350 focus:outline-none cursor-pointer"
                     >
                       <option value="pdf">PDF File</option>
                       <option value="excel">Excel Sheet</option>
@@ -859,17 +859,17 @@ export default function UsersPage() {
 
                 {/* Mock Size */}
                 <div>
-                  <label className="block text-zinc-400 font-semibold mb-1">File Size Allocation</label>
+                  <label className="block text-[var(--muted-foreground)] font-semibold mb-1">File Size Allocation</label>
                   <input
                     type="text"
                     value={fileSize}
                     onChange={(e) => setFileSize(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-300 focus:outline-none"
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--foreground)]/80 focus:outline-none"
                   />
                 </div>
 
-                <div className="flex items-center justify-end space-x-2 pt-4 border-t border-zinc-850">
-                  <button type="button" onClick={() => setFileModalOpen(false)} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-lg font-bold transition-colors cursor-pointer">Cancel</button>
+                <div className="flex items-center justify-end space-x-2 pt-4 border-t border-[var(--border)]">
+                  <button type="button" onClick={() => setFileModalOpen(false)} className="px-4 py-2 bg-[var(--accent)] hover:bg-zinc-700 text-[var(--card-foreground)] border border-[var(--border)] rounded-lg font-bold transition-colors cursor-pointer">Cancel</button>
                   <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold font-sans">Upload Document</button>
                 </div>
 
@@ -881,46 +881,46 @@ export default function UsersPage() {
         {/* ---------------- MODAL: EDIT USER ---------------- */}
         {editModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl">
+            <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-2xl w-full max-w-sm shadow-2xl">
               
-              <div className="flex items-center justify-between p-4 border-b border-zinc-850">
-                <h3 className="text-sm font-bold text-zinc-200">Edit System User</h3>
-                <button onClick={() => setEditModalOpen(false)} className="p-1 text-zinc-400 hover:text-white rounded-lg"><X className="w-5 h-5" /></button>
+              <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
+                <h3 className="text-sm font-bold text-[var(--card-foreground)]">Edit System User</h3>
+                <button onClick={() => setEditModalOpen(false)} className="p-1 text-[var(--muted-foreground)] hover:text-white rounded-lg"><X className="w-5 h-5" /></button>
               </div>
 
               <form onSubmit={handleEditUser} className="p-4 space-y-4 text-xs">
                 
                 <div>
-                  <label className="block text-zinc-400 font-semibold mb-1">User Full Name *</label>
+                  <label className="block text-[var(--muted-foreground)] font-semibold mb-1">User Full Name *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Asif Chowdhury"
                     value={editUserName}
                     onChange={(e) => setEditUserName(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-200 placeholder-zinc-650 focus:outline-none"
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--card-foreground)] placeholder-zinc-650 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-zinc-400 font-semibold mb-1">Email Address *</label>
+                  <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Email Address *</label>
                   <input
                     type="email"
                     required
                     placeholder="asif@fdc.org"
                     value={editUserEmail}
                     onChange={(e) => setEditUserEmail(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-200 placeholder-zinc-650 focus:outline-none"
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--card-foreground)] placeholder-zinc-650 focus:outline-none"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">Assign Role</label>
+                    <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Assign Role</label>
                     <select
                       value={editUserRole}
                       onChange={(e) => setEditUserRole(e.target.value as UserRole)}
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-300 focus:outline-none cursor-pointer"
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--foreground)]/80 focus:outline-none cursor-pointer"
                     >
                       {allAvailableRoles.map((r) => (
                         <option key={r.key} value={r.key}>{r.name}</option>
@@ -928,19 +928,19 @@ export default function UsersPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">Contact Phone</label>
+                    <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Contact Phone</label>
                     <input
                       type="text"
                       placeholder="+8801XXXXXXXXX"
                       value={editUserPhone}
                       onChange={(e) => setEditUserPhone(e.target.value)}
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-200 focus:outline-none"
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--card-foreground)] focus:outline-none"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-zinc-400 font-semibold mb-1">Login Password *</label>
+                  <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Login Password *</label>
                   <div className="relative">
                     <input
                       type={showEditUserPassword ? 'text' : 'password'}
@@ -948,20 +948,20 @@ export default function UsersPage() {
                       placeholder="Enter login password"
                       value={editUserPassword}
                       onChange={(e) => setEditUserPassword(e.target.value)}
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 pr-10 text-zinc-200 focus:outline-none"
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 pr-10 text-[var(--card-foreground)] focus:outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => setShowEditUserPassword(!showEditUserPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white focus:outline-none cursor-pointer"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-white focus:outline-none cursor-pointer"
                     >
-                      {showEditUserPassword ? <EyeOff className="w-4 h-4 text-zinc-400" /> : <Eye className="w-4 h-4 text-zinc-400" />}
+                      {showEditUserPassword ? <EyeOff className="w-4 h-4 text-[var(--muted-foreground)]" /> : <Eye className="w-4 h-4 text-[var(--muted-foreground)]" />}
                     </button>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end space-x-2 pt-4 border-t border-zinc-850">
-                  <button type="button" onClick={() => setEditModalOpen(false)} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-lg font-bold transition-colors cursor-pointer">Cancel</button>
+                <div className="flex items-center justify-end space-x-2 pt-4 border-t border-[var(--border)]">
+                  <button type="button" onClick={() => setEditModalOpen(false)} className="px-4 py-2 bg-[var(--accent)] hover:bg-zinc-700 text-[var(--card-foreground)] border border-[var(--border)] rounded-lg font-bold transition-colors cursor-pointer">Cancel</button>
                   <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold">Save Changes</button>
                 </div>
 
@@ -973,8 +973,8 @@ export default function UsersPage() {
         {/* ---------------- MODAL: CREATE ROLE ---------------- */}
         {createRoleModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl p-5">
-              <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+            <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-2xl w-full max-w-sm shadow-2xl p-5">
+              <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
                 <div className="flex items-center space-x-2">
                   <div className="p-1.5 rounded-lg bg-indigo-600/15 text-indigo-400">
                     <PlusCircle className="w-4 h-4" />
@@ -984,7 +984,7 @@ export default function UsersPage() {
                 <button
                   type="button"
                   onClick={() => setCreateRoleModalOpen(false)}
-                  className="p-1 text-zinc-400 hover:text-white rounded-lg"
+                  className="p-1 text-[var(--muted-foreground)] hover:text-white rounded-lg"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -992,7 +992,7 @@ export default function UsersPage() {
 
               <form onSubmit={handleCreateRole} className="space-y-4 mt-4 text-xs">
                 <div>
-                  <label className="block text-zinc-300 font-semibold mb-1">Role Display Name *</label>
+                  <label className="block text-[var(--foreground)]/80 font-semibold mb-1">Role Display Name *</label>
                   <input
                     type="text"
                     required
@@ -1004,28 +1004,28 @@ export default function UsersPage() {
                         setNewRoleKey(e.target.value.toLowerCase().replace(/[\s-]+/g, '_'));
                       }
                     }}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-zinc-200 focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-2.5 text-[var(--card-foreground)] focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-zinc-300 font-semibold mb-1">Role Unique Key *</label>
+                  <label className="block text-[var(--foreground)]/80 font-semibold mb-1">Role Unique Key *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. field_manager"
                     value={newRoleKey}
                     onChange={(e) => setNewRoleKey(e.target.value.toLowerCase().replace(/[\s-]+/g, '_'))}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-zinc-200 font-mono focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-2.5 text-[var(--card-foreground)] font-mono focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-zinc-300 font-semibold mb-1">Clone Base Permissions From</label>
+                  <label className="block text-[var(--foreground)]/80 font-semibold mb-1">Clone Base Permissions From</label>
                   <select
                     value={cloneFromRole}
                     onChange={(e) => setCloneFromRole(e.target.value as UserRole)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-zinc-300 focus:outline-none cursor-pointer"
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-2.5 text-[var(--foreground)]/80 focus:outline-none cursor-pointer"
                   >
                     <option value="collector">Collector (Collections & Dues view)</option>
                     <option value="treasurer">Treasurer (Accounting & Collections)</option>
@@ -1035,11 +1035,11 @@ export default function UsersPage() {
                   </select>
                 </div>
 
-                <div className="flex items-center justify-end space-x-2 pt-3 border-t border-zinc-800">
+                <div className="flex items-center justify-end space-x-2 pt-3 border-t border-[var(--border)]">
                   <button
                     type="button"
                     onClick={() => setCreateRoleModalOpen(false)}
-                    className="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-medium"
+                    className="px-3.5 py-2 bg-[var(--accent)] hover:bg-zinc-700 text-[var(--foreground)]/80 rounded-xl font-medium"
                   >
                     Cancel
                   </button>

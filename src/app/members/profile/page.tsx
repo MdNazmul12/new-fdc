@@ -207,8 +207,8 @@ export default function MemberProfilePage() {
       <DashboardLayout>
         <div className="p-8 text-center space-y-3">
           <div className="text-4xl">🔍</div>
-          <p className="text-zinc-300 font-semibold text-sm">No member profile linked to your account.</p>
-          <p className="text-zinc-500 text-xs">
+          <p className="text-[var(--foreground)]/80 font-semibold text-sm">No member profile linked to your account.</p>
+          <p className="text-[var(--muted-foreground)]/70 text-xs">
             Ask the administrator to register your email <strong className="text-indigo-400">{user?.email}</strong> in the Members list.
           </p>
         </div>
@@ -275,26 +275,26 @@ export default function MemberProfilePage() {
             )}
 
             <h3 className="text-lg font-black text-white">{memberProfile.name}</h3>
-            <p className="text-[10px] text-zinc-500 mt-0.5">Joined on {memberProfile.joinDate}</p>
+            <p className="text-[10px] text-[var(--muted-foreground)]/70 mt-0.5">Joined on {memberProfile.joinDate}</p>
 
-            <div className="w-full border-t border-zinc-800 my-4 pt-4 space-y-3 text-left text-xs">
+            <div className="w-full border-t border-[var(--border)] my-4 pt-4 space-y-3 text-left text-xs">
               <div className="flex justify-between items-center">
-                <span className="text-zinc-500 font-medium">Monthly Fee:</span>
-                <span className="font-bold text-zinc-200">{memberProfile.monthlyFee.toLocaleString()} TK</span>
+                <span className="text-[var(--muted-foreground)]/70 font-medium">Monthly Fee:</span>
+                <span className="font-bold text-[var(--card-foreground)]">{memberProfile.monthlyFee.toLocaleString()} TK</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-zinc-500 font-medium">Status:</span>
+                <span className="text-[var(--muted-foreground)]/70 font-medium">Status:</span>
                 <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   {memberProfile.status}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-zinc-500 font-medium">Contact:</span>
-                <span className="text-zinc-300 font-semibold">{memberProfile.phone}</span>
+                <span className="text-[var(--muted-foreground)]/70 font-medium">Contact:</span>
+                <span className="text-[var(--foreground)]/80 font-semibold">{memberProfile.phone}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-zinc-500 font-medium">Email:</span>
-                <span className="text-zinc-300 font-semibold truncate max-w-[150px]">{memberProfile.email}</span>
+                <span className="text-[var(--muted-foreground)]/70 font-medium">Email:</span>
+                <span className="text-[var(--foreground)]/80 font-semibold truncate max-w-[150px]">{memberProfile.email}</span>
               </div>
             </div>
           </div>
@@ -304,29 +304,29 @@ export default function MemberProfilePage() {
             <div>
               <div className="flex items-center space-x-2 mb-4">
                 <Heart className="w-4 h-4 text-rose-500" />
-                <h3 className="text-xs font-bold text-zinc-200">Registered Nominee Details</h3>
+                <h3 className="text-xs font-bold text-[var(--card-foreground)]">Registered Nominee Details</h3>
               </div>
               
               <div className="space-y-4 my-2 text-xs">
                 <div className="space-y-0.5">
-                  <span className="text-[10px] text-zinc-500 uppercase font-semibold">Nominee Name</span>
-                  <p className="font-bold text-zinc-200">{memberProfile.nomineeName || 'Not Set'}</p>
+                  <span className="text-[10px] text-[var(--muted-foreground)]/70 uppercase font-semibold">Nominee Name</span>
+                  <p className="font-bold text-[var(--card-foreground)]">{memberProfile.nomineeName || 'Not Set'}</p>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-0.5">
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Relation</span>
-                    <p className="font-bold text-zinc-200">{memberProfile.nomineeRelation || 'Not Set'}</p>
+                    <span className="text-[10px] text-[var(--muted-foreground)]/70 uppercase font-semibold">Relation</span>
+                    <p className="font-bold text-[var(--card-foreground)]">{memberProfile.nomineeRelation || 'Not Set'}</p>
                   </div>
                   <div className="space-y-0.5">
-                    <span className="text-[10px] text-zinc-500 uppercase font-semibold">Nominee Contact</span>
-                    <p className="font-bold text-zinc-200">{memberProfile.nomineePhone || 'Not Set'}</p>
+                    <span className="text-[10px] text-[var(--muted-foreground)]/70 uppercase font-semibold">Nominee Contact</span>
+                    <p className="font-bold text-[var(--card-foreground)]">{memberProfile.nomineePhone || 'Not Set'}</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="text-[9px] text-zinc-500 pt-3 border-t border-zinc-850">
+            <div className="text-[9px] text-[var(--muted-foreground)]/70 pt-3 border-t border-[var(--border)]">
               * To edit nominee credentials, contact any Super Admin or President.
             </div>
           </div>
@@ -334,20 +334,20 @@ export default function MemberProfilePage() {
           {/* Card 3: Due tracker */}
           <div className="glass-panel p-5 rounded-2xl flex flex-col justify-between">
             <div>
-              <h3 className="text-xs font-bold text-zinc-200 mb-3">Outstanding Dues Summary</h3>
+              <h3 className="text-xs font-bold text-[var(--card-foreground)] mb-3">Outstanding Dues Summary</h3>
               
               <div className="space-y-3">
-                <div className="flex justify-between items-center p-3 bg-zinc-950/40 border border-zinc-850 rounded-xl">
+                <div className="flex justify-between items-center p-3 bg-[var(--background)]/40 border border-[var(--border)] rounded-xl">
                   <div>
-                    <p className="text-[9px] uppercase font-bold text-zinc-500">Total Contribution</p>
+                    <p className="text-[9px] uppercase font-bold text-[var(--muted-foreground)]/70">Total Contribution</p>
                     <p className="text-base font-extrabold text-white mt-0.5">{totalPaid.toLocaleString()} TK</p>
                   </div>
                   <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-lg"><CheckCircle2 className="w-5 h-5" /></div>
                 </div>
 
-                <div className="flex justify-between items-center p-3 bg-zinc-950/40 border border-zinc-850 rounded-xl">
+                <div className="flex justify-between items-center p-3 bg-[var(--background)]/40 border border-[var(--border)] rounded-xl">
                   <div>
-                    <p className="text-[9px] uppercase font-bold text-zinc-500">Pending Dues ({memberUnpaidDues.length} Months)</p>
+                    <p className="text-[9px] uppercase font-bold text-[var(--muted-foreground)]/70">Pending Dues ({memberUnpaidDues.length} Months)</p>
                     <p className="text-base font-extrabold text-amber-500 mt-0.5">{totalDueAmount.toLocaleString()} TK</p>
                   </div>
                   <div className="p-2.5 bg-amber-500/10 text-amber-400 rounded-lg"><AlertCircle className="w-5 h-5" /></div>
@@ -355,7 +355,7 @@ export default function MemberProfilePage() {
               </div>
             </div>
 
-            <div className="text-[9px] text-zinc-500 mt-4 pt-3 border-t border-zinc-850">
+            <div className="text-[9px] text-[var(--muted-foreground)]/70 mt-4 pt-3 border-t border-[var(--border)]">
               {memberUnpaidDues.length > 0 ? (
                 <span className="text-amber-500 font-semibold">
                   Dues pending: {memberUnpaidDues.map(d => d.month).join(', ')}
@@ -377,14 +377,14 @@ export default function MemberProfilePage() {
               </div>
               <div>
                 <div className="flex items-center space-x-2">
-                  <h3 className="text-xs font-bold text-zinc-200">Notifications & Society Messages</h3>
+                  <h3 className="text-xs font-bold text-[var(--card-foreground)]">Notifications & Society Messages</h3>
                   {unreadCount > 0 && (
                     <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-indigo-600 text-white animate-pulse">
                       {unreadCount} New
                     </span>
                   )}
                 </div>
-                <p className="text-[10px] text-zinc-500">Official notices regarding subscription dues, receipts, and society updates</p>
+                <p className="text-[10px] text-[var(--muted-foreground)]/70">Official notices regarding subscription dues, receipts, and society updates</p>
               </div>
             </div>
 
@@ -401,7 +401,7 @@ export default function MemberProfilePage() {
 
           <div className="space-y-2">
             {memberNotifications.length === 0 ? (
-              <div className="p-4 text-center text-zinc-500 text-xs border border-dashed border-zinc-800 rounded-xl">
+              <div className="p-4 text-center text-[var(--muted-foreground)]/70 text-xs border border-dashed border-[var(--border)] rounded-xl">
                 No notifications or announcement messages at this time.
               </div>
             ) : (
@@ -414,8 +414,8 @@ export default function MemberProfilePage() {
                     key={n.id}
                     className={`p-3 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                       !n.read 
-                        ? 'bg-zinc-900/90 border-indigo-500/40 shadow-sm' 
-                        : 'bg-zinc-950/40 border-zinc-850 opacity-80'
+                        ? 'bg-[var(--secondary)]/90 border-indigo-500/40 shadow-sm' 
+                        : 'bg-[var(--background)]/40 border-[var(--border)] opacity-80'
                     }`}
                   >
                     <div className="flex items-start space-x-3">
@@ -437,13 +437,13 @@ export default function MemberProfilePage() {
 
                       <div className="space-y-1">
                         <div className="flex items-center space-x-2 flex-wrap">
-                          <span className="text-xs font-bold text-zinc-200">{n.title}</span>
-                          <span className="text-[9px] text-zinc-500">{n.date}</span>
+                          <span className="text-xs font-bold text-[var(--card-foreground)]">{n.title}</span>
+                          <span className="text-[9px] text-[var(--muted-foreground)]/70">{n.date}</span>
                           {!n.read && (
                             <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 ring-2 ring-indigo-500/30"></span>
                           )}
                         </div>
-                        <p className="text-[11px] text-zinc-400 leading-relaxed">{n.message}</p>
+                        <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed">{n.message}</p>
                       </div>
                     </div>
 
@@ -451,7 +451,7 @@ export default function MemberProfilePage() {
                       {n.link && (
                         <a
                           href={n.link}
-                          className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold flex items-center space-x-1"
+                          className="px-2.5 py-1 rounded-lg bg-[var(--accent)] hover:bg-zinc-700 text-[var(--foreground)]/80 text-[10px] font-bold flex items-center space-x-1"
                         >
                           <span>View</span>
                           <ExternalLink className="w-3 h-3" />
@@ -476,14 +476,14 @@ export default function MemberProfilePage() {
         {/* Payment History List */}
         <div className="glass-panel p-5 rounded-2xl">
           <div className="mb-4">
-            <h3 className="text-xs font-bold text-zinc-200">Subscription & Contribution Ledger</h3>
-            <p className="text-[10px] text-zinc-500">Receipts directory logged under your profile</p>
+            <h3 className="text-xs font-bold text-[var(--card-foreground)]">Subscription & Contribution Ledger</h3>
+            <p className="text-[10px] text-[var(--muted-foreground)]/70">Receipts directory logged under your profile</p>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-zinc-800 text-zinc-400">
+                <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
                   <th className="pb-2 font-semibold">Date Paid</th>
                   <th className="pb-2 font-semibold">Receipt No.</th>
                   <th className="pb-2 font-semibold">Target Month</th>
@@ -493,30 +493,30 @@ export default function MemberProfilePage() {
                   <th className="pb-2 font-semibold text-right">Invoice</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-850">
+              <tbody className="divide-y divide-[var(--border)]">
                 {myPayments.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-6 text-center text-zinc-500">No payment logs recorded yet.</td>
+                    <td colSpan={7} className="py-6 text-center text-[var(--muted-foreground)]/70">No payment logs recorded yet.</td>
                   </tr>
                 ) : (
                   myPayments.map((p) => (
-                    <tr key={p.id} className="hover:bg-zinc-900/30 transition-colors">
-                      <td className="py-3 text-zinc-400">{p.date}</td>
-                      <td className="py-3 text-zinc-200 font-medium">{p.receiptNo}</td>
+                    <tr key={p.id} className="hover:bg-[var(--secondary)]/30 transition-colors">
+                      <td className="py-3 text-[var(--muted-foreground)]">{p.date}</td>
+                      <td className="py-3 text-[var(--card-foreground)] font-medium">{p.receiptNo}</td>
                       <td className="py-3 text-indigo-400 font-semibold">{p.month}</td>
-                      <td className="py-3 text-zinc-300 font-bold">{p.amount.toLocaleString()} TK</td>
-                      <td className="py-3 text-zinc-400">
+                      <td className="py-3 text-[var(--foreground)]/80 font-bold">{p.amount.toLocaleString()} TK</td>
+                      <td className="py-3 text-[var(--muted-foreground)]">
                         {p.lateFine > 0 ? (
                           <span className="text-rose-400 font-semibold">+{p.lateFine} TK</span>
                         ) : (
                           <span>0 TK</span>
                         )}
                       </td>
-                      <td className="py-3 capitalize text-zinc-400">{p.paymentType}</td>
+                      <td className="py-3 capitalize text-[var(--muted-foreground)]">{p.paymentType}</td>
                       <td className="py-3 text-right">
                         <button
                           onClick={() => handlePrintReceipt(p)}
-                          className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-indigo-400 font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
+                          className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-[var(--accent)] hover:bg-zinc-700 text-indigo-400 font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
                         >
                           <Printer className="w-3.5 h-3.5" />
                           <span>Receipt Duplicate</span>
@@ -533,28 +533,28 @@ export default function MemberProfilePage() {
         {/* ---------------- MODAL: PRINT RECEIPT ---------------- */}
         {printOpen && selectedReceipt && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl p-5 relative animate-fade-in-up no-print">
+            <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-2xl w-full max-w-md shadow-2xl p-5 relative animate-fade-in-up no-print">
               <button 
                 onClick={() => setPrintOpen(false)}
-                className="absolute top-4 right-4 p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800"
+                className="absolute top-4 right-4 p-1 text-[var(--muted-foreground)] hover:text-white rounded-lg hover:bg-[var(--accent)]"
               >
                 <X className="w-5 h-5" />
               </button>
 
               <div className="mb-4">
-                <h3 className="text-xs font-bold text-zinc-200">Print Receipt</h3>
-                <p className="text-[9px] text-zinc-500">Send copy to administrative printer</p>
+                <h3 className="text-xs font-bold text-[var(--card-foreground)]">Print Receipt</h3>
+                <p className="text-[9px] text-[var(--muted-foreground)]/70">Send copy to administrative printer</p>
               </div>
 
               {/* Printable Wrapper */}
-              <div className="bg-zinc-950 p-4 border border-zinc-850 rounded-xl">
+              <div className="bg-[var(--background)] p-4 border border-[var(--border)] rounded-xl">
                 <PrintableReceipt collection={selectedReceipt} />
               </div>
 
-              <div className="flex items-center justify-end space-x-2 mt-4 pt-3 border-t border-zinc-800">
+              <div className="flex items-center justify-end space-x-2 mt-4 pt-3 border-t border-[var(--border)]">
                 <button
                   onClick={() => setPrintOpen(false)}
-                  className="px-4 py-1.5 bg-zinc-800 hover:bg-zinc-750 text-zinc-400 text-xs rounded-lg"
+                  className="px-4 py-1.5 bg-[var(--accent)] hover:bg-zinc-750 text-[var(--muted-foreground)] text-xs rounded-lg"
                 >
                   Cancel
                 </button>

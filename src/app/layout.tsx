@@ -41,7 +41,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
       </head>
       <body 
-        className="min-h-screen bg-zinc-950 text-zinc-50 font-sans selection:bg-indigo-500 selection:text-white antialiased"
+        className="min-h-screen bg-[var(--background)] text-zinc-50 font-sans selection:bg-indigo-500 selection:text-white antialiased"
         suppressHydrationWarning
       >
         <Providers>

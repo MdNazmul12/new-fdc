@@ -52,21 +52,21 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col justify-center items-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-[var(--background)] flex flex-col justify-center items-center p-4 relative overflow-hidden">
       
       {/* Background ambient glows */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-indigo-600/10 blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-purple-600/10 blur-[120px] pointer-events-none"></div>
 
-      <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl p-6 lg:p-8 z-10 glass-panel animate-fade-in-up">
+      <div className="w-full max-w-md bg-[var(--secondary)] border border-[var(--border)] rounded-2xl shadow-2xl p-6 lg:p-8 z-10 glass-panel animate-fade-in-up">
         
         {/* Logo and Header */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-12 h-12 rounded-xl grad-primary flex items-center justify-center shadow-lg shadow-indigo-500/20 mb-4">
             <Shield className="w-6 h-6 text-white" />
           </div>
-          <h2 className="text-2xl font-extrabold tracking-tight text-white">FDC Foundation</h2>
-          <p className="text-xs text-zinc-400 mt-1 text-center">Investment & Fund Management Platform</p>
+          <h2 className="text-2xl font-extrabold tracking-tight text-[var(--foreground)]">FDC Foundation</h2>
+          <p className="text-xs text-[var(--muted-foreground)] mt-1 text-center">Investment & Fund Management Platform</p>
         </div>
 
         {error && (
@@ -86,34 +86,34 @@ export default function LoginPage() {
         {/* Credentials Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-zinc-400 mb-1.5">User ID / Email / Phone</label>
+            <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1.5">User ID / Email / Phone</label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)]/70" />
               <input
                 type="text"
                 placeholder="User ID (e.g. u-6, m-1), Email or Phone"
                 value={loginId}
                 onChange={(e) => setLoginId(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-zinc-950 border border-zinc-850 rounded-xl text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-[var(--background)] border border-[var(--border)] rounded-xl text-sm text-[var(--foreground)] placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-zinc-400 mb-1.5">Password</label>
+            <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1.5">Password</label>
             <div className="relative">
-              <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)]/70" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-10 py-2.5 bg-zinc-950 border border-zinc-850 rounded-xl text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                className="w-full pl-10 pr-10 py-2.5 bg-[var(--background)] border border-[var(--border)] rounded-xl text-sm text-[var(--foreground)] placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]/70 hover:text-[var(--foreground)]/80"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>

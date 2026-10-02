@@ -83,7 +83,7 @@ export default function ReportsPage() {
   const renderPreviewTable = () => {
     if (!previewGenerated) {
       return (
-        <div className="p-8 text-center text-zinc-500 border border-dashed border-zinc-800 rounded-xl">
+        <div className="p-8 text-center text-[var(--muted-foreground)]/70 border border-dashed border-[var(--border)] rounded-xl">
           Configure filters and click "Generate Report Preview" above
         </div>
       );
@@ -93,11 +93,11 @@ export default function ReportsPage() {
       case 'collection':
         return (
           <div className="space-y-4">
-            <h4 className="font-bold text-zinc-200 text-xs">Collected Invoices Summary</h4>
+            <h4 className="font-bold text-[var(--card-foreground)] text-xs">Collected Invoices Summary</h4>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-zinc-800 text-zinc-400">
+                  <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
                     <th className="pb-2">Receipt No</th>
                     <th className="pb-2">Member</th>
                     <th className="pb-2">Month</th>
@@ -106,15 +106,15 @@ export default function ReportsPage() {
                     <th className="pb-2 text-right">Total Amount</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-850">
+                <tbody className="divide-y divide-[var(--border)]">
                   {collections.map(c => (
                     <tr key={c.id}>
-                      <td className="py-2 text-zinc-300">{c.receiptNo}</td>
-                      <td className="py-2 text-zinc-200 font-bold">{c.memberName}</td>
+                      <td className="py-2 text-[var(--foreground)]/80">{c.receiptNo}</td>
+                      <td className="py-2 text-[var(--card-foreground)] font-bold">{c.memberName}</td>
                       <td className="py-2 text-indigo-400 font-semibold">{c.month}</td>
-                      <td className="py-2 text-zinc-400">{c.date}</td>
+                      <td className="py-2 text-[var(--muted-foreground)]">{c.date}</td>
                       <td className="py-2 text-right text-rose-400">{c.lateFine > 0 ? `${c.lateFine} TK` : '-'}</td>
-                      <td className="py-2 text-right font-bold text-zinc-200">{(c.amount + c.lateFine).toLocaleString()} TK</td>
+                      <td className="py-2 text-right font-bold text-[var(--card-foreground)]">{(c.amount + c.lateFine).toLocaleString()} TK</td>
                     </tr>
                   ))}
                 </tbody>
@@ -127,11 +127,11 @@ export default function ReportsPage() {
         // Outstanding dues list emulation
         return (
           <div className="space-y-4">
-            <h4 className="font-bold text-zinc-200 text-xs">Outstanding Dues Directory</h4>
+            <h4 className="font-bold text-[var(--card-foreground)] text-xs">Outstanding Dues Directory</h4>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-zinc-800 text-zinc-400">
+                  <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
                     <th className="pb-2">Member ID</th>
                     <th className="pb-2">Member Name</th>
                     <th className="pb-2">Phone Number</th>
@@ -139,14 +139,14 @@ export default function ReportsPage() {
                     <th className="pb-2 text-right">Estimated Due Fees</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-850">
+                <tbody className="divide-y divide-[var(--border)]">
                   {members.filter(m => m.status === 'active').slice(0, 3).map(m => (
                     <tr key={m.id}>
-                      <td className="py-2 text-zinc-500 font-medium">{m.id}</td>
-                      <td className="py-2 text-zinc-200 font-bold">{m.name}</td>
-                      <td className="py-2 text-zinc-400">{m.phone}</td>
+                      <td className="py-2 text-[var(--muted-foreground)]/70 font-medium">{m.id}</td>
+                      <td className="py-2 text-[var(--card-foreground)] font-bold">{m.name}</td>
+                      <td className="py-2 text-[var(--muted-foreground)]">{m.phone}</td>
                       <td className="py-2 text-amber-500 font-bold">1 Month</td>
-                      <td className="py-2 text-right font-bold text-zinc-200">{m.monthlyFee.toLocaleString()} TK</td>
+                      <td className="py-2 text-right font-bold text-[var(--card-foreground)]">{m.monthlyFee.toLocaleString()} TK</td>
                     </tr>
                   ))}
                 </tbody>
@@ -158,11 +158,11 @@ export default function ReportsPage() {
       case 'investment':
         return (
           <div className="space-y-4">
-            <h4 className="font-bold text-zinc-200 text-xs">Investment Portfolio Ledger</h4>
+            <h4 className="font-bold text-[var(--card-foreground)] text-xs">Investment Portfolio Ledger</h4>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-zinc-800 text-zinc-400">
+                  <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
                     <th className="pb-2">Provider</th>
                     <th className="pb-2">Category</th>
                     <th className="pb-2">Principal Value</th>
@@ -171,13 +171,13 @@ export default function ReportsPage() {
                     <th className="pb-2 text-center">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-850">
+                <tbody className="divide-y divide-[var(--border)]">
                   {investments.map(i => (
                     <tr key={i.id}>
-                      <td className="py-2 text-zinc-200 font-bold">{i.provider}</td>
-                      <td className="py-2"><span className="px-1.5 py-0.5 rounded bg-zinc-800 text-[10px] text-zinc-350">{i.type}</span></td>
-                      <td className="py-2 text-zinc-200 font-bold">{i.principalAmount.toLocaleString()} TK</td>
-                      <td className="py-2 text-center text-zinc-400">{i.interestRate} %</td>
+                      <td className="py-2 text-[var(--card-foreground)] font-bold">{i.provider}</td>
+                      <td className="py-2"><span className="px-1.5 py-0.5 rounded bg-[var(--accent)] text-[10px] text-zinc-350">{i.type}</span></td>
+                      <td className="py-2 text-[var(--card-foreground)] font-bold">{i.principalAmount.toLocaleString()} TK</td>
+                      <td className="py-2 text-center text-[var(--muted-foreground)]">{i.interestRate} %</td>
                       <td className="py-2 text-right text-emerald-400 font-bold">{i.interestReceived.toLocaleString()} TK</td>
                       <td className="py-2 text-center">
                         <span className="text-[10px] uppercase font-black tracking-wider text-indigo-400">{i.status}</span>
@@ -193,11 +193,11 @@ export default function ReportsPage() {
       case 'expense':
         return (
           <div className="space-y-4">
-            <h4 className="font-bold text-zinc-200 text-xs">Office Administrative Expenses Log</h4>
+            <h4 className="font-bold text-[var(--card-foreground)] text-xs">Office Administrative Expenses Log</h4>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-zinc-800 text-zinc-400">
+                  <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
                     <th className="pb-2">Category</th>
                     <th className="pb-2">Description</th>
                     <th className="pb-2">Payer</th>
@@ -205,13 +205,13 @@ export default function ReportsPage() {
                     <th className="pb-2 text-right">Expense Amount</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-850">
+                <tbody className="divide-y divide-[var(--border)]">
                   {expenses.map(e => (
                     <tr key={e.id}>
-                      <td className="py-2 text-zinc-200"><span className="px-1.5 py-0.5 rounded bg-zinc-800 text-[10px] text-zinc-300 font-extrabold">{e.category}</span></td>
-                      <td className="py-2 text-zinc-300">{e.description}</td>
-                      <td className="py-2 text-zinc-400 capitalize">{e.paidBy}</td>
-                      <td className="py-2 text-zinc-500 text-[10px]">{e.date}</td>
+                      <td className="py-2 text-[var(--card-foreground)]"><span className="px-1.5 py-0.5 rounded bg-[var(--accent)] text-[10px] text-[var(--foreground)]/80 font-extrabold">{e.category}</span></td>
+                      <td className="py-2 text-[var(--foreground)]/80">{e.description}</td>
+                      <td className="py-2 text-[var(--muted-foreground)] capitalize">{e.paidBy}</td>
+                      <td className="py-2 text-[var(--muted-foreground)]/70 text-[10px]">{e.date}</td>
                       <td className="py-2 text-right text-rose-400 font-bold">{e.amount.toLocaleString()} TK</td>
                     </tr>
                   ))}
@@ -224,11 +224,11 @@ export default function ReportsPage() {
       case 'ledger':
         return (
           <div className="space-y-4">
-            <h4 className="font-bold text-zinc-200 text-xs">Accounting General Ledger Transactions</h4>
+            <h4 className="font-bold text-[var(--card-foreground)] text-xs">Accounting General Ledger Transactions</h4>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-zinc-800 text-zinc-400">
+                  <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
                     <th className="pb-2">Tx ID</th>
                     <th className="pb-2">Date</th>
                     <th className="pb-2">Account</th>
@@ -238,15 +238,15 @@ export default function ReportsPage() {
                     {user?.role === 'super_admin' && <th className="pb-2 text-center">Action</th>}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-850">
+                <tbody className="divide-y divide-[var(--border)]">
                   {transactions.slice(0, 8).map(t => {
                     const isCredit = t.type === 'credit';
                     return (
                       <tr key={t.id}>
                         <td className="py-2 text-zinc-550 text-[10px]">{t.id}</td>
-                        <td className="py-2 text-zinc-500 text-[10px]">{t.date}</td>
-                        <td className="py-2 capitalize text-zinc-300">{t.account}</td>
-                        <td className="py-2 text-zinc-300 truncate max-w-[200px]">{t.description}</td>
+                        <td className="py-2 text-[var(--muted-foreground)]/70 text-[10px]">{t.date}</td>
+                        <td className="py-2 capitalize text-[var(--foreground)]/80">{t.account}</td>
+                        <td className="py-2 text-[var(--foreground)]/80 truncate max-w-[200px]">{t.description}</td>
                         <td className="py-2 text-right text-rose-400 font-semibold">{!isCredit ? `${t.amount.toLocaleString()} TK` : '-'}</td>
                         <td className="py-2 text-right text-emerald-400 font-semibold">{isCredit ? `${t.amount.toLocaleString()} TK` : '-'}</td>
                         {user?.role === 'super_admin' && (
@@ -257,7 +257,7 @@ export default function ReportsPage() {
                                   deleteTransaction(t.id);
                                 }
                               }}
-                              className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-rose-450 hover:text-rose-400 rounded-lg cursor-pointer transition-colors"
+                              className="p-1.5 bg-[var(--accent)] hover:bg-zinc-700 text-rose-450 hover:text-rose-400 rounded-lg cursor-pointer transition-colors"
                               title="Void ledger transaction"
                             >
                               <Trash2 className="w-3 h-3" />
@@ -277,53 +277,53 @@ export default function ReportsPage() {
         return (
           <div className="space-y-6">
             
-            <div className="flex items-center space-x-2 border-b border-zinc-800 pb-3">
+            <div className="flex items-center space-x-2 border-b border-[var(--border)] pb-3">
               <FileText className="w-5 h-5 text-indigo-400 shrink-0" />
               <div>
-                <h4 className="font-bold text-zinc-200 text-xs">Foundation Q2 Financial Statement Summary</h4>
-                <p className="text-[10px] text-zinc-500">Auto generated retained earnings analysis</p>
+                <h4 className="font-bold text-[var(--card-foreground)] text-xs">Foundation Q2 Financial Statement Summary</h4>
+                <p className="text-[10px] text-[var(--muted-foreground)]/70">Auto generated retained earnings analysis</p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
               
               {/* Left Column: Revenues vs Expenses */}
-              <div className="space-y-3 bg-zinc-950/40 p-4 border border-zinc-850 rounded-2xl">
+              <div className="space-y-3 bg-[var(--background)]/40 p-4 border border-[var(--border)] rounded-2xl">
                 <p className="text-[10px] font-black uppercase text-indigo-400 tracking-wider">Statement of Accounts</p>
-                <div className="flex justify-between py-1.5 border-b border-zinc-850">
-                  <span className="text-zinc-400">Member Collections Revenue</span>
-                  <span className="font-bold text-zinc-200">{formatCurrency(stats.totalCollection)}</span>
+                <div className="flex justify-between py-1.5 border-b border-[var(--border)]">
+                  <span className="text-[var(--muted-foreground)]">Member Collections Revenue</span>
+                  <span className="font-bold text-[var(--card-foreground)]">{formatCurrency(stats.totalCollection)}</span>
                 </div>
-                <div className="flex justify-between py-1.5 border-b border-zinc-850">
-                  <span className="text-zinc-400">Interest Dividends Earned</span>
-                  <span className="font-bold text-zinc-200">{formatCurrency(stats.totalInterestEarned)}</span>
+                <div className="flex justify-between py-1.5 border-b border-[var(--border)]">
+                  <span className="text-[var(--muted-foreground)]">Interest Dividends Earned</span>
+                  <span className="font-bold text-[var(--card-foreground)]">{formatCurrency(stats.totalInterestEarned)}</span>
                 </div>
-                <div className="flex justify-between py-1.5 border-b border-zinc-850 text-rose-400 font-semibold">
+                <div className="flex justify-between py-1.5 border-b border-[var(--border)] text-rose-400 font-semibold">
                   <span>Operating Administrative Costs</span>
                   <span>- {formatCurrency(stats.totalExpenses)}</span>
                 </div>
-                <div className="flex justify-between py-2 border-t border-zinc-800 font-black text-emerald-400">
+                <div className="flex justify-between py-2 border-t border-[var(--border)] font-black text-emerald-400">
                   <span>Retained Profits (Net Income)</span>
                   <span>{formatCurrency(stats.totalCollection + stats.totalInterestEarned - stats.totalExpenses)}</span>
                 </div>
               </div>
 
               {/* Right Column: Asset balance allocations */}
-              <div className="space-y-3 bg-zinc-950/40 p-4 border border-zinc-850 rounded-2xl">
+              <div className="space-y-3 bg-[var(--background)]/40 p-4 border border-[var(--border)] rounded-2xl">
                 <p className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">Asset Balance Distributions</p>
-                <div className="flex justify-between py-1.5 border-b border-zinc-850">
-                  <span className="text-zinc-400">Cash in Hand Buffer</span>
-                  <span className="font-bold text-zinc-200">{formatCurrency(stats.availableCash)}</span>
+                <div className="flex justify-between py-1.5 border-b border-[var(--border)]">
+                  <span className="text-[var(--muted-foreground)]">Cash in Hand Buffer</span>
+                  <span className="font-bold text-[var(--card-foreground)]">{formatCurrency(stats.availableCash)}</span>
                 </div>
-                <div className="flex justify-between py-1.5 border-b border-zinc-850">
-                  <span className="text-zinc-400">Bank Accounts Balance</span>
-                  <span className="font-bold text-zinc-200">{formatCurrency(stats.bankBalance)}</span>
+                <div className="flex justify-between py-1.5 border-b border-[var(--border)]">
+                  <span className="text-[var(--muted-foreground)]">Bank Accounts Balance</span>
+                  <span className="font-bold text-[var(--card-foreground)]">{formatCurrency(stats.bankBalance)}</span>
                 </div>
-                <div className="flex justify-between py-1.5 border-b border-zinc-850">
-                  <span className="text-zinc-400">Active Capital Portfolios</span>
-                  <span className="font-bold text-zinc-200">{formatCurrency(stats.totalInvestment)}</span>
+                <div className="flex justify-between py-1.5 border-b border-[var(--border)]">
+                  <span className="text-[var(--muted-foreground)]">Active Capital Portfolios</span>
+                  <span className="font-bold text-[var(--card-foreground)]">{formatCurrency(stats.totalInvestment)}</span>
                 </div>
-                <div className="flex justify-between py-2 border-t border-zinc-800 font-black text-indigo-400">
+                <div className="flex justify-between py-2 border-t border-[var(--border)] font-black text-indigo-400">
                   <span>Total Capital Assets</span>
                   <span>{formatCurrency(stats.availableCash + stats.bankBalance + stats.totalInvestment)}</span>
                 </div>
@@ -346,11 +346,11 @@ export default function ReportsPage() {
             
             {/* Report category selector */}
             <div className="md:col-span-2">
-              <label className="block text-zinc-400 font-semibold mb-1">Select Report Module</label>
+              <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Select Report Module</label>
               <select
                 value={reportType}
                 onChange={(e) => setReportType(e.target.value as ReportType)}
-                className="w-full bg-zinc-950 border border-zinc-850 rounded-xl p-2 text-zinc-300 focus:outline-none cursor-pointer"
+                className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-2 text-[var(--foreground)]/80 focus:outline-none cursor-pointer"
               >
                 <option value="summary">Financial Summary (Retained Earnings)</option>
                 <option value="collection">Collections Report (Invoices Listing)</option>
@@ -363,11 +363,11 @@ export default function ReportsPage() {
 
             {/* Timeframe */}
             <div>
-              <label className="block text-zinc-400 font-semibold mb-1">Reporting Period</label>
+              <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Reporting Period</label>
               <select
                 value={timeframe}
                 onChange={(e) => setTimeframe(e.target.value as any)}
-                className="w-full bg-zinc-950 border border-zinc-850 rounded-xl p-2 text-zinc-300 focus:outline-none"
+                className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-2 text-[var(--foreground)]/80 focus:outline-none"
               >
                 <option value="daily">Daily Report</option>
                 <option value="weekly">Weekly Report</option>
@@ -378,12 +378,12 @@ export default function ReportsPage() {
 
             {/* Date from */}
             <div>
-              <label className="block text-zinc-400 font-semibold mb-1">Date Horizon From</label>
+              <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Date Horizon From</label>
               <input
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-850 rounded-xl p-2 text-zinc-300 focus:outline-none"
+                className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-2 text-[var(--foreground)]/80 focus:outline-none"
               />
             </div>
 
@@ -403,10 +403,10 @@ export default function ReportsPage() {
           <div className="glass-panel p-6 rounded-2xl space-y-6">
             
             {/* Header controls inside preview panel */}
-            <div className="flex items-center justify-between border-b border-zinc-850 pb-4 no-print">
+            <div className="flex items-center justify-between border-b border-[var(--border)] pb-4 no-print">
               <div>
                 <span className="text-[9px] font-black uppercase text-indigo-400 tracking-wider">Preview Panel</span>
-                <h3 className="text-sm font-black text-zinc-100 capitalize">
+                <h3 className="text-sm font-black text-[var(--foreground)] capitalize">
                   {reportType.replace('_', ' ')} Statement Report
                 </h3>
               </div>
@@ -415,7 +415,7 @@ export default function ReportsPage() {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={handleExportCSV}
-                  className="flex items-center space-x-1.5 px-3 py-1.5 bg-zinc-900 border border-zinc-800 text-zinc-300 hover:bg-zinc-800 text-[10px] font-bold rounded-lg transition-colors cursor-pointer"
+                  className="flex items-center space-x-1.5 px-3 py-1.5 bg-[var(--secondary)] border border-[var(--border)] text-[var(--foreground)]/80 hover:bg-[var(--accent)] text-[10px] font-bold rounded-lg transition-colors cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Download CSV</span>

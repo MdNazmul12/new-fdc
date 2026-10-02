@@ -329,15 +329,15 @@ export default function CollectionsPage() {
         {/* Top metrics summary */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="glass-card p-4 rounded-xl">
-            <span className="text-zinc-400 text-[10px] uppercase font-bold">Total Fees Received (Filtered)</span>
+            <span className="text-[var(--muted-foreground)] text-[10px] uppercase font-bold">Total Fees Received (Filtered)</span>
             <p className="text-lg font-black text-white mt-1">{(totalReceived).toLocaleString()} TK</p>
           </div>
           <div className="glass-card p-4 rounded-xl">
-            <span className="text-zinc-400 text-[10px] uppercase font-bold">Late Fines Logged (Filtered)</span>
+            <span className="text-[var(--muted-foreground)] text-[10px] uppercase font-bold">Late Fines Logged (Filtered)</span>
             <p className="text-lg font-black text-rose-400 mt-1">{(totalFines).toLocaleString()} TK</p>
           </div>
           <div className="glass-card p-4 rounded-xl">
-            <span className="text-zinc-400 text-[10px] uppercase font-bold">Receipt Transactions count</span>
+            <span className="text-[var(--muted-foreground)] text-[10px] uppercase font-bold">Receipt Transactions count</span>
             <p className="text-lg font-black text-indigo-400 mt-1">{filteredCollections.length} Invoices</p>
           </div>
         </div>
@@ -349,7 +349,7 @@ export default function CollectionsPage() {
           <div className="glass-panel p-5 rounded-2xl h-fit">
             <div className="flex items-center space-x-2 mb-4">
               <PlusCircle className="w-4.5 h-4.5 text-indigo-400" />
-              <h3 className="text-xs font-bold text-zinc-200">Record Subscription Fees</h3>
+              <h3 className="text-xs font-bold text-[var(--card-foreground)]">Record Subscription Fees</h3>
             </div>
 
             {hasPermission('collections', 'create') ? (
@@ -357,12 +357,12 @@ export default function CollectionsPage() {
                 
                 {/* Member selection */}
                 <div>
-                  <label className="block text-zinc-400 font-semibold mb-1">Select Member *</label>
+                  <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Select Member *</label>
                   <select
                     required
                     value={selectedMemberId}
                     onChange={(e) => handleMemberChange(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-300 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--foreground)]/80 focus:outline-none focus:border-indigo-500 cursor-pointer"
                   >
                     <option value="">-- Choose Member Profile --</option>
                     {members
@@ -376,9 +376,9 @@ export default function CollectionsPage() {
 
                 {/* Unpaid Dues Box when member selected */}
                 {selectedMemberId && (
-                  <div className="p-3 bg-zinc-950/80 border border-zinc-800/80 rounded-xl space-y-2">
+                  <div className="p-3 bg-[var(--background)]/80 border border-[var(--border)]/80 rounded-xl space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-zinc-300 flex items-center gap-1.5">
+                      <span className="text-[11px] font-bold text-[var(--foreground)]/80 flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 text-amber-400" />
                         Pending Dues ({selectedMemberUnpaidDues.length} Month{selectedMemberUnpaidDues.length !== 1 ? 's' : ''})
                       </span>
@@ -399,15 +399,15 @@ export default function CollectionsPage() {
                               className={`p-2 rounded-lg text-left border transition-all cursor-pointer ${
                                 isSelected
                                   ? 'bg-indigo-600/20 border-indigo-500 text-indigo-200 ring-1 ring-indigo-500'
-                                  : 'bg-zinc-900/70 border-zinc-800 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-900'
+                                  : 'bg-[var(--secondary)]/70 border-[var(--border)] text-[var(--foreground)]/80 hover:border-[var(--border)] hover:bg-[var(--secondary)]'
                               }`}
                             >
                               <div className="flex items-center justify-between">
                                 <span className="font-bold text-xs">{item.demand.month}</span>
-                                <span className="text-[10px] text-zinc-300 font-semibold">{item.baseFee} TK</span>
+                                <span className="text-[10px] text-[var(--foreground)]/80 font-semibold">{item.baseFee} TK</span>
                               </div>
                               <div className="flex items-center justify-between mt-1 text-[9px]">
-                                <span className="text-zinc-500">Cutoff: {item.demand.dueDate}</span>
+                                <span className="text-[var(--muted-foreground)]/70">Cutoff: {item.demand.dueDate}</span>
                                 {item.fine > 0 ? (
                                   <span className="text-rose-400 font-bold">+{item.fine} TK Fine</span>
                                 ) : (
@@ -430,7 +430,7 @@ export default function CollectionsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="block text-zinc-400 font-semibold">Billing Month *</label>
+                      <label className="block text-[var(--muted-foreground)] font-semibold">Billing Month *</label>
                       {selectedMemberUnpaidDues.length > 0 && (
                         <span className="text-[9px] text-amber-400 font-semibold">Unpaid Dues</span>
                       )}
@@ -446,7 +446,7 @@ export default function CollectionsPage() {
                             handleSelectDueMonth(matchedDue);
                           }
                         }}
-                        className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-300 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                        className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--foreground)]/80 focus:outline-none focus:border-indigo-500 cursor-pointer"
                       >
                         {selectedMemberUnpaidDues.map((d) => (
                           <option key={d.demand.month} value={d.demand.month}>
@@ -463,18 +463,18 @@ export default function CollectionsPage() {
                         required
                         value={targetMonth}
                         onChange={(e) => setTargetMonth(e.target.value)}
-                        className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-300 focus:outline-none focus:border-indigo-500"
+                        className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--foreground)]/80 focus:outline-none focus:border-indigo-500"
                       />
                     )}
                   </div>
                   <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">Payment Date *</label>
+                    <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Payment Date *</label>
                     <input
                       type="date"
                       required
                       value={paymentDate}
                       onChange={(e) => handleDateChange(e.target.value)}
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-300 focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--foreground)]/80 focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                 </div>
@@ -482,28 +482,28 @@ export default function CollectionsPage() {
                 {/* Amount and Fine values */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">Amount (TK) *</label>
+                    <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Amount (TK) *</label>
                     <input
                       type="number"
                       required
                       value={amount}
                       onChange={(e) => setAmount(Number(e.target.value))}
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-200 focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--card-foreground)] focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">Late Fine (TK)</label>
+                    <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Late Fine (TK)</label>
                     <input
                       type="number"
                       value={lateFine}
                       onChange={(e) => setLateFine(Number(e.target.value))}
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-200 focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--card-foreground)] focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                 </div>
 
                 {/* Automatic Fines configuration option */}
-                <div className="flex items-center space-x-2 bg-zinc-950/60 p-2.5 border border-zinc-850 rounded-lg">
+                <div className="flex items-center space-x-2 bg-[var(--background)]/60 p-2.5 border border-[var(--border)] rounded-lg">
                   <input
                     type="checkbox"
                     id="autoFine"
@@ -512,16 +512,16 @@ export default function CollectionsPage() {
                       setAutoFineEnabled(e.target.checked);
                       if (!e.target.checked) setLateFine(0);
                     }}
-                    className="rounded border-zinc-700 bg-zinc-900 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
+                    className="rounded border-[var(--border)] bg-[var(--secondary)] text-indigo-500 focus:ring-indigo-500 cursor-pointer"
                   />
-                  <label htmlFor="autoFine" className="text-[10px] text-zinc-400 cursor-pointer select-none">
+                  <label htmlFor="autoFine" className="text-[10px] text-[var(--muted-foreground)] cursor-pointer select-none">
                     Enable auto-fine calculation (50 TK after 10th day)
                   </label>
                 </div>
 
                 {/* Payment channel selection */}
                 <div>
-                  <label className="block text-zinc-400 font-semibold mb-1">Payment Method</label>
+                  <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Payment Method</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
@@ -529,7 +529,7 @@ export default function CollectionsPage() {
                       className={`p-2.5 rounded-lg border text-center transition-all ${
                         paymentType === 'cash' 
                           ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' 
-                          : 'border-zinc-850 bg-zinc-950 hover:bg-zinc-900 text-zinc-400'
+                          : 'border-[var(--border)] bg-[var(--background)] hover:bg-[var(--secondary)] text-[var(--muted-foreground)]'
                       }`}
                     >
                       Cash in Hand
@@ -540,7 +540,7 @@ export default function CollectionsPage() {
                       className={`p-2.5 rounded-lg border text-center transition-all ${
                         paymentType === 'bank' 
                           ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' 
-                          : 'border-zinc-850 bg-zinc-950 hover:bg-zinc-900 text-zinc-400'
+                          : 'border-[var(--border)] bg-[var(--background)] hover:bg-[var(--secondary)] text-[var(--muted-foreground)]'
                       }`}
                     >
                       Bank Book
@@ -558,7 +558,7 @@ export default function CollectionsPage() {
 
               </form>
             ) : (
-              <div className="p-4 bg-zinc-950 text-zinc-500 rounded-lg text-center">
+              <div className="p-4 bg-[var(--background)] text-[var(--muted-foreground)]/70 rounded-lg text-center">
                 Your role does not have permission to record collections.
               </div>
             )}
@@ -570,7 +570,7 @@ export default function CollectionsPage() {
             {/* Filter headers */}
             <div className="flex flex-col space-y-3 mb-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-zinc-200">Collections History Log</h3>
+                <h3 className="text-xs font-bold text-[var(--card-foreground)]">Collections History Log</h3>
                 
                 {hasPermission('collections', 'create') && (
                   <button
@@ -588,13 +588,13 @@ export default function CollectionsPage() {
                 
                 {/* Search bar */}
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--muted-foreground)]/70" />
                   <input
                     type="text"
                     placeholder="Search receipt, member..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 bg-zinc-950 border border-zinc-850 rounded-lg text-[11px] text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500"
+                    className="w-full pl-8 pr-3 py-1.5 bg-[var(--background)] border border-[var(--border)] rounded-lg text-[11px] text-[var(--card-foreground)] placeholder-zinc-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
@@ -602,7 +602,7 @@ export default function CollectionsPage() {
                 <select
                   value={monthFilter}
                   onChange={(e) => setMonthFilter(e.target.value)}
-                  className="bg-zinc-950 border border-zinc-850 rounded-lg px-2 py-1.5 text-[11px] text-zinc-300 focus:outline-none"
+                  className="bg-[var(--background)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-[11px] text-[var(--foreground)]/80 focus:outline-none"
                 >
                   <option value="all">All Months</option>
                   <option value="2026-05">2026-05</option>
@@ -614,7 +614,7 @@ export default function CollectionsPage() {
                 <select
                   value={paymentTypeFilter}
                   onChange={(e) => setPaymentTypeFilter(e.target.value)}
-                  className="bg-zinc-950 border border-zinc-850 rounded-lg px-2 py-1.5 text-[11px] text-zinc-300 focus:outline-none"
+                  className="bg-[var(--background)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-[11px] text-[var(--foreground)]/80 focus:outline-none"
                 >
                   <option value="all">All Accounts</option>
                   <option value="cash">Cash in Hand</option>
@@ -628,7 +628,7 @@ export default function CollectionsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-zinc-800 text-zinc-400">
+                  <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
                     <th className="pb-2 font-semibold">Receipt No</th>
                     <th className="pb-2 font-semibold">Member</th>
                     <th className="pb-2 font-semibold text-center">Month</th>
@@ -637,30 +637,30 @@ export default function CollectionsPage() {
                     <th className="pb-2 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-850">
+                <tbody className="divide-y divide-[var(--border)]">
                   {filteredCollections.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-6 text-center text-zinc-500">No collections matched filters</td>
+                      <td colSpan={6} className="py-6 text-center text-[var(--muted-foreground)]/70">No collections matched filters</td>
                     </tr>
                   ) : (
                     filteredCollections.map((col) => {
                       const grandTotal = col.amount + col.lateFine;
                       return (
-                        <tr key={col.id} className="hover:bg-zinc-900/30 transition-colors">
-                          <td className="py-2.5 font-medium text-zinc-300">{col.receiptNo}</td>
+                        <tr key={col.id} className="hover:bg-[var(--secondary)]/30 transition-colors">
+                          <td className="py-2.5 font-medium text-[var(--foreground)]/80">{col.receiptNo}</td>
                           <td className="py-2.5">
-                            <p className="font-bold text-zinc-200">{col.memberName}</p>
-                            <p className="text-[9px] text-zinc-500">{col.date}</p>
+                            <p className="font-bold text-[var(--card-foreground)]">{col.memberName}</p>
+                            <p className="text-[9px] text-[var(--muted-foreground)]/70">{col.date}</p>
                           </td>
                           <td className="py-2.5 text-center text-indigo-400 font-semibold">{col.month}</td>
                           <td className="py-2.5 text-right">
-                            <p className="font-bold text-zinc-200">{grandTotal.toLocaleString()} TK</p>
+                            <p className="font-bold text-[var(--card-foreground)]">{grandTotal.toLocaleString()} TK</p>
                             {col.lateFine > 0 && <p className="text-[8px] text-rose-400">Fine: {col.lateFine} TK</p>}
                           </td>
                           <td className="py-2.5 text-center">
                             <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
                               col.paymentType === 'cash' 
-                                ? 'bg-zinc-800 text-zinc-300' 
+                                ? 'bg-[var(--accent)] text-[var(--foreground)]/80' 
                                 : 'bg-emerald-500/10 text-emerald-400'
                             }`}>
                               {col.paymentType}
@@ -675,7 +675,7 @@ export default function CollectionsPage() {
                                     setActiveReceipt(col);
                                     setPrintOpen(true);
                                   }}
-                                  className="p-1 text-indigo-400 hover:text-indigo-300 hover:bg-zinc-850 rounded"
+                                  className="p-1 text-indigo-400 hover:text-indigo-300 hover:bg-[var(--muted)] rounded"
                                   title="Print Receipt"
                                 >
                                   <Printer className="w-3.5 h-3.5" />
@@ -685,7 +685,7 @@ export default function CollectionsPage() {
                               {hasPermission('collections', 'delete') && (
                                 <button
                                   onClick={() => handleDelete(col)}
-                                  className="p-1 text-zinc-500 hover:text-rose-400 hover:bg-zinc-850 rounded"
+                                  className="p-1 text-[var(--muted-foreground)]/70 hover:text-rose-400 hover:bg-[var(--muted)] rounded"
                                   title="Delete Receipt & Reverse Entry"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -709,28 +709,28 @@ export default function CollectionsPage() {
         {/* ---------------- MODAL: PRINT RECEIPT ---------------- */}
         {printOpen && activeReceipt && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl p-5 relative animate-fade-in-up no-print">
+            <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-2xl w-full max-w-md shadow-2xl p-5 relative animate-fade-in-up no-print">
               <button 
                 onClick={() => setPrintOpen(false)}
-                className="absolute top-4 right-4 p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800"
+                className="absolute top-4 right-4 p-1 text-[var(--muted-foreground)] hover:text-white rounded-lg hover:bg-[var(--accent)]"
               >
                 <X className="w-5 h-5" />
               </button>
 
               <div className="mb-4">
-                <h3 className="text-xs font-bold text-zinc-200">Print Receipt Details</h3>
-                <p className="text-[9px] text-zinc-500">Record verification complete</p>
+                <h3 className="text-xs font-bold text-[var(--card-foreground)]">Print Receipt Details</h3>
+                <p className="text-[9px] text-[var(--muted-foreground)]/70">Record verification complete</p>
               </div>
 
               {/* Printable Wrapper */}
-              <div className="bg-zinc-950 p-4 border border-zinc-850 rounded-xl">
+              <div className="bg-[var(--background)] p-4 border border-[var(--border)] rounded-xl">
                 <PrintableReceipt collection={activeReceipt} />
               </div>
 
-              <div className="flex items-center justify-end space-x-2 mt-4 pt-3 border-t border-zinc-800">
+              <div className="flex items-center justify-end space-x-2 mt-4 pt-3 border-t border-[var(--border)]">
                 <button
                   onClick={() => setPrintOpen(false)}
-                  className="px-4 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white border border-zinc-700 text-xs rounded-lg font-bold transition-colors cursor-pointer"
+                  className="px-4 py-1.5 bg-[var(--accent)] hover:bg-zinc-700 text-[var(--card-foreground)] hover:text-white border border-[var(--border)] text-xs rounded-lg font-bold transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>

@@ -97,35 +97,35 @@ export default function ExpensesPage() {
         {/* Category breakdown cards */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="glass-card p-3 rounded-xl">
-            <span className="text-zinc-500 text-[9px] uppercase font-bold flex items-center space-x-1">
+            <span className="text-[var(--muted-foreground)]/70 text-[9px] uppercase font-bold flex items-center space-x-1">
               <Building className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
               <span>Office Rent</span>
             </span>
             <p className="text-sm font-black text-white mt-1.5">{formatCurrency(getCategoryTotal('Office Rent'))}</p>
           </div>
           <div className="glass-card p-3 rounded-xl">
-            <span className="text-zinc-500 text-[9px] uppercase font-bold flex items-center space-x-1">
+            <span className="text-[var(--muted-foreground)]/70 text-[9px] uppercase font-bold flex items-center space-x-1">
               <Users className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span>Staff Salary</span>
             </span>
             <p className="text-sm font-black text-white mt-1.5">{formatCurrency(getCategoryTotal('Staff Salary'))}</p>
           </div>
           <div className="glass-card p-3 rounded-xl">
-            <span className="text-zinc-500 text-[9px] uppercase font-bold flex items-center space-x-1">
+            <span className="text-[var(--muted-foreground)]/70 text-[9px] uppercase font-bold flex items-center space-x-1">
               <DollarSign className="w-3.5 h-3.5 text-sky-400 shrink-0" />
               <span>Utilities</span>
             </span>
             <p className="text-sm font-black text-white mt-1.5">{formatCurrency(getCategoryTotal('Utilities'))}</p>
           </div>
           <div className="glass-card p-3 rounded-xl">
-            <span className="text-zinc-500 text-[9px] uppercase font-bold flex items-center space-x-1">
+            <span className="text-[var(--muted-foreground)]/70 text-[9px] uppercase font-bold flex items-center space-x-1">
               <Wrench className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span>Maintenance</span>
             </span>
             <p className="text-sm font-black text-white mt-1.5">{formatCurrency(getCategoryTotal('Maintenance'))}</p>
           </div>
           <div className="glass-card p-3 rounded-xl col-span-2 lg:col-span-1">
-            <span className="text-zinc-500 text-[9px] uppercase font-bold flex items-center space-x-1">
+            <span className="text-[var(--muted-foreground)]/70 text-[9px] uppercase font-bold flex items-center space-x-1">
               <CreditCard className="w-3.5 h-3.5 text-rose-400 shrink-0" />
               <span>Misc Expense</span>
             </span>
@@ -140,13 +140,13 @@ export default function ExpensesPage() {
             
             {/* Search */}
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)]/70" />
               <input
                 type="text"
                 placeholder="Search description, payer..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-zinc-900 border border-zinc-880 rounded-xl text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none"
+                className="w-full pl-10 pr-4 py-2 bg-[var(--secondary)] border border-zinc-880 rounded-xl text-xs text-[var(--card-foreground)] placeholder-zinc-500 focus:outline-none"
               />
             </div>
 
@@ -154,7 +154,7 @@ export default function ExpensesPage() {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none"
+              className="bg-[var(--secondary)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--foreground)]/80 focus:outline-none"
             >
               <option value="all">All Categories</option>
               <option value="Office Rent">Office Rent</option>
@@ -183,7 +183,7 @@ export default function ExpensesPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-zinc-800 bg-zinc-900/40 text-zinc-400">
+                <tr className="border-b border-[var(--border)] bg-[var(--secondary)]/40 text-[var(--muted-foreground)]">
                   <th className="p-4 font-semibold">Expense Category</th>
                   <th className="p-4 font-semibold">Description</th>
                   <th className="p-4 font-semibold">Payer Info</th>
@@ -192,28 +192,28 @@ export default function ExpensesPage() {
                   <th className="p-4 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-850">
+              <tbody className="divide-y divide-[var(--border)]">
                 {filteredExpenses.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-zinc-500">No expenses found</td>
+                    <td colSpan={6} className="p-8 text-center text-[var(--muted-foreground)]/70">No expenses found</td>
                   </tr>
                 ) : (
                   filteredExpenses.map((exp) => (
-                    <tr key={exp.id} className="hover:bg-zinc-900/40 transition-colors">
+                    <tr key={exp.id} className="hover:bg-[var(--secondary)]/40 transition-colors">
                       
                       <td className="p-4">
-                        <span className="px-2 py-0.5 rounded bg-zinc-800 text-[10px] text-zinc-300 font-extrabold">{exp.category}</span>
+                        <span className="px-2 py-0.5 rounded bg-[var(--accent)] text-[10px] text-[var(--foreground)]/80 font-extrabold">{exp.category}</span>
                       </td>
 
-                      <td className="p-4 font-semibold text-zinc-200 truncate max-w-[250px]">
+                      <td className="p-4 font-semibold text-[var(--card-foreground)] truncate max-w-[250px]">
                         {exp.description}
                       </td>
 
-                      <td className="p-4 text-zinc-400 capitalize">
+                      <td className="p-4 text-[var(--muted-foreground)] capitalize">
                         {exp.paidBy}
                       </td>
 
-                      <td className="p-4 text-zinc-500 text-[10px]">
+                      <td className="p-4 text-[var(--muted-foreground)]/70 text-[10px]">
                         {exp.date}
                       </td>
 
@@ -225,7 +225,7 @@ export default function ExpensesPage() {
                         {hasPermission('expenses', 'delete') && (
                           <button
                             onClick={() => handleDelete(exp)}
-                            className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-zinc-850 rounded-lg transition-colors cursor-pointer"
+                            className="p-1.5 text-[var(--muted-foreground)]/70 hover:text-rose-400 hover:bg-[var(--muted)] rounded-lg transition-colors cursor-pointer"
                             title="Delete Expense Log"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -244,21 +244,21 @@ export default function ExpensesPage() {
         {/* ---------------- MODAL: ADD EXPENSE ---------------- */}
         {addModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl">
+            <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-2xl w-full max-w-sm shadow-2xl">
               
-              <div className="flex items-center justify-between p-4 border-b border-zinc-850">
-                <h3 className="text-sm font-bold text-zinc-200">Log New Foundation Expense</h3>
-                <button onClick={() => setAddModalOpen(false)} className="p-1 text-zinc-400 hover:text-white rounded-lg"><X className="w-5 h-5" /></button>
+              <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
+                <h3 className="text-sm font-bold text-[var(--card-foreground)]">Log New Foundation Expense</h3>
+                <button onClick={() => setAddModalOpen(false)} className="p-1 text-[var(--muted-foreground)] hover:text-white rounded-lg"><X className="w-5 h-5" /></button>
               </div>
 
               <form onSubmit={handleSubmit} className="p-4 space-y-4 text-xs">
                 
                 <div>
-                  <label className="block text-zinc-400 font-semibold mb-1">Expense Category *</label>
+                  <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Expense Category *</label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
-                    className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-300 focus:outline-none cursor-pointer"
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--foreground)]/80 focus:outline-none cursor-pointer"
                   >
                     <option value="Office Rent">Office Rent</option>
                     <option value="Staff Salary">Staff Salary</option>
@@ -269,41 +269,41 @@ export default function ExpensesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-zinc-400 font-semibold mb-1">Expense Amount (TK) *</label>
+                  <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Expense Amount (TK) *</label>
                   <input
                     type="number"
                     required
                     value={amount}
                     onChange={(e) => setAmount(Number(e.target.value))}
-                    className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-200 focus:outline-none"
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--card-foreground)] focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-zinc-400 font-semibold mb-1">Description / Notes *</label>
+                  <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Description / Notes *</label>
                   <textarea
                     rows={3}
                     required
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="e.g. Utility bills for month of July 2026"
-                    className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-200 placeholder-zinc-650 focus:outline-none resize-none"
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--card-foreground)] placeholder-zinc-650 focus:outline-none resize-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-zinc-400 font-semibold mb-1">Authorised Payer</label>
+                  <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Authorised Payer</label>
                   <input
                     type="text"
                     value={paidBy}
                     onChange={(e) => setPaidBy(e.target.value)}
                     placeholder="Treasurer, President..."
-                    className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-200 focus:outline-none"
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--card-foreground)] focus:outline-none"
                   />
                 </div>
 
-                <div className="flex items-center justify-end space-x-2 pt-4 border-t border-zinc-850">
-                  <button type="button" onClick={() => setAddModalOpen(false)} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-lg font-bold transition-colors cursor-pointer">Cancel</button>
+                <div className="flex items-center justify-end space-x-2 pt-4 border-t border-[var(--border)]">
+                  <button type="button" onClick={() => setAddModalOpen(false)} className="px-4 py-2 bg-[var(--accent)] hover:bg-zinc-700 text-[var(--card-foreground)] border border-[var(--border)] rounded-lg font-bold transition-colors cursor-pointer">Cancel</button>
                   <button type="submit" className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-bold">Log Expense</button>
                 </div>
 

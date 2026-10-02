@@ -177,20 +177,20 @@ export default function MembersPage() {
           {/* Search Inputs */}
           <div className="flex items-center space-x-3 w-full md:max-w-md">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)]/70" />
               <input
                 type="text"
                 placeholder="Search member name, email or phone..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                className="w-full pl-10 pr-4 py-2 bg-[var(--secondary)] border border-[var(--border)] rounded-xl text-xs text-[var(--card-foreground)] placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
               />
             </div>
             
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none focus:border-indigo-500 cursor-pointer"
+              className="bg-[var(--secondary)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--foreground)]/80 focus:outline-none focus:border-indigo-500 cursor-pointer"
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -214,7 +214,7 @@ export default function MembersPage() {
             {hasPermission('members', 'export') && (
               <button
                 onClick={handleExportCSV}
-                className="flex items-center space-x-1.5 px-3 py-2 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                className="flex items-center space-x-1.5 px-3 py-2 bg-[var(--secondary)] border border-[var(--border)] hover:bg-[var(--accent)] text-[var(--foreground)]/80 text-xs font-bold rounded-xl transition-all cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Export CSV</span>
@@ -238,7 +238,7 @@ export default function MembersPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-zinc-800 bg-zinc-900/40 text-zinc-400">
+                <tr className="border-b border-[var(--border)] bg-[var(--secondary)]/40 text-[var(--muted-foreground)]">
                   <th className="p-4 font-semibold">Member Info</th>
                   <th className="p-4 font-semibold">Joined Date</th>
                   <th className="p-4 font-semibold">Monthly Sub.</th>
@@ -247,14 +247,14 @@ export default function MembersPage() {
                   <th className="p-4 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-850">
+              <tbody className="divide-y divide-[var(--border)]">
                 {filteredMembers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-zinc-500">No members found</td>
+                    <td colSpan={6} className="p-8 text-center text-[var(--muted-foreground)]/70">No members found</td>
                   </tr>
                 ) : (
                   filteredMembers.map((member) => (
-                    <tr key={member.id} className="hover:bg-zinc-900/40 transition-colors">
+                    <tr key={member.id} className="hover:bg-[var(--secondary)]/40 transition-colors">
                       
                       {/* Member profile detail */}
                       <td className="p-4">
@@ -263,27 +263,27 @@ export default function MembersPage() {
                             {member.name.charAt(0)}
                           </div>
                           <div>
-                            <p className="font-bold text-zinc-100">{member.name}</p>
-                            <p className="text-[10px] text-zinc-500">{member.phone}</p>
+                            <p className="font-bold text-[var(--foreground)]">{member.name}</p>
+                            <p className="text-[10px] text-[var(--muted-foreground)]/70">{member.phone}</p>
                           </div>
                         </div>
                       </td>
 
-                      <td className="p-4 text-zinc-400 text-[10px]">
+                      <td className="p-4 text-[var(--muted-foreground)] text-[10px]">
                         <div className="flex items-center space-x-1">
-                          <Calendar className="w-3.5 h-3.5 text-zinc-500" />
+                          <Calendar className="w-3.5 h-3.5 text-[var(--muted-foreground)]/70" />
                           <span>{member.joinDate}</span>
                         </div>
                       </td>
 
-                      <td className="p-4 font-bold text-zinc-200">
+                      <td className="p-4 font-bold text-[var(--card-foreground)]">
                         {member.monthlyFee.toLocaleString()} TK
                       </td>
 
-                      <td className="p-4 text-zinc-300">
+                      <td className="p-4 text-[var(--foreground)]/80">
                         <div>
                           <p className="text-xs font-semibold">{member.nomineeName}</p>
-                          <p className="text-[9px] text-zinc-500">Relation: {member.nomineeRelation}</p>
+                          <p className="text-[9px] text-[var(--muted-foreground)]/70">Relation: {member.nomineeRelation}</p>
                         </div>
                       </td>
 
@@ -294,7 +294,7 @@ export default function MembersPage() {
                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
                             : member.status === 'suspended'
                             ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                            : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                            : 'bg-[var(--accent)] text-[var(--muted-foreground)] border border-[var(--border)]'
                         }`}>
                           {member.status}
                         </span>
@@ -308,7 +308,7 @@ export default function MembersPage() {
                               setSelectedMember(member);
                               setDetailOpen(true);
                             }}
-                            className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
+                            className="p-1.5 text-[var(--muted-foreground)] hover:text-white hover:bg-[var(--accent)] rounded-lg transition-colors cursor-pointer"
                             title="View nominee / profile info"
                           >
                             <Eye className="w-4 h-4" />
@@ -317,7 +317,7 @@ export default function MembersPage() {
                           {hasPermission('members', 'update') && (
                             <button
                               onClick={() => handleOpenEditModal(member)}
-                              className="p-1.5 text-zinc-400 hover:text-indigo-400 hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
+                              className="p-1.5 text-[var(--muted-foreground)] hover:text-indigo-400 hover:bg-[var(--accent)] rounded-lg transition-colors cursor-pointer"
                               title="Edit Member"
                             >
                               <Edit className="w-4 h-4" />
@@ -327,7 +327,7 @@ export default function MembersPage() {
                           {hasPermission('members', 'delete') && (
                             <button
                               onClick={() => handleDelete(member)}
-                              className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
+                              className="p-1.5 text-[var(--muted-foreground)]/70 hover:text-rose-400 hover:bg-[var(--accent)] rounded-lg transition-colors cursor-pointer"
                               title="Delete Member"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -347,16 +347,16 @@ export default function MembersPage() {
         {/* ---------------- MODAL: ADD / EDIT MEMBER ---------------- */}
         {modalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl animate-fade-in-up">
+            <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl animate-fade-in-up">
               
               {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-zinc-850">
-                <h3 className="text-sm font-bold text-zinc-200">
+              <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
+                <h3 className="text-sm font-bold text-[var(--card-foreground)]">
                   {editMode ? 'Edit Member Profile' : 'Register New Member'}
                 </h3>
                 <button 
                   onClick={() => setModalOpen(false)}
-                  className="p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800"
+                  className="p-1 text-[var(--muted-foreground)] hover:text-white rounded-lg hover:bg-[var(--accent)]"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -369,60 +369,60 @@ export default function MembersPage() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">Full Name *</label>
+                    <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Full Name *</label>
                     <input
                       type="text"
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Kabir Ahmed"
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-200 placeholder-zinc-650 focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--card-foreground)] placeholder-zinc-650 focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">Phone Number *</label>
+                    <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Phone Number *</label>
                     <input
                       type="text"
                       required
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="+88017XXXXXXXX"
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-200 placeholder-zinc-650 focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--card-foreground)] placeholder-zinc-650 focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">Email Address *</label>
+                    <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Email Address *</label>
                     <input
                       type="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="kabir@fdc.org"
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-200 placeholder-zinc-650 focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--card-foreground)] placeholder-zinc-650 focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">Monthly Subscription Fee (TK) *</label>
+                    <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Monthly Subscription Fee (TK) *</label>
                     <input
                       type="number"
                       required
                       value={monthlyFee}
                       onChange={(e) => setMonthlyFee(Number(e.target.value))}
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-200 focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--card-foreground)] focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">Member Status</label>
+                    <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Member Status</label>
                     <select
                       value={status}
                       onChange={(e) => setStatus(e.target.value as any)}
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-300 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--foreground)]/80 focus:outline-none focus:border-indigo-500 cursor-pointer"
                     >
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
@@ -431,50 +431,50 @@ export default function MembersPage() {
                   </div>
                 </div>
 
-                <div className="border-t border-zinc-850 pt-3 mt-4">
+                <div className="border-t border-[var(--border)] pt-3 mt-4">
                   <h4 className="text-[10px] font-black uppercase text-indigo-400 tracking-wider mb-3">Nominee & Emergency Information</h4>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">Nominee Full Name</label>
+                    <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Nominee Full Name</label>
                     <input
                       type="text"
                       value={nomineeName}
                       onChange={(e) => setNomineeName(e.target.value)}
                       placeholder="Nominee Name"
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-200 placeholder-zinc-650 focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--card-foreground)] placeholder-zinc-650 focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-zinc-400 font-semibold mb-1">Relationship</label>
+                    <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Relationship</label>
                     <input
                       type="text"
                       value={nomineeRelation}
                       onChange={(e) => setNomineeRelation(e.target.value)}
                       placeholder="e.g. Wife, Mother, Brother"
-                      className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-200 placeholder-zinc-650 focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--card-foreground)] placeholder-zinc-650 focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-zinc-400 font-semibold mb-1">Nominee Phone Number</label>
+                  <label className="block text-[var(--muted-foreground)] font-semibold mb-1">Nominee Phone Number</label>
                   <input
                     type="text"
                     value={nomineePhone}
                     onChange={(e) => setNomineePhone(e.target.value)}
                     placeholder="+8801XXXXXXXXX"
-                    className="w-full bg-zinc-950 border border-zinc-850 rounded-lg p-2.5 text-zinc-200 placeholder-zinc-650 focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-2.5 text-[var(--card-foreground)] placeholder-zinc-650 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 {/* Submit Panel */}
-                <div className="flex items-center justify-end space-x-2 pt-4 border-t border-zinc-850">
+                <div className="flex items-center justify-end space-x-2 pt-4 border-t border-[var(--border)]">
                   <button
                     type="button"
                     onClick={() => setModalOpen(false)}
-                    className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-lg font-bold transition-colors cursor-pointer"
+                    className="px-4 py-2 bg-[var(--accent)] hover:bg-zinc-700 text-[var(--card-foreground)] border border-[var(--border)] rounded-lg font-bold transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -495,28 +495,28 @@ export default function MembersPage() {
         {/* ---------------- MODAL: VIEW MEMBER DETAILS ---------------- */}
         {detailOpen && selectedMember && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl p-5 relative overflow-hidden animate-fade-in-up">
+            <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-2xl w-full max-w-md shadow-2xl p-5 relative overflow-hidden animate-fade-in-up">
               
               <div className="absolute top-0 right-0 w-24 h-24 grad-primary opacity-5 blur-xl rounded-full"></div>
               
               <button 
                 onClick={() => setDetailOpen(false)}
-                className="absolute top-4 right-4 p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800"
+                className="absolute top-4 right-4 p-1 text-[var(--muted-foreground)] hover:text-white rounded-lg hover:bg-[var(--accent)]"
               >
                 <X className="w-5 h-5" />
               </button>
 
               {/* Detail Profile Header */}
-              <div className="flex flex-col items-center text-center space-y-3 pb-4 border-b border-zinc-800">
+              <div className="flex flex-col items-center text-center space-y-3 pb-4 border-b border-[var(--border)]">
                 <div className="w-16 h-16 rounded-full bg-indigo-600/20 text-indigo-400 border border-indigo-500/20 flex items-center justify-center font-black text-2xl uppercase shadow-lg shadow-indigo-600/10">
                   {selectedMember.name.charAt(0)}
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-zinc-100">{selectedMember.name}</h3>
+                  <h3 className="text-base font-bold text-[var(--foreground)]">{selectedMember.name}</h3>
                   <span className={`inline-block px-2.5 py-0.5 mt-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
                     selectedMember.status === 'active' 
                       ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                      : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                      : 'bg-[var(--accent)] text-[var(--muted-foreground)] border border-[var(--border)]'
                   }`}>
                     {selectedMember.status}
                   </span>
@@ -529,16 +529,16 @@ export default function MembersPage() {
                 {/* Contact items */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <p className="text-zinc-500 text-[10px] uppercase font-bold">Phone Number</p>
-                    <div className="flex items-center space-x-1.5 text-zinc-300">
-                      <Phone className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                    <p className="text-[var(--muted-foreground)]/70 text-[10px] uppercase font-bold">Phone Number</p>
+                    <div className="flex items-center space-x-1.5 text-[var(--foreground)]/80">
+                      <Phone className="w-3.5 h-3.5 text-[var(--muted-foreground)]/70 shrink-0" />
                       <span className="truncate">{selectedMember.phone}</span>
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-zinc-500 text-[10px] uppercase font-bold">Email Address</p>
-                    <div className="flex items-center space-x-1.5 text-zinc-300">
-                      <Mail className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                    <p className="text-[var(--muted-foreground)]/70 text-[10px] uppercase font-bold">Email Address</p>
+                    <div className="flex items-center space-x-1.5 text-[var(--foreground)]/80">
+                      <Mail className="w-3.5 h-3.5 text-[var(--muted-foreground)]/70 shrink-0" />
                       <span className="truncate">{selectedMember.email}</span>
                     </div>
                   </div>
@@ -546,52 +546,52 @@ export default function MembersPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <p className="text-zinc-500 text-[10px] uppercase font-bold">Join Date</p>
-                    <div className="flex items-center space-x-1.5 text-zinc-300">
-                      <Calendar className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                    <p className="text-[var(--muted-foreground)]/70 text-[10px] uppercase font-bold">Join Date</p>
+                    <div className="flex items-center space-x-1.5 text-[var(--foreground)]/80">
+                      <Calendar className="w-3.5 h-3.5 text-[var(--muted-foreground)]/70 shrink-0" />
                       <span>{selectedMember.joinDate}</span>
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-zinc-500 text-[10px] uppercase font-bold">Monthly Fee</p>
-                    <div className="flex items-center space-x-1.5 text-zinc-300">
-                      <Briefcase className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                      <span className="font-bold text-zinc-200">{selectedMember.monthlyFee.toLocaleString()} TK</span>
+                    <p className="text-[var(--muted-foreground)]/70 text-[10px] uppercase font-bold">Monthly Fee</p>
+                    <div className="flex items-center space-x-1.5 text-[var(--foreground)]/80">
+                      <Briefcase className="w-3.5 h-3.5 text-[var(--muted-foreground)]/70 shrink-0" />
+                      <span className="font-bold text-[var(--card-foreground)]">{selectedMember.monthlyFee.toLocaleString()} TK</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Nominee details */}
-                <div className="bg-zinc-950/60 border border-zinc-850 p-3.5 rounded-xl space-y-2">
+                <div className="bg-[var(--background)]/60 border border-[var(--border)] p-3.5 rounded-xl space-y-2">
                   <p className="text-[10px] font-black uppercase text-indigo-400 tracking-wider">Nominee Information</p>
                   
-                  <div className="grid grid-cols-2 gap-2 text-zinc-300">
+                  <div className="grid grid-cols-2 gap-2 text-[var(--foreground)]/80">
                     <div>
-                      <p className="text-[9px] text-zinc-500">Nominee Name</p>
-                      <p className="font-semibold text-zinc-200 mt-0.5">{selectedMember.nomineeName || 'N/A'}</p>
+                      <p className="text-[9px] text-[var(--muted-foreground)]/70">Nominee Name</p>
+                      <p className="font-semibold text-[var(--card-foreground)] mt-0.5">{selectedMember.nomineeName || 'N/A'}</p>
                     </div>
                     <div>
-                      <p className="text-[9px] text-zinc-500">Relationship</p>
-                      <p className="font-semibold text-zinc-200 mt-0.5">{selectedMember.nomineeRelation || 'N/A'}</p>
+                      <p className="text-[9px] text-[var(--muted-foreground)]/70">Relationship</p>
+                      <p className="font-semibold text-[var(--card-foreground)] mt-0.5">{selectedMember.nomineeRelation || 'N/A'}</p>
                     </div>
                   </div>
 
                   <div>
-                    <p className="text-[9px] text-zinc-500">Nominee Contact</p>
-                    <p className="font-semibold text-zinc-300 mt-0.5">{selectedMember.nomineePhone || 'N/A'}</p>
+                    <p className="text-[9px] text-[var(--muted-foreground)]/70">Nominee Contact</p>
+                    <p className="font-semibold text-[var(--foreground)]/80 mt-0.5">{selectedMember.nomineePhone || 'N/A'}</p>
                   </div>
                 </div>
 
               </div>
 
               {/* Close / Action Panel */}
-              <div className="flex items-center justify-between border-t border-zinc-800 pt-3.5 mt-2">
+              <div className="flex items-center justify-between border-t border-[var(--border)] pt-3.5 mt-2">
                 <button
                   onClick={() => {
                     setDetailOpen(false);
                     handleOpenEditModal(selectedMember);
                   }}
-                  className="flex items-center space-x-1 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                  className="flex items-center space-x-1 px-3 py-1.5 bg-[var(--accent)] hover:bg-zinc-700 text-[var(--foreground)]/80 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
                 >
                   <Edit className="w-3.5 h-3.5" />
                   <span>Edit Profile</span>

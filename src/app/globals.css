@@ -26,7 +26,35 @@
   }
 }
 
-:root, .dark {
+:root, .light {
+  --background: #f0f6ff;
+  --foreground: #1e293b;
+  
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --card-border: #dbeafe;
+  
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  
+  --secondary: #eff6ff;
+  --secondary-foreground: #1e40af;
+  
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  
+  --accent: #e2e8f0;
+  --accent-foreground: #0f172a;
+  
+  --border: #bfdbfe;
+  --input: #ffffff;
+  --ring: #3b82f6;
+}
+
+.dark {
   --background: #000000;
   --foreground: #fafafa;
   
@@ -54,33 +82,6 @@
   --ring: #6366f1;
 }
 
-.light {
-  --background: #f0f6ff;
-  --foreground: #1e293b;
-  
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --card-border: #dbeafe;
-  
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  
-  --primary: #2563eb;
-  --primary-foreground: #ffffff;
-  
-  --secondary: #eff6ff;
-  --secondary-foreground: #1e40af;
-  
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  
-  --accent: #e2e8f0;
-  --accent-foreground: #0f172a;
-  
-  --border: #bfdbfe;
-  --input: #ffffff;
-  --ring: #3b82f6;
-}
 
 .night {
   --background: #000000;
@@ -138,41 +139,43 @@ body {
 
 /* Glassmorphism utility */
 .glass-panel {
-  background: rgba(24, 24, 27, 0.7);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.light .glass-panel {
-  background: rgba(255, 255, 255, 0.85);
   border: 1px solid rgba(37, 99, 235, 0.15);
   box-shadow: 0 4px 20px -2px rgba(37, 99, 235, 0.05);
 }
 
+.dark .glass-panel, .night .glass-panel {
+  background: rgba(24, 24, 27, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: none;
+}
+
 .glass-card {
-  background: rgba(39, 39, 42, 0.3);
+  background: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(37, 99, 235, 0.1);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.03);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.light .glass-card {
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid rgba(37, 99, 235, 0.1);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.03);
+.dark .glass-card, .night .glass-card {
+  background: rgba(39, 39, 42, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: none;
 }
 
 .glass-card:hover {
-  background: rgba(39, 39, 42, 0.5);
-  border-color: rgba(99, 102, 241, 0.2);
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(37, 99, 235, 0.25);
   transform: translateY(-2px);
 }
 
-.light .glass-card:hover {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: rgba(37, 99, 235, 0.25);
+.dark .glass-card:hover, .night .glass-card:hover {
+  background: rgba(39, 39, 42, 0.5);
+  border-color: rgba(99, 102, 241, 0.2);
 }
 
 /* Financial Dashboard Gradients */

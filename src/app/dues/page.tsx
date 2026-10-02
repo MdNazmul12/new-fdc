@@ -347,12 +347,12 @@ export default function DuesPage() {
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-500/10 text-amber-400 border border-amber-500/20">
                 NO AUTO-PAYMENT
               </span>
-              <span className="text-xs text-zinc-400">Manual Collection Workflow</span>
+              <span className="text-xs text-[var(--muted-foreground)]">Manual Collection Workflow</span>
             </div>
             <h1 className="text-2xl font-black tracking-tight text-white mt-1">
               Due Management & Directory
             </h1>
-            <p className="text-xs text-zinc-400 mt-0.5">
+            <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
               Select date via calendar to inspect dues for <span className="text-emerald-400 font-bold">{targetMonth}</span>. No payments are auto-generated.
             </p>
           </div>
@@ -374,7 +374,7 @@ export default function DuesPage() {
               type="button"
               onClick={handleExportExcel}
               disabled={!activeDemand || filteredDues.length === 0}
-              className="flex items-center space-x-1.5 px-3.5 py-2 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 disabled:opacity-50 text-zinc-300 hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm"
+              className="flex items-center space-x-1.5 px-3.5 py-2 bg-[var(--secondary)] border border-[var(--border)] hover:bg-[var(--accent)] disabled:opacity-50 text-[var(--foreground)]/80 hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Export Excel</span>
@@ -383,7 +383,7 @@ export default function DuesPage() {
               type="button"
               onClick={() => window.print()}
               disabled={!activeDemand || filteredDues.length === 0}
-              className="flex items-center space-x-1.5 px-3.5 py-2 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 disabled:opacity-50 text-zinc-300 hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm"
+              className="flex items-center space-x-1.5 px-3.5 py-2 bg-[var(--secondary)] border border-[var(--border)] hover:bg-[var(--accent)] disabled:opacity-50 text-[var(--foreground)]/80 hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print Sheet</span>
@@ -392,12 +392,12 @@ export default function DuesPage() {
         </div>
 
         {/* Generated Due Months Selector & Delete Manager */}
-        <div className="p-4 bg-zinc-900/90 border border-zinc-800 rounded-2xl">
+        <div className="p-4 bg-[var(--secondary)]/90 border border-[var(--border)] rounded-2xl">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
             <div className="flex items-center space-x-2">
               <Tag className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs font-bold text-zinc-200">Active Generated Due Months:</span>
-              <span className="text-[11px] text-zinc-400">Click any month to view or delete</span>
+              <span className="text-xs font-bold text-[var(--card-foreground)]">Active Generated Due Months:</span>
+              <span className="text-[11px] text-[var(--muted-foreground)]">Click any month to view or delete</span>
             </div>
             {canManageDues && (
               <button
@@ -413,7 +413,7 @@ export default function DuesPage() {
 
           <div className="flex items-center flex-wrap gap-2">
             {dueDemands.length === 0 ? (
-              <p className="text-xs text-zinc-500 py-1">No due demands generated yet. Click "+ Add / Generate Due" to begin.</p>
+              <p className="text-xs text-[var(--muted-foreground)]/70 py-1">No due demands generated yet. Click "+ Add / Generate Due" to begin.</p>
             ) : (
               dueDemands.map((demand) => {
                 const isSelected = demand.month === targetMonth;
@@ -427,7 +427,7 @@ export default function DuesPage() {
                     className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                       isSelected
                         ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300 shadow-md shadow-emerald-500/10 ring-1 ring-emerald-500'
-                        : 'bg-zinc-850/80 border-zinc-750 text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                        : 'bg-[var(--muted)]/80 border-zinc-750 text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-white'
                     }`}
                   >
                     <span>{demand.month}</span>
@@ -435,7 +435,7 @@ export default function DuesPage() {
                       <button
                         type="button"
                         onClick={(e) => handlePromptDeleteDue(demand, e)}
-                        className="p-1 text-zinc-400 hover:text-rose-400 hover:bg-zinc-800 rounded-md transition-colors cursor-pointer"
+                        className="p-1 text-[var(--muted-foreground)] hover:text-rose-400 hover:bg-[var(--accent)] rounded-md transition-colors cursor-pointer"
                         title={`Delete due demand for ${demand.month}`}
                       >
                         <Trash2 className="w-3 h-3" />
@@ -450,26 +450,26 @@ export default function DuesPage() {
 
         {/* Top KPI Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="glass-card p-4 rounded-2xl border border-zinc-800">
+          <div className="glass-card p-4 rounded-2xl border border-[var(--border)]">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-zinc-400">Target Month</span>
-              <div className="p-2 bg-zinc-800 text-zinc-300 rounded-lg">
+              <span className="text-xs font-semibold text-[var(--muted-foreground)]">Target Month</span>
+              <div className="p-2 bg-[var(--accent)] text-[var(--foreground)]/80 rounded-lg">
                 <Calendar className="w-4 h-4 text-indigo-400" />
               </div>
             </div>
             <p className="text-lg font-black text-white mt-2">{targetMonth}</p>
-            <p className="text-[10px] text-zinc-500 mt-0.5">Date: {selectedDate}</p>
+            <p className="text-[10px] text-[var(--muted-foreground)]/70 mt-0.5">Date: {selectedDate}</p>
           </div>
 
-          <div className="glass-card p-4 rounded-2xl border border-zinc-800">
+          <div className="glass-card p-4 rounded-2xl border border-[var(--border)]">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-zinc-400">Total Active Profiles</span>
-              <div className="p-2 bg-zinc-800 text-zinc-300 rounded-lg">
-                <Users className="w-4 h-4 text-zinc-300" />
+              <span className="text-xs font-semibold text-[var(--muted-foreground)]">Total Active Profiles</span>
+              <div className="p-2 bg-[var(--accent)] text-[var(--foreground)]/80 rounded-lg">
+                <Users className="w-4 h-4 text-[var(--foreground)]/80" />
               </div>
             </div>
             <p className="text-lg font-black text-white mt-2">{metrics.total}</p>
-            <p className="text-[10px] text-zinc-500 mt-0.5">Eligible subscription members</p>
+            <p className="text-[10px] text-[var(--muted-foreground)]/70 mt-0.5">Eligible subscription members</p>
           </div>
 
           <div className="glass-card p-4 rounded-2xl border border-amber-500/20 bg-amber-500/5">
@@ -509,28 +509,28 @@ export default function DuesPage() {
             />
 
             {/* Notice Box: No Auto Payments */}
-            <div className="p-4 bg-zinc-900/80 border border-zinc-800 rounded-2xl space-y-2">
+            <div className="p-4 bg-[var(--secondary)]/80 border border-[var(--border)] rounded-2xl space-y-2">
               <div className="flex items-center space-x-2 text-amber-400">
                 <ShieldAlert className="w-4 h-4 shrink-0" />
                 <span className="text-xs font-bold">Manual Collection Protection</span>
               </div>
-              <p className="text-[11px] text-zinc-400 leading-relaxed">
+              <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed">
                 The system strictly disables automated payment creation. Dues reflect pending accounts only. To mark a member paid, click <strong>"Collect Due"</strong> to save the transaction manually.
               </p>
             </div>
 
             {/* Filter & Search */}
-            <div className="p-4 bg-zinc-900/80 border border-zinc-800 rounded-2xl space-y-3">
-              <span className="text-xs font-bold text-zinc-200">Search & Filter</span>
+            <div className="p-4 bg-[var(--secondary)]/80 border border-[var(--border)] rounded-2xl space-y-3">
+              <span className="text-xs font-bold text-[var(--card-foreground)]">Search & Filter</span>
               
               <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-zinc-500" />
+                <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-[var(--muted-foreground)]/70" />
                 <input
                   type="text"
                   placeholder="Search name, phone, ID..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full pl-9 pr-3 py-2 bg-[var(--background)] border border-[var(--border)] rounded-xl text-xs text-[var(--card-foreground)] placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -541,7 +541,7 @@ export default function DuesPage() {
                   className={`py-1.5 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                     statusFilter === 'all'
                       ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'bg-zinc-800/80 text-zinc-400 hover:text-white'
+                      : 'bg-[var(--accent)]/80 text-[var(--muted-foreground)] hover:text-white'
                   }`}
                 >
                   All ({duesList.length})
@@ -552,7 +552,7 @@ export default function DuesPage() {
                   className={`py-1.5 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                     statusFilter === 'due'
                       ? 'bg-amber-600 text-white shadow-sm'
-                      : 'bg-zinc-800/80 text-zinc-400 hover:text-white'
+                      : 'bg-[var(--accent)]/80 text-[var(--muted-foreground)] hover:text-white'
                   }`}
                 >
                   Dues ({metrics.dueCount})
@@ -563,7 +563,7 @@ export default function DuesPage() {
                   className={`py-1.5 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                     statusFilter === 'paid'
                       ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'bg-zinc-800/80 text-zinc-400 hover:text-white'
+                      : 'bg-[var(--accent)]/80 text-[var(--muted-foreground)] hover:text-white'
                   }`}
                 >
                   Paid ({metrics.paidCount})
@@ -575,13 +575,13 @@ export default function DuesPage() {
 
           {/* Right Column: Dues Directory Table (8 Cols) */}
           <div className="lg:col-span-8">
-            <div className="glass-panel rounded-2xl overflow-hidden border border-zinc-800 shadow-xl">
-              <div className="p-4 border-b border-zinc-850 flex items-center justify-between">
+            <div className="glass-panel rounded-2xl overflow-hidden border border-[var(--border)] shadow-xl">
+              <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-bold text-white tracking-tight">
                     Member Due Roster — {targetMonth}
                   </h3>
-                  <p className="text-[11px] text-zinc-400">
+                  <p className="text-[11px] text-[var(--muted-foreground)]">
                     Showing {filteredDues.length} active profiles for selected period
                   </p>
                 </div>
@@ -595,12 +595,12 @@ export default function DuesPage() {
 
               {!activeDemand ? (
                 <div className="p-12 text-center flex flex-col items-center justify-center space-y-4">
-                  <div className="w-14 h-14 rounded-2xl bg-zinc-800/80 text-zinc-500 border border-zinc-750 flex items-center justify-center">
+                  <div className="w-14 h-14 rounded-2xl bg-[var(--accent)]/80 text-[var(--muted-foreground)]/70 border border-zinc-750 flex items-center justify-center">
                     <AlertCircle className="w-7 h-7" />
                   </div>
                   <div className="max-w-md">
                     <h4 className="text-base font-bold text-white mb-1">No Due Generated for {targetMonth}</h4>
-                    <p className="text-xs text-zinc-400 leading-relaxed">
+                    <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
                       You have not yet generated a payment due for this month. Once you click "Generate Due", it will automatically become applicable to all active members.
                     </p>
                   </div>
@@ -619,7 +619,7 @@ export default function DuesPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="border-b border-zinc-850 bg-zinc-900/50 text-zinc-400">
+                      <tr className="border-b border-[var(--border)] bg-[var(--secondary)]/50 text-[var(--muted-foreground)]">
                         <th className="p-3.5 font-semibold">Member</th>
                         <th className="p-3.5 font-semibold">Monthly Fee</th>
                         <th className="p-3.5 font-semibold">Late Fine</th>
@@ -628,16 +628,16 @@ export default function DuesPage() {
                         <th className="p-3.5 font-semibold text-right">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-850">
+                    <tbody className="divide-y divide-[var(--border)]">
                       {filteredDues.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="p-8 text-center text-zinc-500">
+                          <td colSpan={6} className="p-8 text-center text-[var(--muted-foreground)]/70">
                             No member records found matching your filters.
                           </td>
                         </tr>
                       ) : (
                         filteredDues.map((item) => (
-                          <tr key={item.member.id} className="hover:bg-zinc-900/40 transition-colors">
+                          <tr key={item.member.id} className="hover:bg-[var(--secondary)]/40 transition-colors">
                             <td className="p-3.5">
                               <div className="flex items-center space-x-2.5">
                                 <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs uppercase shrink-0">
@@ -645,12 +645,12 @@ export default function DuesPage() {
                                 </div>
                                 <div>
                                   <p className="font-bold text-white text-xs">{item.member.name}</p>
-                                  <p className="text-[10px] text-zinc-500">{item.member.id} • {item.member.phone}</p>
+                                  <p className="text-[10px] text-[var(--muted-foreground)]/70">{item.member.id} • {item.member.phone}</p>
                                 </div>
                               </div>
                             </td>
 
-                            <td className="p-3.5 font-medium text-zinc-300">
+                            <td className="p-3.5 font-medium text-[var(--foreground)]/80">
                               {item.baseFee.toLocaleString()} TK
                             </td>
 
@@ -658,7 +658,7 @@ export default function DuesPage() {
                               {item.lateFine > 0 ? (
                                 <span className="text-rose-400 font-bold">+{item.lateFine} TK</span>
                               ) : (
-                                <span className="text-zinc-500">-</span>
+                                <span className="text-[var(--muted-foreground)]/70">-</span>
                               )}
                             </td>
 
@@ -687,7 +687,7 @@ export default function DuesPage() {
 
                             <td className="p-3.5 text-right">
                               {item.isPaid ? (
-                                <div className="text-[11px] text-zinc-500">
+                                <div className="text-[11px] text-[var(--muted-foreground)]/70">
                                   <span className="font-mono text-[10px]">{item.paidRecord?.receiptNo}</span>
                                 </div>
                               ) : user?.role === 'member' ? (
@@ -721,7 +721,7 @@ export default function DuesPage() {
         {addDueModalOpen && (
           <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
             <div 
-              className="relative w-full max-w-md bg-zinc-900 border border-zinc-750 rounded-3xl p-6 shadow-2xl shadow-black/90 backdrop-blur-xl animate-in zoom-in-95 duration-200"
+              className="relative w-full max-w-md bg-[var(--secondary)] border border-zinc-750 rounded-3xl p-6 shadow-2xl shadow-black/90 backdrop-blur-xl animate-in zoom-in-95 duration-200"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Close button */}
@@ -729,13 +729,13 @@ export default function DuesPage() {
                 type="button"
                 onClick={() => setAddDueModalOpen(false)}
                 disabled={addDueLoading}
-                className="absolute top-4 right-4 p-1.5 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded-full transition-colors cursor-pointer"
+                className="absolute top-4 right-4 p-1.5 text-[var(--muted-foreground)]/70 hover:text-[var(--foreground)]/80 hover:bg-[var(--accent)] rounded-full transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
 
               {/* Modal Header */}
-              <div className="flex items-center space-x-3 pb-4 border-b border-zinc-800 mb-4">
+              <div className="flex items-center space-x-3 pb-4 border-b border-[var(--border)] mb-4">
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center">
                   <Plus className="w-5 h-5" />
                 </div>
@@ -743,7 +743,7 @@ export default function DuesPage() {
                   <h3 className="text-base font-bold text-white tracking-tight">
                     Generate Monthly Due Demand
                   </h3>
-                  <p className="text-xs text-zinc-400">
+                  <p className="text-xs text-[var(--muted-foreground)]">
                     Apply subscription fee to all active members
                   </p>
                 </div>
@@ -752,7 +752,7 @@ export default function DuesPage() {
               <div className="space-y-4">
                 {/* Target Month */}
                 <div>
-                  <label className="block text-xs font-bold text-zinc-300 mb-1">
+                  <label className="block text-xs font-bold text-[var(--foreground)]/80 mb-1">
                     Target Month (YYYY-MM)
                   </label>
                   <input
@@ -762,13 +762,13 @@ export default function DuesPage() {
                       setNewDueMonth(e.target.value);
                       setNewDueTitle(`Monthly Subscription Fee - ${e.target.value}`);
                     }}
-                    className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--border)] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
                   />
                 </div>
 
                 {/* Due Title */}
                 <div>
-                  <label className="block text-xs font-bold text-zinc-300 mb-1">
+                  <label className="block text-xs font-bold text-[var(--foreground)]/80 mb-1">
                     Due Title / Description
                   </label>
                   <input
@@ -776,13 +776,13 @@ export default function DuesPage() {
                     value={newDueTitle}
                     onChange={(e) => setNewDueTitle(e.target.value)}
                     placeholder="e.g. Monthly Subscription Fee - 2026-10"
-                    className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--border)] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
                   />
                 </div>
 
                 {/* Amount Rule */}
                 <div>
-                  <label className="block text-xs font-bold text-zinc-300 mb-1.5">
+                  <label className="block text-xs font-bold text-[var(--foreground)]/80 mb-1.5">
                     Fee Calculation Mode
                   </label>
                   <div className="grid grid-cols-2 gap-2">
@@ -792,7 +792,7 @@ export default function DuesPage() {
                       className={`p-2.5 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer ${
                         newDueAmountType === 'member_fee'
                           ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400 shadow-sm'
-                          : 'bg-zinc-850/60 border-zinc-800 text-zinc-400 hover:text-white'
+                          : 'bg-[var(--muted)]/60 border-[var(--border)] text-[var(--muted-foreground)] hover:text-white'
                       }`}
                     >
                       Member Profile Fee
@@ -803,7 +803,7 @@ export default function DuesPage() {
                       className={`p-2.5 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer ${
                         newDueAmountType === 'fixed'
                           ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400 shadow-sm'
-                          : 'bg-zinc-850/60 border-zinc-800 text-zinc-400 hover:text-white'
+                          : 'bg-[var(--muted)]/60 border-[var(--border)] text-[var(--muted-foreground)] hover:text-white'
                       }`}
                     >
                       Fixed Amount
@@ -813,7 +813,7 @@ export default function DuesPage() {
 
                 {newDueAmountType === 'fixed' && (
                   <div>
-                    <label className="block text-xs font-bold text-zinc-300 mb-1">
+                    <label className="block text-xs font-bold text-[var(--foreground)]/80 mb-1">
                       Fixed Amount per Member (TK)
                     </label>
                     <input
@@ -821,7 +821,7 @@ export default function DuesPage() {
                       min={100}
                       value={newDueFixedAmount}
                       onChange={(e) => setNewDueFixedAmount(Number(e.target.value))}
-                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--border)] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 )}
@@ -829,7 +829,7 @@ export default function DuesPage() {
                 {/* Due Cutoff Day & Late Fine */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-zinc-300 mb-1">
+                    <label className="block text-xs font-bold text-[var(--foreground)]/80 mb-1">
                       Cutoff Day of Month
                     </label>
                     <input
@@ -838,11 +838,11 @@ export default function DuesPage() {
                       max={31}
                       value={newDueCutoffDay}
                       onChange={(e) => setNewDueCutoffDay(Number(e.target.value))}
-                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--border)] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-zinc-300 mb-1">
+                    <label className="block text-xs font-bold text-[var(--foreground)]/80 mb-1">
                       Late Fine (TK)
                     </label>
                     <input
@@ -850,14 +850,14 @@ export default function DuesPage() {
                       min={0}
                       value={newDueLateFine}
                       onChange={(e) => setNewDueLateFine(Number(e.target.value))}
-                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--border)] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 </div>
 
                 {/* Target Summary */}
-                <div className="p-3 bg-zinc-950 border border-zinc-800 rounded-2xl flex items-center justify-between">
-                  <span className="text-xs text-zinc-400">Applies to:</span>
+                <div className="p-3 bg-[var(--background)] border border-[var(--border)] rounded-2xl flex items-center justify-between">
+                  <span className="text-xs text-[var(--muted-foreground)]">Applies to:</span>
                   <span className="text-xs font-bold text-emerald-400">
                     All {activeMembers.length} Active Members
                   </span>
@@ -869,7 +869,7 @@ export default function DuesPage() {
                     type="button"
                     onClick={() => setAddDueModalOpen(false)}
                     disabled={addDueLoading}
-                    className="flex-1 py-2.5 px-4 bg-zinc-800 hover:bg-zinc-750 text-zinc-300 hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                    className="flex-1 py-2.5 px-4 bg-[var(--accent)] hover:bg-zinc-750 text-[var(--foreground)]/80 hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50"
                   >
                     Cancel
                   </button>
@@ -906,7 +906,7 @@ export default function DuesPage() {
         {collectModalOpen && selectedMember && (
           <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
             <div 
-              className="relative w-full max-w-md bg-zinc-900 border border-zinc-750 rounded-3xl p-6 shadow-2xl shadow-black/90 backdrop-blur-xl animate-in zoom-in-95 duration-200"
+              className="relative w-full max-w-md bg-[var(--secondary)] border border-zinc-750 rounded-3xl p-6 shadow-2xl shadow-black/90 backdrop-blur-xl animate-in zoom-in-95 duration-200"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Close button */}
@@ -914,13 +914,13 @@ export default function DuesPage() {
                 type="button"
                 onClick={() => setCollectModalOpen(false)}
                 disabled={collectLoading}
-                className="absolute top-4 right-4 p-1.5 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded-full transition-colors cursor-pointer"
+                className="absolute top-4 right-4 p-1.5 text-[var(--muted-foreground)]/70 hover:text-[var(--foreground)]/80 hover:bg-[var(--accent)] rounded-full transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
 
               {/* Modal Header */}
-              <div className="flex items-center space-x-3 pb-4 border-b border-zinc-800 mb-4">
+              <div className="flex items-center space-x-3 pb-4 border-b border-[var(--border)] mb-4">
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center">
                   <DollarSign className="w-5 h-5" />
                 </div>
@@ -928,7 +928,7 @@ export default function DuesPage() {
                   <h3 className="text-base font-bold text-white tracking-tight">
                     Manual Due Collection
                   </h3>
-                  <p className="text-xs text-zinc-400">
+                  <p className="text-xs text-[var(--muted-foreground)]">
                     Record payment for {selectedMember.name}
                   </p>
                 </div>
@@ -940,25 +940,25 @@ export default function DuesPage() {
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
                   <p className="text-sm font-bold text-white">{successMessage}</p>
-                  <p className="text-xs text-zinc-400">Receipt logged and accounting balances updated.</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">Receipt logged and accounting balances updated.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {/* Member & Month Summary */}
-                  <div className="p-3 bg-zinc-850/60 border border-zinc-800 rounded-2xl flex items-center justify-between">
+                  <div className="p-3 bg-[var(--muted)]/60 border border-[var(--border)] rounded-2xl flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] text-zinc-500 uppercase font-bold">Target Subscription</p>
+                      <p className="text-[10px] text-[var(--muted-foreground)]/70 uppercase font-bold">Target Subscription</p>
                       <p className="text-sm font-extrabold text-white">{targetMonth}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] text-zinc-500 uppercase font-bold">Member ID</p>
-                      <p className="text-xs font-mono text-zinc-300">{selectedMember.id}</p>
+                      <p className="text-[10px] text-[var(--muted-foreground)]/70 uppercase font-bold">Member ID</p>
+                      <p className="text-xs font-mono text-[var(--foreground)]/80">{selectedMember.id}</p>
                     </div>
                   </div>
 
                   {/* Payment Type Selection */}
                   <div>
-                    <label className="block text-xs font-bold text-zinc-300 mb-1.5">
+                    <label className="block text-xs font-bold text-[var(--foreground)]/80 mb-1.5">
                       Payment Received In
                     </label>
                     <div className="grid grid-cols-2 gap-2">
@@ -968,7 +968,7 @@ export default function DuesPage() {
                         className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
                           paymentType === 'cash'
                             ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400 shadow-sm'
-                            : 'bg-zinc-850/60 border-zinc-800 text-zinc-400 hover:text-white'
+                            : 'bg-[var(--muted)]/60 border-[var(--border)] text-[var(--muted-foreground)] hover:text-white'
                         }`}
                       >
                         <CreditCard className="w-4 h-4" />
@@ -980,7 +980,7 @@ export default function DuesPage() {
                         className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
                           paymentType === 'bank'
                             ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400 shadow-sm'
-                            : 'bg-zinc-850/60 border-zinc-800 text-zinc-400 hover:text-white'
+                            : 'bg-[var(--muted)]/60 border-[var(--border)] text-[var(--muted-foreground)] hover:text-white'
                         }`}
                       >
                         <Building2 className="w-4 h-4" />
@@ -991,7 +991,7 @@ export default function DuesPage() {
 
                   {/* Payment Date */}
                   <div>
-                    <label className="block text-xs font-bold text-zinc-300 mb-1">
+                    <label className="block text-xs font-bold text-[var(--foreground)]/80 mb-1">
                       Payment Date
                     </label>
                     <input
@@ -1002,30 +1002,30 @@ export default function DuesPage() {
                         const day = Number(e.target.value.split('-')[2] || 1);
                         setCustomLateFine(day > 10 ? 50 : 0);
                       }}
-                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
+                      className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--border)] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
                     />
                   </div>
 
                   {/* Late Fine adjustment */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-bold text-zinc-300">
+                      <label className="text-xs font-bold text-[var(--foreground)]/80">
                         Late Fine (TK)
                       </label>
-                      <span className="text-[10px] text-zinc-500">Auto applies after 10th</span>
+                      <span className="text-[10px] text-[var(--muted-foreground)]/70">Auto applies after 10th</span>
                     </div>
                     <input
                       type="number"
                       min={0}
                       value={customLateFine}
                       onChange={(e) => setCustomLateFine(Number(e.target.value))}
-                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--border)] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
                     />
                   </div>
 
                   {/* Total Calculation */}
-                  <div className="p-3 bg-zinc-950 border border-zinc-800 rounded-2xl flex items-center justify-between">
-                    <span className="text-xs font-bold text-zinc-400">Total To Collect:</span>
+                  <div className="p-3 bg-[var(--background)] border border-[var(--border)] rounded-2xl flex items-center justify-between">
+                    <span className="text-xs font-bold text-[var(--muted-foreground)]">Total To Collect:</span>
                     <span className="text-base font-black text-emerald-400">
                       {((selectedMember.monthlyFee || 1000) + customLateFine).toLocaleString()} TK
                     </span>
@@ -1037,7 +1037,7 @@ export default function DuesPage() {
                       type="button"
                       onClick={() => setCollectModalOpen(false)}
                       disabled={collectLoading}
-                      className="flex-1 py-2.5 px-4 bg-zinc-800 hover:bg-zinc-750 text-zinc-300 hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                      className="flex-1 py-2.5 px-4 bg-[var(--accent)] hover:bg-zinc-750 text-[var(--foreground)]/80 hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50"
                     >
                       Cancel
                     </button>
