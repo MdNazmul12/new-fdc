@@ -27,7 +27,9 @@ interface StoreContextProps {
   deleteMember: (id: string) => void;
   
   // Collection actions
-  addCollection: (collection: Omit<Collection, 'id' | 'receiptNo' | 'date'> & { date?: string }) => Collection;
+  addCollection: (collection: Omit<Collection, 'id' | 'receiptNo' | 'date' | 'status'> & { date?: string; status?: 'paid' | 'pending'; transactionRef?: string; notes?: string }) => Collection;
+  approveCollection: (id: string, approvedBy?: string) => Promise<boolean>;
+  rejectCollection: (id: string, reason?: string) => Promise<boolean>;
   importCollections: (collections: Omit<Collection, 'id' | 'receiptNo' | 'date'>[]) => Promise<Collection[]>;
   deleteCollection: (id: string) => void;
   
@@ -548,41 +550,138 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // ---------------- COLLECTIONS ACTIONS ----------------
-  const addCollection = (collData: Omit<Collection, 'id' | 'receiptNo' | 'date'> & { date?: string }) => {
+  const addCollection = (collData: Omit<Collection, 'id' | 'receiptNo' | 'date' | 'status'> & { date?: string; status?: 'paid' | 'pending'; transactionRef?: string; notes?: string }) => {
     const today = new Date().toISOString().split('T')[0];
+    const status = collData.status || 'paid';
     const newColl: Collection = {
       ...collData,
       id: `c-${Date.now()}`,
       date: collData.date || today,
       receiptNo: `REC-${collData.month.replace('-', '')}-${Math.floor(100 + Math.random() * 900)}`,
-      status: 'paid'
+      status,
+      submittedAt: new Date().toISOString()
     };
     const updated = [newColl, ...collections];
     setCollections(updated);
     syncToDbAndLocal('collections', updated, 'create', newColl);
 
-    // Record Ledger Entry
+    if (status === 'paid') {
+      // Record Ledger Entry only if already verified paid
+      const account = (collData.paymentType === 'cash') ? 'cash' : 'bank';
+      recordTransaction(
+        'credit',
+        account,
+        collData.amount + (collData.lateFine || 0),
+        'Collection',
+        newColl.id,
+        `Monthly collection for ${collData.memberName} (${collData.month})`
+      );
+
+      addAuditLog(`Recorded Collection: ${newColl.amount} TK for ${newColl.memberName}`, 'treasurer', 'System Log');
+      
+      // Auto-dispatch confirmation notification to member profile
+      addNotification({
+        userId: newColl.memberId,
+        title: `Payment Received (${newColl.month})`,
+        message: `Tk ${newColl.amount + (newColl.lateFine || 0)} deposited for ${newColl.month} via ${newColl.paymentType.toUpperCase()}. Receipt No: ${newColl.receiptNo}.`,
+        type: 'success',
+        link: '/members/profile'
+      });
+    } else {
+      // Status is 'pending' - Member submitted payment awaiting Admin approval
+      addAuditLog(`Member Payment Submitted (Pending Approval): ${newColl.amount} TK for ${newColl.memberName} (${newColl.month})`, 'member', newColl.memberName);
+
+      // Notification to Admins / Collectors
+      addNotification({
+        userId: 'all',
+        title: `Pending Payment Submission (${newColl.memberName})`,
+        message: `${newColl.memberName} submitted Tk ${newColl.amount + (newColl.lateFine || 0)} for ${newColl.month} via ${newColl.paymentType.toUpperCase()}.${newColl.transactionRef ? ' TrxID: ' + newColl.transactionRef : ''} Verification & approval required.`,
+        type: 'warning',
+        link: '/collections'
+      });
+
+      // Notification to Member
+      addNotification({
+        userId: newColl.memberId,
+        title: `Payment Submitted for Review (${newColl.month})`,
+        message: `Your payment submission of Tk ${newColl.amount + (newColl.lateFine || 0)} for ${newColl.month} is pending admin approval. Dues will be cleared once verified.`,
+        type: 'warning',
+        link: '/members/profile'
+      });
+    }
+
+    return newColl;
+  };
+
+  const approveCollection = async (id: string, approvedByAdminName?: string): Promise<boolean> => {
+    const col = collections.find(c => c.id === id);
+    if (!col) return false;
+
+    const approvedAt = new Date().toISOString();
+    const approvedBy = approvedByAdminName || 'Admin';
+
+    const updatedCol: Collection = {
+      ...col,
+      status: 'paid',
+      approvedBy,
+      approvedAt
+    };
+
+    const updatedCollections = collections.map(c => c.id === id ? updatedCol : c);
+    setCollections(updatedCollections);
+    await syncToDbAndLocal('collections', updatedCollections, 'update', { filter: { id }, update: updatedCol });
+
+    // Record Ledger Entry now that the payment is approved
+    const totalAmt = updatedCol.amount + (updatedCol.lateFine || 0);
+    const account = (updatedCol.paymentType === 'cash') ? 'cash' : 'bank';
     recordTransaction(
       'credit',
-      collData.paymentType,
-      collData.amount + collData.lateFine,
+      account,
+      totalAmt,
       'Collection',
-      newColl.id,
-      `Monthly collection for ${collData.memberName} (${collData.month})`
+      updatedCol.id,
+      `Monthly collection for ${updatedCol.memberName} (${updatedCol.month}) [Approved by ${approvedBy}]`
     );
 
-    addAuditLog(`Recorded Collection: ${newColl.amount} TK for ${newColl.memberName}`, 'treasurer', 'System Log');
-    
-    // Auto-dispatch confirmation notification to member profile
-    addNotification({
-      userId: newColl.memberId,
-      title: `Payment Received (${newColl.month})`,
-      message: `Tk ${newColl.amount + (newColl.lateFine || 0)} deposited for ${newColl.month} via ${newColl.paymentType.toUpperCase()}. Receipt No: ${newColl.receiptNo}.`,
+    addAuditLog(`Approved Member Payment: ${updatedCol.amount} TK for ${updatedCol.memberName} (${updatedCol.month})`, 'super_admin', approvedBy);
+
+    // Notify member that payment has been approved and dues are cleared
+    await addNotification({
+      userId: updatedCol.memberId,
+      title: `Payment Approved (${updatedCol.month})`,
+      message: `Your payment of Tk ${totalAmt} for ${updatedCol.month} has been approved by ${approvedBy}. Receipt No: ${updatedCol.receiptNo}. Dues cleared!`,
       type: 'success',
       link: '/members/profile'
     });
 
-    return newColl;
+    return true;
+  };
+
+  const rejectCollection = async (id: string, reason?: string): Promise<boolean> => {
+    const col = collections.find(c => c.id === id);
+    if (!col) return false;
+
+    const updatedCol: Collection = {
+      ...col,
+      status: 'rejected',
+      notes: reason ? `${col.notes ? col.notes + ' | ' : ''}Rejected: ${reason}` : col.notes
+    };
+
+    const updatedCollections = collections.map(c => c.id === id ? updatedCol : c);
+    setCollections(updatedCollections);
+    await syncToDbAndLocal('collections', updatedCollections, 'update', { filter: { id }, update: updatedCol });
+
+    addAuditLog(`Rejected Member Payment Submission: ${col.amount} TK for ${col.memberName} (${col.month})`, 'super_admin', 'Admin');
+
+    await addNotification({
+      userId: col.memberId,
+      title: `Payment Submission Not Approved (${col.month})`,
+      message: `Your payment submission of Tk ${col.amount + (col.lateFine || 0)} for ${col.month} was rejected.${reason ? ' Reason: ' + reason : ''} Please check and re-submit or contact admin.`,
+      type: 'alert',
+      link: '/members/profile'
+    });
+
+    return true;
   };
 
   const importCollections = async (collectionsList: Omit<Collection, 'id' | 'receiptNo' | 'date'>[]): Promise<Collection[]> => {
@@ -613,7 +712,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         id: `t-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
         date: c.date,
         type: 'credit',
-        account: c.paymentType,
+        account: c.paymentType === 'cash' ? 'cash' : 'bank',
         amount: totalAmt,
         category: 'Collection',
         referenceId: c.id,
@@ -639,7 +738,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Record Reversal Transaction
     recordTransaction(
       'debit',
-      col.paymentType,
+      col.paymentType === 'cash' ? 'cash' : 'bank',
       col.amount + col.lateFine,
       'Other',
       id,
@@ -1161,6 +1260,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateMemberPhoto,
         deleteMember,
         addCollection,
+        approveCollection,
+        rejectCollection,
         importCollections,
         deleteCollection,
         addInvestment,

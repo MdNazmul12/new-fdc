@@ -34,11 +34,16 @@ export interface Collection {
   amount: number;
   month: string; // Format: "YYYY-MM"
   date: string; // Format: "YYYY-MM-DD"
-  paymentType: 'cash' | 'bank';
+  paymentType: 'cash' | 'bank' | 'bkash' | 'nagad';
   lateFine: number;
   receiptNo: string;
-  status: 'paid' | 'due' | 'pending';
-  collectedBy: string; // Collector's name or Treasurer's name
+  status: 'paid' | 'due' | 'pending' | 'rejected';
+  collectedBy: string; // Collector's name or Treasurer's name or Member Submission
+  transactionRef?: string;
+  notes?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  submittedAt?: string;
 }
 
 export interface DueDemand {

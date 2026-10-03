@@ -21,9 +21,13 @@ import {
   Bell,
   Check,
   ExternalLink,
-  ShieldAlert
+  ShieldAlert,
+  CreditCard,
+  Clock,
+  CheckCircle
 } from 'lucide-react';
 import PrintableReceipt from '../../../components/receipt';
+import PaymentSubmitModal from '../../../components/payment-submit-modal';
 
 export default function MemberProfilePage() {
   const { user } = useAuth();
@@ -91,6 +95,12 @@ export default function MemberProfilePage() {
   const [selectedReceipt, setSelectedReceipt] = useState<Collection | null>(null);
   const [printOpen, setPrintOpen] = useState(false);
 
+  // States for member self-payment submission modal
+  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [payModalMonth, setPayModalMonth] = useState('');
+  const [payModalAmount, setPayModalAmount] = useState(1000);
+  const [payModalFine, setPayModalFine] = useState(0);
+
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -151,6 +161,7 @@ export default function MemberProfilePage() {
   // Real dynamic due demands for this member (must be before early return — React hooks order)
   const memberUnpaidDues = React.useMemo(() => {
     if (!memberProfile?.id) return [];
+    const today = new Date().toISOString().slice(0, 10);
     return dueDemands.map(demand => {
       const isPaid = collections.some(
         c => (
@@ -162,14 +173,43 @@ export default function MemberProfilePage() {
         ) && c.month === demand.month && c.status === 'paid'
       );
       if (isPaid) return null;
+
+      const pendingRecord = collections.find(
+        c => (
+          c.memberId === memberProfile.id || 
+          (user?.memberId && c.memberId === user.memberId) ||
+          (user?.id && (c.memberId === user.id || c.memberId === user.id.replace('u-', 'm-'))) ||
+          (memberProfile.name && c.memberName?.toLowerCase() === memberProfile.name.toLowerCase()) ||
+          (user?.name && c.memberName?.toLowerCase() === user.name.toLowerCase())
+        ) && c.month === demand.month && c.status === 'pending'
+      );
+
       const baseFee = demand.amountType === 'fixed'
         ? (demand.fixedAmount || 1000)
         : (memberProfile.monthlyFee || 1000);
-      return { ...demand, baseFee };
-    }).filter(Boolean) as (typeof dueDemands[0] & { baseFee: number })[];
+      const isPending = !!pendingRecord;
+      const isOverdue = !isPending && today > demand.dueDate;
+      const fine = isOverdue ? (demand.lateFine || 50) : 0;
+      return { 
+        ...demand, 
+        baseFee, 
+        fine, 
+        pendingRecord, 
+        isPending,
+        isOverdue,
+        totalPayable: baseFee + fine
+      };
+    }).filter(Boolean) as (typeof dueDemands[0] & { 
+      baseFee: number; 
+      fine: number; 
+      pendingRecord?: Collection; 
+      isPending: boolean;
+      isOverdue: boolean;
+      totalPayable: number;
+    })[];
   }, [dueDemands, collections, memberProfile, user]);
 
-  const totalDueAmount = memberUnpaidDues.reduce((sum, d) => sum + d.baseFee, 0);
+  const totalDueAmount = memberUnpaidDues.reduce((sum, d) => sum + d.totalPayable, 0);
 
   // Filter notifications relevant to this member (must be before early return)
   const memberNotifications = React.useMemo(() => {
@@ -193,9 +233,14 @@ export default function MemberProfilePage() {
       (user?.id && (c.memberId === user.id || c.memberId === user.id.replace('u-', 'm-'))) ||
       (memberProfile.name && c.memberName?.toLowerCase() === memberProfile.name.toLowerCase()) ||
       (user?.name && c.memberName?.toLowerCase() === user.name.toLowerCase())
-    );
+    ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [collections, memberProfile, user]);
-  const totalPaid = myPayments.reduce((sum, p) => sum + p.amount + p.lateFine, 0);
+
+  const myPaidPayments = React.useMemo(() => myPayments.filter(p => p.status === 'paid'), [myPayments]);
+  const myPendingPayments = React.useMemo(() => myPayments.filter(p => p.status === 'pending'), [myPayments]);
+
+  const totalPaid = myPaidPayments.reduce((sum, p) => sum + p.amount + (p.lateFine || 0), 0);
+  const totalPending = myPendingPayments.reduce((sum, p) => sum + p.amount + (p.lateFine || 0), 0);
 
   const handlePrintReceipt = (receipt: Collection) => {
     setSelectedReceipt(receipt);
@@ -334,20 +379,53 @@ export default function MemberProfilePage() {
           {/* Card 3: Due tracker */}
           <div className="glass-panel p-5 rounded-2xl flex flex-col justify-between">
             <div>
-              <h3 className="text-xs font-bold text-[var(--card-foreground)] mb-3">Outstanding Dues Summary</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-bold text-[var(--card-foreground)]">Outstanding Dues Summary</h3>
+                {memberUnpaidDues.some(d => !d.isPending) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const firstUnpaid = memberUnpaidDues.find(d => !d.isPending);
+                      if (firstUnpaid) {
+                        setPayModalMonth(firstUnpaid.month);
+                        setPayModalAmount(firstUnpaid.baseFee);
+                        setPayModalFine(firstUnpaid.fine);
+                        setPayModalOpen(true);
+                      }
+                    }}
+                    className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold rounded-lg shadow-sm transition-all cursor-pointer inline-flex items-center space-x-1"
+                  >
+                    <CreditCard className="w-3 h-3" />
+                    <span>Pay Dues</span>
+                  </button>
+                )}
+              </div>
               
-              <div className="space-y-3">
+              <div className="space-y-2.5">
+                {/* Total Contribution Approved */}
                 <div className="flex justify-between items-center p-3 bg-[var(--background)]/40 border border-[var(--border)] rounded-xl">
                   <div>
-                    <p className="text-[9px] uppercase font-bold text-[var(--muted-foreground)]/70">Total Contribution</p>
-                    <p className="text-base font-extrabold text-white mt-0.5">{totalPaid.toLocaleString()} TK</p>
+                    <p className="text-[9px] uppercase font-bold text-[var(--muted-foreground)]/70">Approved Contribution</p>
+                    <p className="text-base font-extrabold text-emerald-400 mt-0.5">{totalPaid.toLocaleString()} TK</p>
                   </div>
                   <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-lg"><CheckCircle2 className="w-5 h-5" /></div>
                 </div>
 
+                {/* Pending Approval Submissions (if any) */}
+                {totalPending > 0 && (
+                  <div className="flex justify-between items-center p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl animate-pulse">
+                    <div>
+                      <p className="text-[9px] uppercase font-bold text-amber-400">Awaiting Admin Approval (অপেক্ষমান)</p>
+                      <p className="text-base font-extrabold text-amber-300 mt-0.5">{totalPending.toLocaleString()} TK</p>
+                    </div>
+                    <div className="p-2.5 bg-amber-500/20 text-amber-300 rounded-lg"><Clock className="w-5 h-5" /></div>
+                  </div>
+                )}
+
+                {/* Outstanding Dues */}
                 <div className="flex justify-between items-center p-3 bg-[var(--background)]/40 border border-[var(--border)] rounded-xl">
                   <div>
-                    <p className="text-[9px] uppercase font-bold text-[var(--muted-foreground)]/70">Pending Dues ({memberUnpaidDues.length} Months)</p>
+                    <p className="text-[9px] uppercase font-bold text-[var(--muted-foreground)]/70">Outstanding Dues ({memberUnpaidDues.length} Months)</p>
                     <p className="text-base font-extrabold text-amber-500 mt-0.5">{totalDueAmount.toLocaleString()} TK</p>
                   </div>
                   <div className="p-2.5 bg-amber-500/10 text-amber-400 rounded-lg"><AlertCircle className="w-5 h-5" /></div>
@@ -355,13 +433,31 @@ export default function MemberProfilePage() {
               </div>
             </div>
 
-            <div className="text-[9px] text-[var(--muted-foreground)]/70 mt-4 pt-3 border-t border-[var(--border)]">
+            <div className="text-[10px] text-[var(--muted-foreground)] mt-3 pt-3 border-t border-[var(--border)] space-y-1.5">
               {memberUnpaidDues.length > 0 ? (
-                <span className="text-amber-500 font-semibold">
-                  Dues pending: {memberUnpaidDues.map(d => d.month).join(', ')}
-                </span>
+                <div className="space-y-1">
+                  <div className="font-semibold text-amber-400">Dues breakdown by month:</div>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {memberUnpaidDues.map((d) => (
+                      <span 
+                        key={d.id} 
+                        className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                          d.isPending 
+                            ? 'bg-amber-500/15 border-amber-500/30 text-amber-400' 
+                            : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                        }`}
+                      >
+                        {d.isPending ? <Clock className="w-2.5 h-2.5" /> : <AlertCircle className="w-2.5 h-2.5" />}
+                        <span>{d.month}: {d.isPending ? 'Pending Approval' : `${d.totalPayable} TK`}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
               ) : (
-                <span className="text-emerald-400 font-semibold">All subscription payments are up to date!</span>
+                <div className="flex items-center space-x-1.5 text-emerald-400 font-semibold">
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  <span>All subscription payments are cleared and up to date!</span>
+                </div>
               )}
             </div>
           </div>
@@ -475,55 +571,119 @@ export default function MemberProfilePage() {
 
         {/* Payment History List */}
         <div className="glass-panel p-5 rounded-2xl">
-          <div className="mb-4">
-            <h3 className="text-xs font-bold text-[var(--card-foreground)]">Subscription & Contribution Ledger</h3>
-            <p className="text-[10px] text-[var(--muted-foreground)]/70">Receipts directory logged under your profile</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h3 className="text-xs font-bold text-[var(--card-foreground)]">Subscription & Contribution Ledger</h3>
+              <p className="text-[10px] text-[var(--muted-foreground)]/70">Receipts and submission records logged under your profile</p>
+            </div>
+            {memberUnpaidDues.some(d => !d.isPending) && (
+              <button
+                type="button"
+                onClick={() => {
+                  const firstUnpaid = memberUnpaidDues.find(d => !d.isPending);
+                  if (firstUnpaid) {
+                    setPayModalMonth(firstUnpaid.month);
+                    setPayModalAmount(firstUnpaid.baseFee);
+                    setPayModalFine(firstUnpaid.fine);
+                    setPayModalOpen(true);
+                  }
+                }}
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/20 transition-all cursor-pointer inline-flex items-center space-x-1.5 self-start sm:self-auto"
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                <span>Submit Subscription Payment</span>
+              </button>
+            )}
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
-                  <th className="pb-2 font-semibold">Date Paid</th>
-                  <th className="pb-2 font-semibold">Receipt No.</th>
+                  <th className="pb-2 font-semibold">Date</th>
+                  <th className="pb-2 font-semibold">Receipt / Ref</th>
                   <th className="pb-2 font-semibold">Target Month</th>
                   <th className="pb-2 font-semibold">Base Amount</th>
                   <th className="pb-2 font-semibold">Late Fine</th>
                   <th className="pb-2 font-semibold">Payment Via</th>
-                  <th className="pb-2 font-semibold text-right">Invoice</th>
+                  <th className="pb-2 font-semibold text-center">Status</th>
+                  <th className="pb-2 font-semibold text-right">Invoice / Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
                 {myPayments.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-6 text-center text-[var(--muted-foreground)]/70">No payment logs recorded yet.</td>
+                    <td colSpan={8} className="py-6 text-center text-[var(--muted-foreground)]/70">No payment logs recorded yet.</td>
                   </tr>
                 ) : (
-                  myPayments.map((p) => (
-                    <tr key={p.id} className="hover:bg-[var(--secondary)]/30 transition-colors">
-                      <td className="py-3 text-[var(--muted-foreground)]">{p.date}</td>
-                      <td className="py-3 text-[var(--card-foreground)] font-medium">{p.receiptNo}</td>
-                      <td className="py-3 text-indigo-400 font-semibold">{p.month}</td>
-                      <td className="py-3 text-[var(--foreground)]/80 font-bold">{p.amount.toLocaleString()} TK</td>
-                      <td className="py-3 text-[var(--muted-foreground)]">
-                        {p.lateFine > 0 ? (
-                          <span className="text-rose-400 font-semibold">+{p.lateFine} TK</span>
-                        ) : (
-                          <span>0 TK</span>
-                        )}
-                      </td>
-                      <td className="py-3 capitalize text-[var(--muted-foreground)]">{p.paymentType}</td>
-                      <td className="py-3 text-right">
-                        <button
-                          onClick={() => handlePrintReceipt(p)}
-                          className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-[var(--accent)] hover:bg-zinc-700 text-indigo-400 font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
-                        >
-                          <Printer className="w-3.5 h-3.5" />
-                          <span>Receipt Duplicate</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  myPayments.map((p) => {
+                    const isPending = p.status === 'pending';
+                    const isRejected = p.status === 'rejected';
+                    const isPaid = p.status === 'paid' || (!p.status && true);
+
+                    return (
+                      <tr key={p.id} className="hover:bg-[var(--secondary)]/30 transition-colors">
+                        <td className="py-3 text-[var(--muted-foreground)]">{p.date}</td>
+                        <td className="py-3 text-[var(--card-foreground)] font-mono text-[11px] font-medium">
+                          {p.receiptNo}
+                          {p.transactionRef && (
+                            <span className="block text-[10px] text-[var(--muted-foreground)]">Trx: {p.transactionRef}</span>
+                          )}
+                        </td>
+                        <td className="py-3 text-indigo-400 font-semibold">{p.month}</td>
+                        <td className="py-3 text-[var(--foreground)]/80 font-bold">{p.amount.toLocaleString()} TK</td>
+                        <td className="py-3 text-[var(--muted-foreground)]">
+                          {(p.lateFine || 0) > 0 ? (
+                            <span className="text-rose-400 font-semibold">+{p.lateFine} TK</span>
+                          ) : (
+                            <span>0 TK</span>
+                          )}
+                        </td>
+                        <td className="py-3 capitalize text-[var(--muted-foreground)]">{p.paymentType}</td>
+                        
+                        {/* Status Column */}
+                        <td className="py-3 text-center">
+                          {isPaid ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 inline-flex items-center space-x-1">
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>PAID</span>
+                            </span>
+                          ) : isPending ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/15 text-amber-400 border border-amber-500/30 inline-flex items-center space-x-1 animate-pulse">
+                              <Clock className="w-3 h-3" />
+                              <span>PENDING APPROVAL</span>
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/15 text-rose-400 border border-rose-500/30 inline-flex items-center space-x-1">
+                              <AlertCircle className="w-3 h-3" />
+                              <span>REJECTED</span>
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Invoice / Action */}
+                        <td className="py-3 text-right">
+                          {isPaid ? (
+                            <button
+                              onClick={() => handlePrintReceipt(p)}
+                              className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-[var(--accent)] hover:bg-zinc-700 text-indigo-400 font-bold rounded-lg text-[10px] transition-colors cursor-pointer"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                              <span>Receipt Duplicate</span>
+                            </button>
+                          ) : isPending ? (
+                            <span className="text-[11px] text-amber-400 font-semibold">
+                              Awaiting Admin Review
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-rose-400 font-semibold">
+                              Rejected
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -574,6 +734,24 @@ export default function MemberProfilePage() {
             </div>
 
           </div>
+        )}
+
+        {/* Member Self-Payment Modal */}
+        {payModalOpen && (
+          <PaymentSubmitModal
+            isOpen={payModalOpen}
+            onClose={() => setPayModalOpen(false)}
+            memberId={memberProfile.id}
+            memberName={memberProfile.name}
+            defaultMonth={payModalMonth}
+            defaultAmount={payModalAmount}
+            defaultFine={payModalFine}
+            unpaidMonths={memberUnpaidDues.filter(d => !d.isPending).map(d => ({
+              month: d.month,
+              fee: d.baseFee,
+              fine: d.fine
+            }))}
+          />
         )}
 
       </div>

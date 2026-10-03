@@ -31,9 +31,10 @@ import {
   Tag
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import PaymentSubmitModal from '../../components/payment-submit-modal';
 
 export default function DuesPage() {
-  const { members, collections, addCollection, dueDemands, addDueDemand, deleteDueDemand } = useStore();
+  const { stats, members, collections, addCollection, dueDemands, addDueDemand, deleteDueDemand } = useStore();
   const { user, hasPermission } = useAuth();
 
   const canManageDues = user?.role === 'super_admin' || user?.role === 'treasurer' || user?.role === 'president';
@@ -55,7 +56,14 @@ export default function DuesPage() {
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'due' | 'paid'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'due' | 'paid' | 'pending'>('all');
+
+  // Member self-payment modal state
+  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [payModalMember, setPayModalMember] = useState<Member | null>(null);
+  const [payModalMonth, setPayModalMonth] = useState<string>(currentMonthStr);
+  const [payModalAmount, setPayModalAmount] = useState<number>(1000);
+  const [payModalFine, setPayModalFine] = useState<number>(0);
 
   // Manual Collection Modal state
   const [collectModalOpen, setCollectModalOpen] = useState(false);
@@ -149,32 +157,51 @@ export default function DuesPage() {
       const paidRecord = collections.find(
         c => (c.memberId === member.id || 
               (user?.memberId && c.memberId === user.memberId) || 
-              (user?.id && c.memberId === user.id) ||
-              (member.name && c.memberName?.toLowerCase() === member.name?.toLowerCase())) && 
+              (user?.id && (c.memberId === user.id || c.memberId === user.id.replace('u-', 'm-'))) ||
+              (member.name && c.memberName?.toLowerCase() === member.name?.toLowerCase()) ||
+              (user?.name && c.memberName?.toLowerCase() === user.name?.toLowerCase())) && 
              c.month === targetMonth && 
              c.status === 'paid'
       );
 
+      // Find if there is a pending submission for this member in targetMonth
+      const pendingRecord = collections.find(
+        c => (c.memberId === member.id || 
+              (user?.memberId && c.memberId === user.memberId) || 
+              (user?.id && (c.memberId === user.id || c.memberId === user.id.replace('u-', 'm-'))) ||
+              (member.name && c.memberName?.toLowerCase() === member.name?.toLowerCase()) ||
+              (user?.name && c.memberName?.toLowerCase() === user.name?.toLowerCase())) && 
+             c.month === targetMonth && 
+             c.status === 'pending'
+      );
+
       const isPaid = !!paidRecord;
+      const isPending = !isPaid && !!pendingRecord;
       const baseFee = activeDemand.amountType === 'fixed' 
         ? (activeDemand.fixedAmount || 1000) 
         : (member.monthlyFee || 1000);
       
-      // Calculate late fine: if not paid and selected date is after cutoff
-      const lateFine = !isPaid && isSelectedDateAfterCutoff ? activeDemand.lateFine : 0;
-      const totalPayable = isPaid ? (paidRecord.amount + (paidRecord.lateFine || 0)) : (baseFee + lateFine);
+      // Calculate late fine: if not paid & not pending and selected date is after cutoff
+      const lateFine = !isPaid && !isPending && isSelectedDateAfterCutoff ? activeDemand.lateFine : 0;
+      const totalPayable = isPaid 
+        ? (paidRecord.amount + (paidRecord.lateFine || 0)) 
+        : isPending 
+          ? (pendingRecord.amount + (pendingRecord.lateFine || 0))
+          : (baseFee + lateFine);
 
       return {
         member,
         isPaid,
+        isPending,
         paidRecord,
+        pendingRecord,
         baseFee,
         lateFine,
         totalPayable,
         targetMonth
       };
     });
-  }, [activeMembers, collections, targetMonth, activeDemand, isSelectedDateAfterCutoff]);
+  }, [activeMembers, collections, targetMonth, activeDemand, isSelectedDateAfterCutoff, user]);
 
   // Filtered list
   const filteredDues = useMemo(() => {
@@ -186,8 +213,9 @@ export default function DuesPage() {
 
       if (!matchesSearch) return false;
 
-      if (statusFilter === 'due') return !item.isPaid;
+      if (statusFilter === 'due') return !item.isPaid && !item.isPending;
       if (statusFilter === 'paid') return item.isPaid;
+      if (statusFilter === 'pending') return item.isPending;
       return true;
     });
   }, [duesList, searchQuery, statusFilter]);
@@ -196,15 +224,16 @@ export default function DuesPage() {
   const metrics = useMemo(() => {
     const total = duesList.length;
     const paidCount = duesList.filter(d => d.isPaid).length;
-    const dueCount = duesList.filter(d => !d.isPaid).length;
+    const pendingCount = duesList.filter(d => d.isPending).length;
+    const dueCount = duesList.filter(d => !d.isPaid && !d.isPending).length;
     const totalDueAmount = duesList
       .filter(d => !d.isPaid)
       .reduce((sum, d) => sum + d.totalPayable, 0);
     const totalCollected = duesList
       .filter(d => d.isPaid)
-      .reduce((sum, d) => sum + (d.paidRecord?.amount || 0), 0);
+      .reduce((sum, d) => sum + (d.paidRecord?.amount || 0) + (d.paidRecord?.lateFine || 0), 0);
 
-    return { total, paidCount, dueCount, totalDueAmount, totalCollected };
+    return { total, paidCount, pendingCount, dueCount, totalDueAmount, totalCollected };
   }, [duesList]);
 
   // Open manual collection modal for a member
@@ -448,6 +477,40 @@ export default function DuesPage() {
           </div>
         </div>
 
+        {/* Foundation Overall Metrics Banner (Visible to ALL users) */}
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-900/30 via-[var(--secondary)] to-emerald-950/20 border border-indigo-500/20">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+            <div className="flex items-center space-x-2">
+              <Building2 className="w-4 h-4 text-indigo-400" />
+              <span className="text-xs font-bold text-white uppercase tracking-wider">Foundation Overall Status (সার্বিক তথ্য - সকল সদস্য)</span>
+            </div>
+            <span className="text-[10px] text-[var(--muted-foreground)]">Live aggregated across all foundation members</span>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="p-3 bg-[var(--background)]/60 rounded-xl border border-[var(--border)]">
+              <p className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase">Overall Total Collection</p>
+              <p className="text-lg font-black text-emerald-400 mt-1">{(stats?.totalCollection || 0).toLocaleString()} TK</p>
+              <p className="text-[9px] text-[var(--muted-foreground)]/70 mt-0.5">Approved & deposited funds</p>
+            </div>
+            <div className="p-3 bg-[var(--background)]/60 rounded-xl border border-[var(--border)]">
+              <p className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase">Overall Total Dues</p>
+              <p className="text-lg font-black text-amber-400 mt-1">{(stats?.dueCollection || 0).toLocaleString()} TK</p>
+              <p className="text-[9px] text-[var(--muted-foreground)]/70 mt-0.5">Uncollected subscriptions</p>
+            </div>
+            <div className="p-3 bg-[var(--background)]/60 rounded-xl border border-[var(--border)]">
+              <p className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase">Active Members</p>
+              <p className="text-lg font-black text-white mt-1">{stats?.activeMembers || 0}</p>
+              <p className="text-[9px] text-[var(--muted-foreground)]/70 mt-0.5">Contributing members</p>
+            </div>
+            <div className="p-3 bg-[var(--background)]/60 rounded-xl border border-[var(--border)]">
+              <p className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase">Total Investments</p>
+              <p className="text-lg font-black text-indigo-400 mt-1">{(stats?.totalInvestment || 0).toLocaleString()} TK</p>
+              <p className="text-[9px] text-[var(--muted-foreground)]/70 mt-0.5">Active portfolio funds</p>
+            </div>
+          </div>
+        </div>
+
         {/* Top KPI Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="glass-card p-4 rounded-2xl border border-[var(--border)]">
@@ -534,7 +597,7 @@ export default function DuesPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-1.5 pt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1">
                 <button
                   type="button"
                   onClick={() => setStatusFilter('all')}
@@ -556,6 +619,17 @@ export default function DuesPage() {
                   }`}
                 >
                   Dues ({metrics.dueCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('pending')}
+                  className={`py-1.5 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    statusFilter === 'pending'
+                      ? 'bg-amber-500 text-black shadow-sm font-black'
+                      : 'bg-[var(--accent)]/80 text-amber-400 hover:text-amber-300'
+                  }`}
+                >
+                  Pending ({metrics.pendingCount})
                 </button>
                 <button
                   type="button"
@@ -672,6 +746,11 @@ export default function DuesPage() {
                                   <CheckCircle2 className="w-3 h-3" />
                                   <span>PAID</span>
                                 </span>
+                              ) : item.isPending ? (
+                                <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-500/15 text-amber-400 border border-amber-500/30 inline-flex items-center space-x-1 animate-pulse">
+                                  <Clock className="w-3 h-3" />
+                                  <span>PENDING APPROVAL</span>
+                                </span>
                               ) : item.lateFine > 0 ? (
                                 <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-rose-500/10 text-rose-400 border border-rose-500/20 inline-flex items-center space-x-1">
                                   <AlertTriangle className="w-3 h-3" />
@@ -690,10 +769,26 @@ export default function DuesPage() {
                                 <div className="text-[11px] text-[var(--muted-foreground)]/70">
                                   <span className="font-mono text-[10px]">{item.paidRecord?.receiptNo}</span>
                                 </div>
-                              ) : user?.role === 'member' ? (
-                                <span className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 text-xs font-semibold">
-                                  Payment Due
+                              ) : item.isPending ? (
+                                <span className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 text-xs font-semibold inline-flex items-center space-x-1">
+                                  <Clock className="w-3 h-3" />
+                                  <span>Awaiting Review</span>
                                 </span>
+                              ) : user?.role === 'member' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPayModalMember(item.member);
+                                    setPayModalMonth(item.targetMonth);
+                                    setPayModalAmount(item.baseFee);
+                                    setPayModalFine(item.lateFine);
+                                    setPayModalOpen(true);
+                                  }}
+                                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/20 transition-all cursor-pointer inline-flex items-center space-x-1"
+                                >
+                                  <CreditCard className="w-3 h-3" />
+                                  <span>Pay / Submit</span>
+                                </button>
                               ) : (
                                 <button
                                   type="button"
@@ -1055,6 +1150,24 @@ export default function DuesPage() {
               )}
             </div>
           </div>
+        )}
+
+        {/* Member Self-Payment Modal */}
+        {payModalOpen && (
+          <PaymentSubmitModal
+            isOpen={payModalOpen}
+            onClose={() => setPayModalOpen(false)}
+            memberId={payModalMember?.id || user?.id || ''}
+            memberName={payModalMember?.name || user?.name || ''}
+            defaultMonth={payModalMonth}
+            defaultAmount={payModalAmount}
+            defaultFine={payModalFine}
+            unpaidMonths={duesList.filter(d => !d.isPaid && !d.isPending).map(d => ({
+              month: d.targetMonth,
+              fee: d.baseFee,
+              fine: d.lateFine
+            }))}
+          />
         )}
 
       </div>

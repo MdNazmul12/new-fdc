@@ -22,7 +22,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, Record<string, string[]>> = {
   super_admin: {
     dashboard: ['view'],
     members: ['view', 'create', 'update', 'delete', 'export'],
-    collections: ['view', 'create', 'update', 'delete', 'export', 'print'],
+    collections: ['view', 'create', 'update', 'delete', 'export', 'print', 'approve'],
     investments: ['view', 'create', 'update', 'delete', 'approve', 'export'],
     expenses: ['view', 'create', 'update', 'delete', 'export'],
     accounting: ['view', 'create', 'update', 'delete', 'export'],
@@ -34,7 +34,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, Record<string, string[]>> = {
   president: {
     dashboard: ['view'],
     members: ['view', 'export'],
-    collections: ['view'],
+    collections: ['view', 'approve'],
     investments: ['view', 'create', 'update', 'approve', 'export'],
     expenses: ['view'],
     accounting: ['view'],
@@ -46,7 +46,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, Record<string, string[]>> = {
   treasurer: {
     dashboard: ['view'],
     members: ['view'],
-    collections: ['view', 'create', 'update', 'export', 'print'],
+    collections: ['view', 'create', 'update', 'export', 'print', 'approve'],
     investments: ['view', 'create', 'update', 'export'],
     expenses: ['view', 'create', 'update', 'delete', 'export'],
     accounting: ['view', 'create', 'update', 'delete', 'export'],
@@ -58,7 +58,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, Record<string, string[]>> = {
   collector: {
     dashboard: ['view'],
     members: ['view'],
-    collections: ['view', 'create', 'print'],
+    collections: ['view', 'create', 'print', 'approve'],
     investments: [],
     expenses: [],
     accounting: [],
@@ -82,7 +82,7 @@ const DEFAULT_PERMISSIONS: Record<UserRole, Record<string, string[]>> = {
   member: {
     dashboard: ['view'],
     members: ['view'],
-    collections: ['view', 'print'],
+    collections: ['view', 'print', 'create'],
     investments: [],
     expenses: [],
     accounting: [],
