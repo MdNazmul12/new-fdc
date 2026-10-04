@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import PaymentSubmitModal from '../../components/payment-submit-modal';
+import PrintableReceipt from '../../components/receipt';
 
 // Dynamic Recharts import to avoid SSR issues
 import { 
@@ -1237,88 +1238,50 @@ export default function Dashboard() {
         {/* ========================================================================= */}
         {/* OFFICIAL MONEY RECEIPT POPUP MODAL */}
         {/* ========================================================================= */}
+        {/* VIEW RECEIPT MODAL WITH OFFICIAL FDC RECEIPT PAD */}
+        {/* ========================================================================= */}
         {viewReceipt && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-2xl max-w-lg w-full p-6 relative text-[var(--foreground)] shadow-2xl">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-2xl max-w-2xl w-full p-4 sm:p-6 relative text-[var(--foreground)] shadow-2xl animate-in zoom-in-95 duration-150 my-6">
               
               {/* Close Button */}
               <button
                 type="button"
                 onClick={() => setViewReceipt(null)}
-                className="absolute top-4 right-4 p-1.5 rounded-lg bg-[var(--accent)] hover:bg-zinc-700 text-[var(--muted-foreground)] hover:text-[var(--card-foreground)] transition-all"
+                className="absolute top-4 right-4 p-2 rounded-xl bg-[var(--accent)] hover:bg-zinc-700 text-[var(--muted-foreground)] hover:text-white transition-all cursor-pointer z-20"
+                title="Close receipt"
               >
                 <X className="w-4 h-4" />
               </button>
 
-              {/* Receipt Header */}
-              <div className="flex items-center space-x-3 pb-4 border-b border-[var(--border)]">
-                <div className="w-12 h-12 rounded-xl bg-white p-1 flex items-center justify-center shrink-0">
-                  <img src="/logo.jpg" alt="FDC Logo" className="w-full h-full object-contain" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold tracking-tight text-white uppercase">Foundation Development Cooperative</h3>
-                  <p className="text-[11px] text-emerald-400 font-semibold">Official Money Receipt / ভাউচার</p>
-                </div>
+              <div className="mb-4 pr-10">
+                <h3 className="text-sm font-bold text-white">Official Money Receipt Voucher</h3>
+                <p className="text-[11px] text-[var(--muted-foreground)]">FDC Foundation computerized subscription deposit pad</p>
               </div>
 
-              {/* Receipt Details Body */}
-              <div className="my-5 space-y-3 text-xs bg-[var(--background)]/70 p-4 rounded-xl border border-[var(--border)]">
-                <div className="flex justify-between items-center pb-2 border-b border-[var(--border)] text-[var(--muted-foreground)]">
-                  <span>Receipt No:</span>
-                  <span className="font-mono text-[var(--foreground)] font-bold text-xs">{viewReceipt.receiptNo || `REC-${viewReceipt.id}`}</span>
-                </div>
-
-                <div className="flex justify-between items-center pb-2 border-b border-[var(--border)]">
-                  <span className="text-[var(--muted-foreground)]">Member Name:</span>
-                  <span className="font-bold text-[var(--card-foreground)]">{viewReceipt.memberName}</span>
-                </div>
-
-                <div className="flex justify-between items-center pb-2 border-b border-[var(--border)]">
-                  <span className="text-[var(--muted-foreground)]">Member ID:</span>
-                  <span className="font-mono text-[var(--foreground)]/80">{viewReceipt.memberId}</span>
-                </div>
-
-                <div className="flex justify-between items-center pb-2 border-b border-[var(--border)]">
-                  <span className="text-[var(--muted-foreground)]">Billing Period:</span>
-                  <span className="font-semibold text-indigo-400">{viewReceipt.month}</span>
-                </div>
-
-                <div className="flex justify-between items-center pb-2 border-b border-[var(--border)]">
-                  <span className="text-[var(--muted-foreground)]">Payment Date:</span>
-                  <span className="text-[var(--foreground)]/80">{viewReceipt.date}</span>
-                </div>
-
-                <div className="flex justify-between items-center pb-2 border-b border-[var(--border)]">
-                  <span className="text-[var(--muted-foreground)]">Payment Mode:</span>
-                  <span className="capitalize px-2 py-0.5 rounded bg-[var(--accent)] text-[var(--card-foreground)] font-semibold text-[10px]">
-                    {viewReceipt.paymentType}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center pt-1 text-sm font-bold">
-                  <span className="text-[var(--foreground)]/80">Total Amount Paid:</span>
-                  <span className="text-emerald-400 text-base">{formatCurrency(viewReceipt.amount + (viewReceipt.lateFine || 0))}</span>
-                </div>
+              {/* Printable Wrapper */}
+              <div className="overflow-x-auto max-h-[70vh] overflow-y-auto rounded-xl p-1 bg-zinc-200/50">
+                <PrintableReceipt collection={viewReceipt} />
               </div>
 
               {/* Footer and Print Button */}
-              <div className="pt-2 flex items-center justify-between">
-                <div className="text-[10px] text-[var(--muted-foreground)]/70">
-                  Verified by {viewReceipt.collectedBy || 'Treasurer'}
+              <div className="pt-4 mt-3 border-t border-[var(--border)] flex flex-wrap items-center justify-between gap-3">
+                <div className="text-[11px] text-[var(--muted-foreground)]">
+                  Receipt Ref: <span className="font-mono text-emerald-400 font-bold">{viewReceipt.receiptNo}</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <button
                     type="button"
                     onClick={() => window.print()}
-                    className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 transition-all inline-flex items-center space-x-1.5 cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition-all inline-flex items-center space-x-1.5 cursor-pointer"
                   >
                     <Printer className="w-3.5 h-3.5" />
-                    <span>Print Receipt</span>
+                    <span>Print Receipt Pad</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setViewReceipt(null)}
-                    className="px-3 py-1.5 rounded-xl bg-[var(--accent)] hover:bg-zinc-700 text-[var(--foreground)]/80 text-xs font-medium transition-all cursor-pointer"
+                    className="px-3.5 py-2 rounded-xl bg-[var(--accent)] hover:bg-zinc-700 text-[var(--foreground)]/80 text-xs font-medium transition-all cursor-pointer"
                   >
                     Close
                   </button>

@@ -520,25 +520,87 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const updateMemberPhoto = (id: string, photoUrl: string) => {
-    const updated = members.map(m => m.id === id ? { ...m, photoUrl } : m);
+    const exists = members.some(m => m.id === id);
+    let updated: Member[];
+    if (exists) {
+      updated = members.map(m => m.id === id ? { ...m, photoUrl } : m);
+    } else {
+      const newM: Member = {
+        id,
+        name: 'Member',
+        email: '',
+        phone: '',
+        status: 'active',
+        joinDate: new Date().toISOString().split('T')[0],
+        monthlyFee: 1000,
+        nomineeName: '',
+        nomineeRelation: '',
+        nomineePhone: '',
+        photoUrl
+      };
+      updated = [newM, ...members];
+    }
     setMembers(updated);
     const matched = updated.find(m => m.id === id);
-    syncToDbAndLocal('members', updated, 'update', { filter: { id }, update: { photoUrl } });
+    syncToDbAndLocal('members', updated, exists ? 'update' : 'create', exists ? { filter: { id }, update: { photoUrl } } : matched);
 
-    if (matched) {
-      const updatedUsers = users.map(u => u.email.toLowerCase() === matched.email.toLowerCase() ? { ...u, avatar: photoUrl } : u);
+    if (matched && matched.email) {
+      const updatedUsers = users.map(u => 
+        (u.memberId === id || u.email?.toLowerCase() === matched.email.toLowerCase() || u.id === id.replace('m-', 'u-')) 
+          ? { ...u, avatar: photoUrl } 
+          : u
+      );
       setUsers(updatedUsers);
       syncToDbAndLocal('users', updatedUsers, 'update', { filter: { email: matched.email }, update: { avatar: photoUrl } });
     }
-    addAuditLog(`Updated Profile Photo for ID: ${id}`, 'super_admin', 'System Log');
+    addAuditLog(`Updated Profile Photo for ID: ${id}`, 'member', matched?.name || id);
   };
 
   const updateMember = (id: string, updatedFields: Partial<Member>) => {
-    const updated = members.map(m => m.id === id ? { ...m, ...updatedFields } : m);
+    const exists = members.some(m => m.id === id);
+    let updated: Member[];
+    if (exists) {
+      updated = members.map(m => m.id === id ? { ...m, ...updatedFields } : m);
+    } else {
+      const newM: Member = {
+        id,
+        name: updatedFields.name || 'Member',
+        email: updatedFields.email || '',
+        phone: updatedFields.phone || '',
+        status: updatedFields.status || 'active',
+        joinDate: new Date().toISOString().split('T')[0],
+        monthlyFee: updatedFields.monthlyFee || 1000,
+        nomineeName: updatedFields.nomineeName || '',
+        nomineeRelation: updatedFields.nomineeRelation || '',
+        nomineePhone: updatedFields.nomineePhone || '',
+        ...updatedFields
+      };
+      updated = [newM, ...members];
+    }
     setMembers(updated);
     const matched = updated.find(m => m.id === id);
-    syncToDbAndLocal('members', updated, 'update', { filter: { id }, update: matched });
-    addAuditLog(`Updated Member ID: ${id}`, 'super_admin', 'System Log');
+    syncToDbAndLocal('members', updated, exists ? 'update' : 'create', exists ? { filter: { id }, update: matched } : matched);
+    addAuditLog(`Updated Member Information: ID ${id} (${matched?.name})`, 'member', matched?.name || id);
+
+    // Sync updated name, phone, email to linked user account
+    if (matched) {
+      const updatedUsers = users.map(u => {
+        if (u.memberId === id || u.id === id.replace('m-', 'u-') || (matched.email && u.email?.toLowerCase() === matched.email.toLowerCase())) {
+          return {
+            ...u,
+            name: matched.name || u.name,
+            phone: matched.phone || u.phone,
+            email: matched.email || u.email
+          };
+        }
+        return u;
+      });
+      setUsers(updatedUsers);
+      const matchedUser = updatedUsers.find(u => u.memberId === id || u.id === id.replace('m-', 'u-') || (matched.email && u.email?.toLowerCase() === matched.email.toLowerCase()));
+      if (matchedUser) {
+        syncToDbAndLocal('users', updatedUsers, 'update', { filter: { id: matchedUser.id }, update: matchedUser });
+      }
+    }
   };
 
   const deleteMember = (id: string) => {

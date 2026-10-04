@@ -977,18 +977,18 @@ export default function CollectionsPage() {
 
         {/* ---------------- MODAL: PRINT RECEIPT ---------------- */}
         {printOpen && activeReceipt && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-            <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-2xl w-full max-w-md shadow-2xl p-5 relative animate-fade-in-up no-print">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-3xl w-full max-w-2xl shadow-2xl p-4 sm:p-6 relative animate-fade-in-up no-print my-6">
               <button 
                 onClick={() => setPrintOpen(false)}
-                className="absolute top-4 right-4 p-1 text-[var(--muted-foreground)] hover:text-white rounded-lg hover:bg-[var(--accent)]"
+                className="absolute top-4 right-4 p-2 text-[var(--muted-foreground)] hover:text-white rounded-xl hover:bg-[var(--accent)] transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
 
-              <div className="mb-4">
-                <h3 className="text-xs font-bold text-[var(--card-foreground)]">Print Receipt Details</h3>
-                <p className="text-[9px] text-[var(--muted-foreground)]/70">Record verification complete</p>
+              <div className="mb-4 pr-10">
+                <h3 className="text-sm font-bold text-[var(--card-foreground)]">Official Money Receipt Voucher</h3>
+                <p className="text-[11px] text-[var(--muted-foreground)]/70">FDC Foundation computerized subscription deposit pad</p>
               </div>
 
               {/* Printable Wrapper */}

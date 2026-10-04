@@ -166,24 +166,37 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* User Info footer */}
         <div className="border-t border-[var(--border)] pt-4 mt-4">
-          <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--secondary)] border border-[var(--border)]">
+          <Link
+            href="/members/profile"
+            className="flex items-center justify-between p-2 rounded-lg bg-[var(--secondary)] border border-[var(--border)] hover:bg-[var(--accent)] transition-colors group"
+            title="View Profile & Change Password"
+          >
             <div className="flex items-center space-x-2 overflow-hidden">
-              <div className="w-8 h-8 rounded-full bg-[var(--primary)]/20 text-[var(--primary)] flex items-center justify-center font-bold text-sm shrink-0 uppercase">
-                {user.name.charAt(0)}
+              <div className="w-8 h-8 rounded-full bg-[var(--primary)]/20 text-[var(--primary)] flex items-center justify-center font-bold text-sm shrink-0 uppercase overflow-hidden">
+                {user.avatar ? (
+                  <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  user.name.charAt(0)
+                )}
               </div>
               <div className="text-left overflow-hidden">
-                <p className="text-xs font-semibold text-[var(--foreground)] truncate">{user.name}</p>
+                <p className="text-xs font-semibold text-[var(--foreground)] truncate group-hover:text-[var(--primary)] transition-colors">{user.name}</p>
                 <p className="text-[10px] text-[var(--muted-foreground)] capitalize">{user.role.replace('_', ' ')}</p>
               </div>
             </div>
             <button 
-              onClick={logout} 
+              type="button"
+              onClick={(e) => { 
+                e.preventDefault(); 
+                e.stopPropagation(); 
+                logout(); 
+              }} 
               className="p-1.5 text-[var(--muted-foreground)] hover:text-rose-500 rounded-md hover:bg-[var(--accent)] transition-colors"
               title="Logout"
             >
               <LogOut className="w-4 h-4" />
             </button>
-          </div>
+          </Link>
         </div>
       </aside>
 
@@ -232,20 +245,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
 
             <div className="border-t border-[var(--border)] pt-4">
-              <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--secondary)]">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 rounded-full bg-[var(--primary)]/20 text-[var(--primary)] flex items-center justify-center font-bold text-sm">
-                    {user.name.charAt(0)}
+              <Link 
+                href="/members/profile"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-between p-2 rounded-lg bg-[var(--secondary)] hover:bg-[var(--accent)] transition-colors mb-2"
+              >
+                <div className="flex items-center space-x-2 overflow-hidden">
+                  <div className="w-8 h-8 rounded-full bg-[var(--primary)]/20 text-[var(--primary)] flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
+                    {user.avatar ? (
+                      <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                    ) : (
+                      user.name.charAt(0)
+                    )}
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-[var(--foreground)]">{user.name}</p>
-                    <p className="text-[10px] text-[var(--muted-foreground)] capitalize">{user.role.replace('_', ' ')}</p>
+                  <div className="overflow-hidden">
+                    <p className="text-xs font-semibold text-[var(--foreground)] truncate">{user.name}</p>
+                    <p className="text-[10px] text-[var(--muted-foreground)] capitalize">{user.role.replace('_', ' ')} • Profile</p>
                   </div>
                 </div>
-                <button onClick={logout} className="p-1.5 text-[var(--muted-foreground)] hover:text-rose-500 rounded-md">
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </div>
+              </Link>
+              <button 
+                onClick={logout} 
+                className="w-full py-2 px-3 text-xs font-medium text-rose-500 hover:bg-rose-500/10 rounded-lg flex items-center justify-center space-x-2 transition-colors border border-rose-500/20"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Log Out</span>
+              </button>
             </div>
           </div>
         </div>
@@ -454,21 +479,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <p className="text-[10px] text-[var(--muted-foreground)] truncate">{user.email}</p>
                   </div>
                   
-                  {user.role === 'member' ? (
-                    <Link 
-                      href="/members/profile" 
-                      onClick={() => setProfileOpen(false)}
-                      className="block w-full text-left px-3 py-2 text-xs text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]"
-                    >
-                      My Profile
-                    </Link>
-                  ) : (
+                  <Link 
+                    href="/members/profile" 
+                    onClick={() => setProfileOpen(false)}
+                    className="block w-full text-left px-3 py-2 text-xs text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]"
+                  >
+                    My Profile & Password
+                  </Link>
+                  
+                  {user.role !== 'member' && (
                     <Link 
                       href="/users" 
                       onClick={() => setProfileOpen(false)}
                       className="block w-full text-left px-3 py-2 text-xs text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]"
                     >
-                      User Profile
+                      User Management
                     </Link>
                   )}
                   
@@ -490,7 +515,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Content Section */}
-        <main className="flex-1 p-4 lg:p-6">
+        <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-x-hidden">
           {children}
         </main>
       </div>
