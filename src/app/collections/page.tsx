@@ -21,7 +21,10 @@ import {
   XCircle,
   AlertTriangle,
   Building2,
-  Check
+  Check,
+  ShieldCheck,
+  PartyPopper,
+  BadgeCheck
 } from 'lucide-react';
 import PrintableReceipt from '../../components/receipt';
 import ExcelImportModal from '../../components/excel-import-modal';
@@ -63,6 +66,21 @@ export default function CollectionsPage() {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [collectionToDelete, setCollectionToDelete] = useState<Collection | null>(null);
+
+  // Approval confirmation modal state
+  const [approvalModalOpen, setApprovalModalOpen] = useState(false);
+  const [pendingApprovalCol, setPendingApprovalCol] = useState<Collection | null>(null);
+  const [approving, setApproving] = useState(false);
+
+  // Reject confirmation modal state
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [pendingRejectCol, setPendingRejectCol] = useState<Collection | null>(null);
+  const [rejectReason, setRejectReason] = useState('Incorrect amount or unverifiable transaction');
+  const [rejecting, setRejecting] = useState(false);
+
+  // Approval success popup state
+  const [approvalSuccessOpen, setApprovalSuccessOpen] = useState(false);
+  const [approvedCollection, setApprovedCollection] = useState<Collection | null>(null);
 
   const handleDelete = (col: Collection) => {
     setCollectionToDelete(col);
@@ -336,17 +354,47 @@ export default function CollectionsPage() {
     setNotes('');
   };
 
-  const handleApprove = async (col: Collection) => {
-    if (!confirm(`Approve payment of ${col.amount + col.lateFine} TK for ${col.memberName} (${col.month})? This will mark their due as cleared.`)) {
-      return;
-    }
-    await approveCollection(col.id, user?.name || 'Admin');
+  // Open approval confirmation modal
+  const handleApprove = (col: Collection) => {
+    setPendingApprovalCol(col);
+    setApprovalModalOpen(true);
   };
 
-  const handleReject = async (col: Collection) => {
-    const reason = prompt(`Enter rejection reason for ${col.memberName}'s submission:`, 'Incorrect amount or unverifiable transaction');
-    if (reason === null) return;
-    await rejectCollection(col.id, reason);
+  // Confirm and execute approval
+  const handleConfirmApprove = async () => {
+    if (!pendingApprovalCol) return;
+    setApproving(true);
+    const success = await approveCollection(pendingApprovalCol.id, user?.name || 'Admin');
+    setApproving(false);
+    setApprovalModalOpen(false);
+    if (success !== false) {
+      // Find the updated collection to show in the success popup
+      const updatedCol = {
+        ...pendingApprovalCol,
+        status: 'paid' as const,
+        approvedBy: user?.name || 'Admin',
+      };
+      setApprovedCollection(updatedCol);
+      setApprovalSuccessOpen(true);
+    }
+    setPendingApprovalCol(null);
+  };
+
+  // Open reject modal
+  const handleReject = (col: Collection) => {
+    setPendingRejectCol(col);
+    setRejectReason('Incorrect amount or unverifiable transaction');
+    setRejectModalOpen(true);
+  };
+
+  // Confirm and execute rejection
+  const handleConfirmReject = async () => {
+    if (!pendingRejectCol) return;
+    setRejecting(true);
+    await rejectCollection(pendingRejectCol.id, rejectReason.trim() || 'Rejected by admin');
+    setRejecting(false);
+    setRejectModalOpen(false);
+    setPendingRejectCol(null);
   };
 
   // Filter collections
@@ -1043,6 +1091,280 @@ export default function CollectionsPage() {
             setCollectionToDelete(null);
           }}
         />
+
+        {/* ============================================================ */}
+        {/* APPROVAL CONFIRMATION MODAL                                  */}
+        {/* ============================================================ */}
+        {approvalModalOpen && pendingApprovalCol && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-fade-in-up">
+              
+              {/* Header */}
+              <div className="bg-gradient-to-r from-emerald-600/20 to-emerald-500/10 border-b border-emerald-500/20 p-5 flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--foreground)]">Approve Payment</h3>
+                  <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5">এই পেমেন্ট অনুমোদন করুন</p>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 space-y-4">
+                {/* Payment Info */}
+                <div className="rounded-xl bg-[var(--secondary)] border border-[var(--border)] p-4 space-y-2.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-[var(--muted-foreground)] font-medium">Member Name</span>
+                    <span className="text-xs font-bold text-[var(--foreground)]">{pendingApprovalCol.memberName}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-[var(--muted-foreground)] font-medium">Receipt No</span>
+                    <span className="text-xs font-mono text-indigo-400">{pendingApprovalCol.receiptNo}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-[var(--muted-foreground)] font-medium">Billing Month</span>
+                    <span className="text-xs font-semibold text-[var(--foreground)]">{pendingApprovalCol.month}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-[var(--muted-foreground)] font-medium">Payment Method</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-[var(--accent)] text-[var(--foreground)]/80 uppercase font-mono">{pendingApprovalCol.paymentType}</span>
+                  </div>
+                  {pendingApprovalCol.transactionRef && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-[11px] text-[var(--muted-foreground)] font-medium">Ref / TrxID</span>
+                      <span className="text-xs font-mono text-indigo-400">{pendingApprovalCol.transactionRef}</span>
+                    </div>
+                  )}
+                  <div className="border-t border-[var(--border)] pt-2.5 flex justify-between items-center">
+                    <span className="text-xs font-bold text-[var(--muted-foreground)]">Total Amount</span>
+                    <span className="text-lg font-black text-emerald-400">
+                      {(pendingApprovalCol.amount + (pendingApprovalCol.lateFine || 0)).toLocaleString()} TK
+                    </span>
+                  </div>
+                  {(pendingApprovalCol.lateFine || 0) > 0 && (
+                    <p className="text-[10px] text-rose-400 text-right">
+                      (Base: {pendingApprovalCol.amount} TK + Fine: {pendingApprovalCol.lateFine} TK)
+                    </p>
+                  )}
+                </div>
+
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                  <p className="text-[11px] text-emerald-300 leading-relaxed">
+                    <strong>Approve</strong> করলে এই সদস্যের <strong>{pendingApprovalCol.month}</strong> মাসের বকেয়া পরিশোধ হয়েছে বলে গণ্য হবে এবং তাদের প্রোফাইলে আপডেট হবে।
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="border-t border-[var(--border)] p-4 flex items-center justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setApprovalModalOpen(false);
+                    setPendingApprovalCol(null);
+                  }}
+                  disabled={approving}
+                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-[var(--accent)] hover:bg-[var(--muted)] text-[var(--foreground)] border border-[var(--border)] transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmApprove}
+                  disabled={approving}
+                  className="px-5 py-2 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 transition-all disabled:opacity-50 cursor-pointer inline-flex items-center space-x-1.5"
+                >
+                  {approving ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Approving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>Approve Payment</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* REJECT CONFIRMATION MODAL                                    */}
+        {/* ============================================================ */}
+        {rejectModalOpen && pendingRejectCol && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-fade-in-up">
+              
+              {/* Header */}
+              <div className="bg-gradient-to-r from-rose-600/20 to-rose-500/10 border-b border-rose-500/20 p-5 flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center shrink-0">
+                  <XCircle className="w-5 h-5 text-rose-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--foreground)]">Reject Payment</h3>
+                  <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5">পেমেন্ট বাতিল করুন</p>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 space-y-4">
+                <div className="rounded-xl bg-[var(--secondary)] border border-[var(--border)] p-4 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-[var(--muted-foreground)]">Member</span>
+                    <span className="text-xs font-bold text-[var(--foreground)]">{pendingRejectCol.memberName}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-[var(--muted-foreground)]">Month</span>
+                    <span className="text-xs font-semibold text-[var(--foreground)]">{pendingRejectCol.month}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-t border-[var(--border)] pt-2">
+                    <span className="text-xs font-bold text-[var(--muted-foreground)]">Amount</span>
+                    <span className="text-sm font-black text-rose-400">
+                      {(pendingRejectCol.amount + (pendingRejectCol.lateFine || 0)).toLocaleString()} TK
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-[var(--muted-foreground)] mb-1.5">
+                    Rejection Reason <span className="text-rose-400">*</span>
+                  </label>
+                  <textarea
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    rows={3}
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg p-3 text-xs text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:border-rose-500 resize-none"
+                    placeholder="কারণ লিখুন..."
+                  />
+                </div>
+
+                <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+                  <p className="text-[11px] text-rose-300 leading-relaxed">
+                    Reject করলে সদস্যের submission বাতিল হবে এবং তাদের নিজস্ব পেমেন্ট হিস্ট্রিতে <strong>Rejected</strong> দেখাবে।
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="border-t border-[var(--border)] p-4 flex items-center justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRejectModalOpen(false);
+                    setPendingRejectCol(null);
+                  }}
+                  disabled={rejecting}
+                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-[var(--accent)] hover:bg-[var(--muted)] text-[var(--foreground)] border border-[var(--border)] transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmReject}
+                  disabled={rejecting || !rejectReason.trim()}
+                  className="px-5 py-2 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/20 transition-all disabled:opacity-50 cursor-pointer inline-flex items-center space-x-1.5"
+                >
+                  {rejecting ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Rejecting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="w-3.5 h-3.5" />
+                      <span>Reject Payment</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* APPROVAL SUCCESS POPUP                                       */}
+        {/* ============================================================ */}
+        {approvalSuccessOpen && approvedCollection && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+            <div className="bg-[var(--card)] border border-emerald-500/30 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-fade-in-up">
+              
+              {/* Celebration Header */}
+              <div className="relative bg-gradient-to-b from-emerald-600/25 via-emerald-500/10 to-transparent p-8 text-center">
+                {/* Animated success icon */}
+                <div className="w-20 h-20 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-500/40 flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/20">
+                  <div className="w-14 h-14 rounded-full bg-emerald-500/30 border border-emerald-400/50 flex items-center justify-center">
+                    <BadgeCheck className="w-8 h-8 text-emerald-400" />
+                  </div>
+                </div>
+                <h2 className="text-lg font-black text-[var(--foreground)]">Payment Approved! ✓</h2>
+                <p className="text-sm text-emerald-400 font-semibold mt-1">পেমেন্ট সফলভাবে অনুমোদিত হয়েছে</p>
+              </div>
+
+              {/* Receipt Summary */}
+              <div className="px-6 pb-2 space-y-3">
+                <div className="rounded-xl bg-gradient-to-r from-emerald-500/10 to-[var(--secondary)] border border-emerald-500/20 p-4 space-y-2.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-[var(--muted-foreground)] font-medium">Member</span>
+                    <span className="text-xs font-bold text-[var(--foreground)]">{approvedCollection.memberName}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-[var(--muted-foreground)] font-medium">Receipt No</span>
+                    <span className="text-xs font-mono text-indigo-400 font-bold">{approvedCollection.receiptNo}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-[var(--muted-foreground)] font-medium">Month</span>
+                    <span className="text-xs font-semibold text-[var(--foreground)]">{approvedCollection.month}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-[var(--muted-foreground)] font-medium">Approved By</span>
+                    <span className="text-xs font-semibold text-emerald-400">{user?.name || 'Admin'}</span>
+                  </div>
+                  <div className="border-t border-emerald-500/20 pt-2.5 flex justify-between items-center">
+                    <span className="text-sm font-bold text-[var(--foreground)]">Total Collected</span>
+                    <span className="text-xl font-black text-emerald-400">
+                      {(approvedCollection.amount + (approvedCollection.lateFine || 0)).toLocaleString()} TK
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-center text-[11px] text-[var(--muted-foreground)] pb-1">
+                  সদস্যের প্রোফাইল ও অ্যাকাউন্ট স্বয়ংক্রিয়ভাবে আপডেট হয়েছে।
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="border-t border-[var(--border)] p-4 flex items-center space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setApprovalSuccessOpen(false);
+                    setApprovedCollection(null);
+                  }}
+                  className="flex-1 py-2.5 text-xs font-semibold rounded-xl bg-[var(--accent)] hover:bg-[var(--muted)] text-[var(--foreground)] border border-[var(--border)] transition-all cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveReceipt(approvedCollection);
+                    setPrintOpen(true);
+                    setApprovalSuccessOpen(false);
+                    setApprovedCollection(null);
+                  }}
+                  className="flex-1 py-2.5 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20 transition-all cursor-pointer inline-flex items-center justify-center space-x-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Receipt</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </DashboardLayout>
