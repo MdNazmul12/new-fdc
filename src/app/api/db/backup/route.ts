@@ -51,6 +51,18 @@ export async function GET() {
       data: exportData
     };
 
+    // Log the backup export event in backups collection
+    try {
+      await db.collection('backups').insertOne({
+        id: `backup-${Date.now()}`,
+        type: 'export',
+        createdAt: new Date().toISOString(),
+        totalRecords,
+        summary,
+        triggeredBy: 'Super Admin'
+      });
+    } catch (e) {}
+
     return NextResponse.json(payload, {
       status: 200,
       headers: {
@@ -116,7 +128,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Log the restore event into auditLogs
+    // Log the restore event into auditLogs & backups
     try {
       const now = new Date();
       await db.collection('auditLogs').insertOne({
@@ -129,6 +141,15 @@ export async function POST(request: Request) {
         time: now.toLocaleTimeString(),
         ipAddress: 'System Action',
         device: 'Web Client'
+      });
+      await db.collection('backups').insertOne({
+        id: `restore-${Date.now()}`,
+        type: 'restore',
+        createdAt: now.toISOString(),
+        mode,
+        totalRestored,
+        summary: restoredSummary,
+        restoredBy
       });
     } catch (e) {}
 
