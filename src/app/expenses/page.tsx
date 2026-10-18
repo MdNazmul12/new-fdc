@@ -19,6 +19,7 @@ import {
   X
 } from 'lucide-react';
 import ConfirmModal from '../../components/confirm-modal';
+import { PageSizeSelector, DataTablePagination, usePagination } from '../../components/pagination';
 
 export default function ExpensesPage() {
   const { expenses, addExpense, deleteExpense } = useStore();
@@ -76,6 +77,16 @@ export default function ExpensesPage() {
     const matchesCategory = categoryFilter === 'all' || exp.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalPages,
+    totalItems,
+    paginatedItems: paginatedExpenses,
+  } = usePagination(filteredExpenses, 25);
 
   // Math totals
   const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
@@ -179,8 +190,16 @@ export default function ExpensesPage() {
         </div>
 
         {/* ---------------- EXPENSE TABLE ---------------- */}
-        <div className="glass-panel rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="glass-panel p-4 sm:p-5 rounded-2xl space-y-3">
+          {/* Top Page Size Selector */}
+          <div className="flex items-center justify-between pb-1">
+            <PageSizeSelector pageSize={pageSize} onPageSizeChange={setPageSize} options={[10, 25, 50, 100]} />
+            <span className="text-[11px] text-[var(--muted-foreground)]">
+              Total: <strong className="text-[var(--foreground)]">{filteredExpenses.length}</strong> expenses
+            </span>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-[var(--border)]/60">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[var(--secondary)]/40 text-[var(--muted-foreground)]">
@@ -193,12 +212,12 @@ export default function ExpensesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
-                {filteredExpenses.length === 0 ? (
+                {paginatedExpenses.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="p-8 text-center text-[var(--muted-foreground)]/70">No expenses found</td>
                   </tr>
                 ) : (
-                  filteredExpenses.map((exp) => (
+                  paginatedExpenses.map((exp) => (
                     <tr key={exp.id} className="hover:bg-[var(--secondary)]/40 transition-colors">
                       
                       <td className="p-4">
@@ -239,6 +258,15 @@ export default function ExpensesPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Bottom Table Controls: Pagination */}
+          <DataTablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
         {/* ---------------- MODAL: ADD EXPENSE ---------------- */}

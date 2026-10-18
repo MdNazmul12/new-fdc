@@ -43,6 +43,7 @@ import {
 import PrintableReceipt from '../../../components/receipt';
 import PaymentSubmitModal from '../../../components/payment-submit-modal';
 import MemberCard from '../../../components/member-card';
+import { PageSizeSelector, DataTablePagination, usePagination } from '../../../components/pagination';
 
 export default function MemberProfilePage() {
   const { user } = useAuth();
@@ -406,6 +407,16 @@ export default function MemberProfilePage() {
 
   const totalPaid = myPaidPayments.reduce((sum, p) => sum + p.amount + (p.lateFine || 0), 0);
   const totalPending = myPendingPayments.reduce((sum, p) => sum + p.amount + (p.lateFine || 0), 0);
+
+  const {
+    currentPage: paymentPage,
+    setCurrentPage: setPaymentPage,
+    pageSize: paymentPageSize,
+    setPageSize: setPaymentPageSize,
+    totalPages: paymentTotalPages,
+    totalItems: paymentTotalItems,
+    paginatedItems: paginatedPayments,
+  } = usePagination(myPayments, 10);
 
   const handlePrintReceipt = (receipt: Collection) => {
     setSelectedReceipt(receipt);
@@ -924,6 +935,14 @@ export default function MemberProfilePage() {
             )}
           </div>
 
+          {/* Top Page Size Selector */}
+          <div className="flex items-center justify-between pb-3">
+            <PageSizeSelector pageSize={paymentPageSize} onPageSizeChange={setPaymentPageSize} options={[5, 10, 25, 50]} />
+            <span className="text-[11px] text-[var(--muted-foreground)]">
+              Total: <strong className="text-[var(--foreground)]">{myPayments.length}</strong> payments
+            </span>
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
@@ -939,12 +958,12 @@ export default function MemberProfilePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
-                {myPayments.length === 0 ? (
+                {paginatedPayments.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-6 text-center text-[var(--muted-foreground)]/70">No payment logs recorded yet.</td>
                   </tr>
                 ) : (
-                  myPayments.map((p) => {
+                  paginatedPayments.map((p) => {
                     const isPending = p.status === 'pending';
                     const isRejected = p.status === 'rejected';
                     const isPaid = p.status === 'paid' || (!p.status && true);
@@ -1016,6 +1035,15 @@ export default function MemberProfilePage() {
               </tbody>
             </table>
           </div>
+
+          {/* Bottom Table Controls: Pagination */}
+          <DataTablePagination
+            currentPage={paymentPage}
+            totalPages={paymentTotalPages}
+            totalItems={paymentTotalItems}
+            pageSize={paymentPageSize}
+            onPageChange={setPaymentPage}
+          />
         </div>
 
         {/* ============================================================== */}

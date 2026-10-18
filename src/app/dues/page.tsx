@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import PaymentSubmitModal from '../../components/payment-submit-modal';
+import { PageSizeSelector, DataTablePagination, usePagination } from '../../components/pagination';
 
 export default function DuesPage() {
   const { stats, members, collections, addCollection, dueDemands, addDueDemand, deleteDueDemand } = useStore();
@@ -219,6 +220,16 @@ export default function DuesPage() {
       return true;
     });
   }, [duesList, searchQuery, statusFilter]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalPages,
+    totalItems,
+    paginatedItems: paginatedDues,
+  } = usePagination(filteredDues, 25);
 
   // Summary Metrics
   const metrics = useMemo(() => {
@@ -690,27 +701,36 @@ export default function DuesPage() {
                   )}
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="border-b border-[var(--border)] bg-[var(--secondary)]/50 text-[var(--muted-foreground)]">
-                        <th className="p-3.5 font-semibold">Member</th>
-                        <th className="p-3.5 font-semibold">Monthly Fee</th>
-                        <th className="p-3.5 font-semibold">Late Fine</th>
-                        <th className="p-3.5 font-semibold text-right">Total Payable</th>
-                        <th className="p-3.5 font-semibold text-center">Status</th>
-                        <th className="p-3.5 font-semibold text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--border)]">
-                      {filteredDues.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="p-8 text-center text-[var(--muted-foreground)]/70">
-                            No member records found matching your filters.
-                          </td>
+                <div className="space-y-3">
+                  {/* Top Page Size Selector */}
+                  <div className="flex items-center justify-between px-1 pb-1">
+                    <PageSizeSelector pageSize={pageSize} onPageSizeChange={setPageSize} options={[10, 25, 50, 100]} />
+                    <span className="text-[11px] text-[var(--muted-foreground)]">
+                      Total: <strong className="text-[var(--foreground)]">{filteredDues.length}</strong> records
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-[var(--border)]/60">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-[var(--border)] bg-[var(--secondary)]/50 text-[var(--muted-foreground)]">
+                          <th className="p-3.5 font-semibold">Member</th>
+                          <th className="p-3.5 font-semibold">Monthly Fee</th>
+                          <th className="p-3.5 font-semibold">Late Fine</th>
+                          <th className="p-3.5 font-semibold text-right">Total Payable</th>
+                          <th className="p-3.5 font-semibold text-center">Status</th>
+                          <th className="p-3.5 font-semibold text-right">Action</th>
                         </tr>
-                      ) : (
-                        filteredDues.map((item) => (
+                      </thead>
+                      <tbody className="divide-y divide-[var(--border)]">
+                        {paginatedDues.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="p-8 text-center text-[var(--muted-foreground)]/70">
+                              No member records found matching your filters.
+                            </td>
+                          </tr>
+                        ) : (
+                          paginatedDues.map((item) => (
                           <tr key={item.member.id} className="hover:bg-[var(--secondary)]/40 transition-colors">
                             <td className="p-3.5">
                               <div className="flex items-center space-x-2.5">
@@ -806,7 +826,17 @@ export default function DuesPage() {
                     </tbody>
                   </table>
                 </div>
-              )}
+
+                {/* Bottom Table Controls: Pagination */}
+                <DataTablePagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={totalItems}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
             </div>
           </div>
 

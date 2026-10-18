@@ -29,6 +29,7 @@ import {
 import PrintableReceipt from '../../components/receipt';
 import ExcelImportModal from '../../components/excel-import-modal';
 import ConfirmModal from '../../components/confirm-modal';
+import { PageSizeSelector, DataTablePagination, usePagination } from '../../components/pagination';
 
 export default function CollectionsPage() {
   const { 
@@ -453,6 +454,16 @@ export default function CollectionsPage() {
     const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
     return matchesSearch && matchesMonth && matchesType && matchesStatus;
   });
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalPages,
+    totalItems,
+    paginatedItems: paginatedCollections,
+  } = usePagination(filteredCollections, 25);
 
   const pendingCount = collections.filter(c => c.status === 'pending').length;
   const totalReceived = filteredCollections.filter(c => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0);
@@ -935,6 +946,14 @@ export default function CollectionsPage() {
               </div>
             </div>
 
+            {/* Top Table Control: Page Size Selector */}
+            <div className="flex items-center justify-between pb-3">
+              <PageSizeSelector pageSize={pageSize} onPageSizeChange={setPageSize} options={[10, 25, 50, 100]} />
+              <span className="text-[11px] text-[var(--muted-foreground)]">
+                Total: <strong className="text-[var(--foreground)]">{filteredCollections.length}</strong> records
+              </span>
+            </div>
+
             {/* Invoices listings */}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
@@ -949,12 +968,12 @@ export default function CollectionsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
-                  {filteredCollections.length === 0 ? (
+                  {paginatedCollections.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-6 text-center text-[var(--muted-foreground)]/70">No collections matched filters</td>
                     </tr>
                   ) : (
-                    filteredCollections.map((col) => {
+                    paginatedCollections.map((col) => {
                       const grandTotal = col.amount + (col.lateFine || 0);
                       const isPending = col.status === 'pending';
                       const isPaid = col.status === 'paid';
@@ -1057,6 +1076,15 @@ export default function CollectionsPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Bottom Table Controls: Pagination */}
+            <DataTablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+            />
 
           </div>
 

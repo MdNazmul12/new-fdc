@@ -24,6 +24,7 @@ import {
   AlertCircle,
   Trash2
 } from 'lucide-react';
+import { PageSizeSelector, DataTablePagination, usePagination } from '../../components/pagination';
 
 export default function LoansPage() {
   const { loans, members, addLoan, recordLoanRepayment, updateLoanStatus, deleteLoan } = useStore();
@@ -103,6 +104,16 @@ export default function LoansPage() {
       return matchesSearch && matchesStatus && matchesType;
     });
   }, [loans, user, searchQuery, statusFilter, typeFilter]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalPages,
+    totalItems,
+    paginatedItems: paginatedLoans,
+  } = usePagination(visibleLoans, 25);
 
   // Metrics
   const metrics = useMemo(() => {
@@ -374,8 +385,16 @@ export default function LoansPage() {
         </div>
 
         {/* Loans Table */}
-        <div className="glass-panel rounded-2xl overflow-hidden border border-[var(--border)]">
-          <div className="overflow-x-auto">
+        <div className="glass-panel p-4 sm:p-5 rounded-2xl border border-[var(--border)] space-y-3">
+          {/* Top Page Size Selector */}
+          <div className="flex items-center justify-between pb-1">
+            <PageSizeSelector pageSize={pageSize} onPageSizeChange={setPageSize} options={[10, 25, 50, 100]} />
+            <span className="text-[11px] text-[var(--muted-foreground)]">
+              Total: <strong className="text-[var(--foreground)]">{visibleLoans.length}</strong> loans
+            </span>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-[var(--border)]/60">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[var(--secondary)] text-[var(--muted-foreground)]">
@@ -391,7 +410,7 @@ export default function LoansPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
-                {visibleLoans.length === 0 ? (
+                {paginatedLoans.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="p-8 text-center text-[var(--muted-foreground)]">
                       <Banknote className="w-8 h-8 mx-auto mb-2 opacity-30" />
@@ -402,7 +421,7 @@ export default function LoansPage() {
                     </td>
                   </tr>
                 ) : (
-                  visibleLoans.map((loan) => {
+                  paginatedLoans.map((loan) => {
                     const balance = Math.max(0, loan.totalPayable - loan.totalRepaid);
                     const progressPercent = Math.min(
                       100,
@@ -507,6 +526,15 @@ export default function LoansPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Bottom Table Controls: Pagination */}
+          <DataTablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
         {/* ==================== MODAL: ISSUE NEW LOAN ==================== */}
