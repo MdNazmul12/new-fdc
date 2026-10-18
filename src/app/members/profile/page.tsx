@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import DashboardLayout from '../../../components/dashboard-layout';
 import { useStore } from '../../../contexts/store-context';
 import { useAuth } from '../../../contexts/auth-context';
-import { Collection, Member } from '../../../types';
+import { Collection, Member, Loan, LoanRepayment } from '../../../types';
 import { 
   User, 
   Calendar, 
@@ -33,7 +33,12 @@ import {
   Trash2,
   Save,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  Banknote,
+  TrendingDown,
+  History,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import PrintableReceipt from '../../../components/receipt';
 import PaymentSubmitModal from '../../../components/payment-submit-modal';
@@ -51,7 +56,9 @@ export default function MemberProfilePage() {
     dueDemands, 
     notifications, 
     markNotificationRead, 
-    markAllNotificationsRead 
+    markAllNotificationsRead,
+    loans,
+    recordLoanRepayment
   } = useStore();
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -135,6 +142,17 @@ export default function MemberProfilePage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [cardModalOpen, setCardModalOpen] = useState(false);
+
+  // States for Member Loan Repayment & Ledger
+  const [loanRepayModalOpen, setLoanRepayModalOpen] = useState(false);
+  const [selectedLoanForRepay, setSelectedLoanForRepay] = useState<Loan | null>(null);
+  const [loanRepayAmount, setLoanRepayAmount] = useState<number>(1000);
+  const [loanRepayDate, setLoanRepayDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [loanRepayNote, setLoanRepayNote] = useState('');
+  const [loanRepaying, setLoanRepaying] = useState(false);
+  const [loanRepaySuccess, setLoanRepaySuccess] = useState<string | null>(null);
+  const [loanRepayError, setLoanRepayError] = useState<string | null>(null);
+  const [expandedLoanHistoryId, setExpandedLoanHistoryId] = useState<string | null>(null);
 
   const handleOpenEditProfile = () => {
     if (!memberProfile) return;
@@ -392,6 +410,79 @@ export default function MemberProfilePage() {
   const handlePrintReceipt = (receipt: Collection) => {
     setSelectedReceipt(receipt);
     setPrintOpen(true);
+  };
+
+  // Strict matching by member unique ID — strictly prevents any other member's loans from ever leaking
+  const myLoans = React.useMemo(() => {
+    if (!memberProfile?.id) return [];
+    return loans.filter(l => 
+      l.memberId === memberProfile.id || 
+      (user?.memberId && l.memberId === user.memberId) ||
+      (user?.id && (l.memberId === user.id || l.memberId === user.id.replace('u-', 'm-')))
+    );
+  }, [loans, memberProfile, user]);
+
+  const loanMetrics = React.useMemo(() => {
+    const totalDisbursed = myLoans.reduce((sum, l) => sum + (l.principalAmount || 0), 0);
+    const totalPayable = myLoans.reduce((sum, l) => sum + (l.totalPayable || 0), 0);
+    const totalRepaid = myLoans.reduce((sum, l) => sum + (l.totalRepaid || 0), 0);
+    const totalRemaining = Math.max(0, totalPayable - totalRepaid);
+    const activeCount = myLoans.filter(l => l.status === 'active' || l.status === 'overdue').length;
+    return { totalDisbursed, totalPayable, totalRepaid, totalRemaining, activeCount };
+  }, [myLoans]);
+
+  const handleOpenLoanRepayModal = (loan: Loan) => {
+    setSelectedLoanForRepay(loan);
+    const remaining = Math.max(0, loan.totalPayable - loan.totalRepaid);
+    const suggested = Math.min(remaining, Math.max(1000, Math.round(loan.totalPayable / 12)));
+    setLoanRepayAmount(suggested);
+    setLoanRepayDate(new Date().toISOString().split('T')[0]);
+    setLoanRepayNote('Monthly Installment (মাসিক কিস্তি)');
+    setLoanRepaySuccess(null);
+    setLoanRepayError(null);
+    setLoanRepayModalOpen(true);
+  };
+
+  const handleLoanRepaySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedLoanForRepay || !memberProfile) return;
+    if (loanRepayAmount <= 0) {
+      setLoanRepayError('Repayment amount must be greater than 0.');
+      return;
+    }
+
+    const remaining = Math.max(0, selectedLoanForRepay.totalPayable - selectedLoanForRepay.totalRepaid);
+    if (loanRepayAmount > remaining) {
+      setLoanRepayError(`Amount exceeds remaining balance of Tk ${remaining.toLocaleString()}.`);
+      return;
+    }
+
+    setLoanRepaying(true);
+    setLoanRepayError(null);
+    try {
+      const ok = await recordLoanRepayment(selectedLoanForRepay.id, {
+        amount: Number(loanRepayAmount),
+        date: loanRepayDate,
+        note: loanRepayNote.trim() || 'Monthly Installment',
+        recordedBy: `${memberProfile.name} (Member Self-Payment)`
+      });
+
+      if (ok) {
+        setLoanRepaySuccess('Loan repayment submitted and logged successfully! / কিস্তি সফলভাবে পরিশোধ হয়েছে!');
+        setTimeout(() => {
+          setLoanRepayModalOpen(false);
+          setSelectedLoanForRepay(null);
+          setLoanRepaySuccess(null);
+        }, 1400);
+      } else {
+        setLoanRepayError('Failed to record repayment.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setLoanRepayError(err.message || 'Error recording loan repayment.');
+    } finally {
+      setLoanRepaying(false);
+    }
   };
 
   if (!memberProfile) {
@@ -927,6 +1018,220 @@ export default function MemberProfilePage() {
           </div>
         </div>
 
+        {/* ============================================================== */}
+        {/* MY LOANS & REPAYMENT SECTION                                   */}
+        {/* ============================================================== */}
+        <div className="glass-panel p-5 rounded-2xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shrink-0">
+                <Banknote className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[var(--card-foreground)] flex items-center space-x-2">
+                  <span>My Loans & Monthly Repayments</span>
+                  <span className="text-[11px] font-normal text-indigo-400">(আমার ঋণ ও কিস্তি)</span>
+                </h3>
+                <p className="text-[11px] text-[var(--muted-foreground)]/80">
+                  Strictly linked to Member ID: <span className="font-mono font-bold text-indigo-400">{memberProfile.id}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Metrics Bar if user has loans */}
+            {myLoans.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="px-3 py-1.5 rounded-xl bg-[var(--background)]/80 border border-[var(--border)] text-xs">
+                  <span className="text-[10px] text-[var(--muted-foreground)] block">Total Disbursed (মোট ঋণ)</span>
+                  <span className="font-bold text-[var(--foreground)]">{loanMetrics.totalDisbursed.toLocaleString()} TK</span>
+                </div>
+                <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs">
+                  <span className="text-[10px] text-emerald-400 block">Total Repaid (পরিশোধিত)</span>
+                  <span className="font-bold text-emerald-400">{loanMetrics.totalRepaid.toLocaleString()} TK</span>
+                </div>
+                <div className="px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs">
+                  <span className="text-[10px] text-rose-400 block">Remaining Due (বকেয়া)</span>
+                  <span className="font-bold text-rose-400">{loanMetrics.totalRemaining.toLocaleString()} TK</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* If No Loans */}
+          {myLoans.length === 0 ? (
+            <div className="py-8 px-4 text-center rounded-xl bg-[var(--background)]/30 border border-dashed border-[var(--border)] space-y-2">
+              <div className="w-12 h-12 mx-auto rounded-2xl bg-zinc-500/10 text-zinc-400 flex items-center justify-center">
+                <Banknote className="w-6 h-6" />
+              </div>
+              <p className="text-xs font-semibold text-[var(--foreground)]/80">No active or past loans under your account.</p>
+              <p className="text-[11px] text-[var(--muted-foreground)]/70 max-w-md mx-auto">
+                সমিতি কর্তৃক আপনার সদস্য আইডিতে (<span className="font-mono text-indigo-400 font-bold">{memberProfile.id}</span>) কোনো ঋণ বরাদ্দ করা হলে তা এখানে স্বয়ংক্রিয়ভাবে প্রদর্শিত হবে এবং আপনি অনলাইন থেকেই মাসিক কিস্তি পরিশোধ করতে পারবেন।
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {myLoans.map((loan) => {
+                const balance = Math.max(0, loan.totalPayable - loan.totalRepaid);
+                const percentRepaid = Math.min(100, Math.round(((loan.totalRepaid || 0) / (loan.totalPayable || 1)) * 100));
+                const isOverdue = loan.status === 'overdue' || (loan.status === 'active' && new Date().toISOString().slice(0, 10) > loan.dueDate);
+                const isFullyPaid = loan.status === 'fully_paid' || balance <= 0;
+                const isExpanded = expandedLoanHistoryId === loan.id;
+
+                return (
+                  <div 
+                    key={loan.id} 
+                    className="p-4 sm:p-5 rounded-2xl bg-[var(--background)]/60 border border-[var(--border)] hover:border-indigo-500/30 transition-all space-y-4"
+                  >
+                    {/* Header of Loan Card */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border)]/60 pb-3">
+                      <div className="flex items-center space-x-2.5">
+                        <span className="px-2.5 py-1 rounded-lg bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 font-mono text-xs font-bold">
+                          {loan.loanNo}
+                        </span>
+                        <span className="capitalize text-xs font-semibold px-2 py-0.5 rounded-md bg-[var(--accent)] text-[var(--foreground)]/80">
+                          {loan.loanType} Loan
+                        </span>
+                        {loan.purpose && (
+                          <span className="text-[11px] text-[var(--muted-foreground)] hidden md:inline truncate max-w-xs">
+                            — {loan.purpose}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        {isFullyPaid ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 inline-flex items-center space-x-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>FULLY PAID (সম্পূর্ণ পরিশোধিত)</span>
+                          </span>
+                        ) : isOverdue ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/15 text-rose-400 border border-rose-500/30 inline-flex items-center space-x-1">
+                            <AlertCircle className="w-3 h-3" />
+                            <span>OVERDUE (মেয়াদোত্তীর্ণ)</span>
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-500/15 text-blue-400 border border-blue-500/30 inline-flex items-center space-x-1">
+                            <Clock className="w-3 h-3" />
+                            <span>ACTIVE (চলমান)</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Financial Metrics Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+                      <div className="p-2.5 rounded-xl bg-[var(--secondary)]/40 border border-[var(--border)]/60">
+                        <span className="text-[10px] text-[var(--muted-foreground)] block">Principal (মূল ঋণ)</span>
+                        <span className="font-bold text-[var(--foreground)]">{loan.principalAmount.toLocaleString()} TK</span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-[var(--secondary)]/40 border border-[var(--border)]/60">
+                        <span className="text-[10px] text-[var(--muted-foreground)] block">Interest Rate</span>
+                        <span className="font-bold text-amber-400">{loan.interestRate}% / year</span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-[var(--secondary)]/40 border border-[var(--border)]/60">
+                        <span className="text-[10px] text-[var(--muted-foreground)] block">Total Payable (মোট প্রদেয়)</span>
+                        <span className="font-bold text-[var(--foreground)]">{loan.totalPayable.toLocaleString()} TK</span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                        <span className="text-[10px] text-emerald-400 block">Total Repaid (পরিশোধিত)</span>
+                        <span className="font-bold text-emerald-400">{loan.totalRepaid.toLocaleString()} TK</span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                        <span className="text-[10px] text-rose-400 block">Remaining Balance (বাকি)</span>
+                        <span className="font-bold text-rose-400 text-sm">{balance.toLocaleString()} TK</span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-[var(--secondary)]/40 border border-[var(--border)]/60">
+                        <span className="text-[10px] text-[var(--muted-foreground)] block">Due Date (মেয়াদ শেষ)</span>
+                        <span className={`font-bold ${isOverdue ? 'text-rose-400' : 'text-[var(--foreground)]'}`}>
+                          {loan.dueDate}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Repayment Progress Bar */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-[var(--muted-foreground)] font-medium">
+                          Repayment Progress (পরিশোধের অগ্রগতি):
+                        </span>
+                        <span className="font-bold text-emerald-400">
+                          {percentRepaid}% ({loan.totalRepaid.toLocaleString()} / {loan.totalPayable.toLocaleString()} TK)
+                        </span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-[var(--secondary)] overflow-hidden border border-[var(--border)]/50">
+                        <div 
+                          className="h-full bg-gradient-to-r from-indigo-500 via-emerald-500 to-emerald-400 rounded-full transition-all duration-500"
+                          style={{ width: `${percentRepaid}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Actions Row */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedLoanHistoryId(isExpanded ? null : loan.id)}
+                        className="px-3 py-1.5 rounded-xl bg-[var(--accent)] hover:bg-zinc-700 text-xs font-semibold text-[var(--foreground)] transition-colors inline-flex items-center space-x-1.5 cursor-pointer"
+                      >
+                        <History className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>Installment History ({loan.repayments?.length || 0})</span>
+                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </button>
+
+                      {!isFullyPaid && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenLoanRepayModal(loan)}
+                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/25 transition-all inline-flex items-center space-x-1.5 cursor-pointer"
+                        >
+                          <Banknote className="w-4 h-4" />
+                          <span>Pay Monthly Installment / কিস্তি পরিশোধ</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Expandable Repayments Ledger */}
+                    {isExpanded && (
+                      <div className="mt-3 p-3.5 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)] animate-fade-in-up space-y-2">
+                        <div className="text-xs font-bold text-[var(--card-foreground)] flex items-center space-x-2">
+                          <History className="w-3.5 h-3.5 text-indigo-400" />
+                          <span>Installment Payment Logs ({loan.loanNo})</span>
+                        </div>
+                        {(!loan.repayments || loan.repayments.length === 0) ? (
+                          <p className="text-[11px] text-[var(--muted-foreground)]/70 py-2">No installments paid yet.</p>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs border-collapse">
+                              <thead>
+                                <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)] text-[10px]">
+                                  <th className="pb-1.5 font-semibold">Date</th>
+                                  <th className="pb-1.5 font-semibold">Amount Paid</th>
+                                  <th className="pb-1.5 font-semibold">Payment Note / Method</th>
+                                  <th className="pb-1.5 font-semibold text-right">Recorded By</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-[var(--border)]/50">
+                                {loan.repayments.map((rep) => (
+                                  <tr key={rep.id} className="hover:bg-[var(--accent)]/30">
+                                    <td className="py-2 text-[var(--muted-foreground)]">{rep.date}</td>
+                                    <td className="py-2 text-emerald-400 font-bold font-mono">+{rep.amount.toLocaleString()} TK</td>
+                                    <td className="py-2 text-[var(--foreground)]/80 text-[11px]">{rep.note || 'Monthly Installment'}</td>
+                                    <td className="py-2 text-right text-[10px] text-[var(--muted-foreground)]">{rep.recordedBy}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* ---------------- MODAL: PRINT RECEIPT ---------------- */}
         {/* ---------------- MODAL: PRINT RECEIPT WITH OFFICIAL FDC PAD ---------------- */}
         {printOpen && selectedReceipt && (
@@ -1306,6 +1611,164 @@ export default function MemberProfilePage() {
             collections={myPayments}
             onClose={() => setCardModalOpen(false)}
           />
+        )}
+
+        {/* ============================================================== */}
+        {/* MODAL: MEMBER LOAN REPAYMENT / MONTHLY INSTALLMENT             */}
+        {/* ============================================================== */}
+        {loanRepayModalOpen && selectedLoanForRepay && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-3xl w-full max-w-lg shadow-2xl p-5 sm:p-6 relative animate-fade-in-up my-6">
+              <button
+                type="button"
+                onClick={() => setLoanRepayModalOpen(false)}
+                className="absolute top-4 right-4 p-2 text-[var(--muted-foreground)] hover:text-white rounded-xl hover:bg-[var(--accent)] transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center space-x-3 mb-5 pb-3 border-b border-[var(--border)]">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                  <Banknote className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white tracking-tight">Pay Loan Installment</h3>
+                  <p className="text-xs text-[var(--muted-foreground)]">
+                    ঋণের মাসিক কিস্তি পরিশোধ — <span className="font-mono text-emerald-400 font-bold">{selectedLoanForRepay.loanNo}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Loan Summary Badge */}
+              <div className="mb-4 p-3.5 rounded-2xl bg-[var(--background)] border border-[var(--border)] grid grid-cols-3 gap-2 text-center text-xs">
+                <div>
+                  <span className="text-[10px] text-[var(--muted-foreground)] block">Total Payable</span>
+                  <span className="font-bold text-[var(--foreground)]">{selectedLoanForRepay.totalPayable.toLocaleString()} TK</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-emerald-400 block">Total Repaid</span>
+                  <span className="font-bold text-emerald-400">{selectedLoanForRepay.totalRepaid.toLocaleString()} TK</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-rose-400 block">Remaining Due</span>
+                  <span className="font-bold text-rose-400">
+                    {Math.max(0, selectedLoanForRepay.totalPayable - selectedLoanForRepay.totalRepaid).toLocaleString()} TK
+                  </span>
+                </div>
+              </div>
+
+              {loanRepaySuccess && (
+                <div className="mb-4 p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center space-x-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{loanRepaySuccess}</span>
+                </div>
+              )}
+
+              {loanRepayError && (
+                <div className="mb-4 p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-bold flex items-center space-x-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{loanRepayError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleLoanRepaySubmit} className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-xs font-bold text-[var(--foreground)] mb-1">
+                    Repayment Amount (পরিশোধের পরিমাণ - টাকা) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    max={Math.max(0, selectedLoanForRepay.totalPayable - selectedLoanForRepay.totalRepaid)}
+                    value={loanRepayAmount}
+                    onChange={(e) => setLoanRepayAmount(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 bg-[var(--background)] border border-[var(--border)] rounded-xl text-sm text-[var(--foreground)] font-bold focus:outline-none focus:border-emerald-500"
+                  />
+                  {/* Quick Preset Buttons */}
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    {[1000, 2000, 5000].map((amt) => {
+                      const balance = Math.max(0, selectedLoanForRepay.totalPayable - selectedLoanForRepay.totalRepaid);
+                      if (amt > balance) return null;
+                      return (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => setLoanRepayAmount(amt)}
+                          className="px-2.5 py-1 rounded-lg bg-[var(--accent)] hover:bg-zinc-700 text-[10px] font-bold text-[var(--foreground)]/80 transition-colors cursor-pointer"
+                        >
+                          +{amt.toLocaleString()} TK
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => setLoanRepayAmount(Math.max(0, selectedLoanForRepay.totalPayable - selectedLoanForRepay.totalRepaid))}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold transition-colors cursor-pointer ml-auto"
+                    >
+                      Pay Full Due ({Math.max(0, selectedLoanForRepay.totalPayable - selectedLoanForRepay.totalRepaid).toLocaleString()} TK)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--foreground)] mb-1">
+                      Payment Date (তারিখ) *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={loanRepayDate}
+                      onChange={(e) => setLoanRepayDate(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-[var(--background)] border border-[var(--border)] rounded-xl text-xs text-[var(--foreground)] focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--foreground)] mb-1">
+                      Payment Note / Trx ID (বিবরণ)
+                    </label>
+                    <input
+                      type="text"
+                      value={loanRepayNote}
+                      onChange={(e) => setLoanRepayNote(e.target.value)}
+                      placeholder="e.g. Bkash TrxID / Monthly Installment"
+                      className="w-full px-3.5 py-2.5 bg-[var(--background)] border border-[var(--border)] rounded-xl text-xs text-[var(--foreground)] placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Remaining preview */}
+                <div className="p-3 rounded-xl bg-[var(--background)]/70 border border-[var(--border)] flex items-center justify-between text-xs">
+                  <span className="text-[var(--muted-foreground)]">Remaining after this installment:</span>
+                  <span className="font-bold text-emerald-400 font-mono">
+                    {Math.max(0, (selectedLoanForRepay.totalPayable - selectedLoanForRepay.totalRepaid) - (Number(loanRepayAmount) || 0)).toLocaleString()} TK
+                  </span>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end space-x-2 pt-3 border-t border-[var(--border)]">
+                  <button
+                    type="button"
+                    onClick={() => setLoanRepayModalOpen(false)}
+                    disabled={loanRepaying}
+                    className="px-4 py-2.5 bg-[var(--accent)] hover:bg-zinc-750 text-[var(--foreground)] text-xs font-semibold rounded-xl cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loanRepaying}
+                    className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/30 transition-all flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {loanRepaying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                    <span>Confirm Installment Payment</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
 
       </div>

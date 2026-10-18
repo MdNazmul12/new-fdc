@@ -134,9 +134,10 @@ export async function POST(request: Request) {
         break;
       }
 
-      // ─── 5. Loan Approved ────────────────────────────────────────────
-      case 'loan_approved': {
-        subject = `💰 Loan Approved — ${data.loanNo} | ${APP_NAME}`;
+      // ─── 5. Loan Approved / Disbursed ────────────────────────────────
+      case 'loan_approved':
+      case 'loan_disbursed': {
+        subject = `💰 Loan Disbursed — ${data.loanNo} | ${APP_NAME}`;
         html = `
           <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
             <div style="background:linear-gradient(135deg,#7c3aed,#8b5cf6);padding:28px;text-align:center;">

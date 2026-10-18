@@ -79,14 +79,14 @@ export default function LoansPage() {
   const visibleLoans = useMemo(() => {
     let list = loans;
 
-    // Regular member sees only their own loans
+    // Regular member sees only their own loans — strictly by unique member ID (never loose name matching)
     if (user?.role === 'member') {
+      const canonicalMemberId = user.memberId || (user.id?.startsWith('u-') ? user.id.replace('u-', 'm-') : user.id);
       list = list.filter((l) => {
         return (
-          l.memberId === user.memberId ||
-          l.memberId === user.id ||
-          l.memberId === user.id.replace('u-', 'm-') ||
-          (user.name && l.memberName?.toLowerCase() === user.name.toLowerCase())
+          l.memberId === canonicalMemberId ||
+          (user.memberId && l.memberId === user.memberId) ||
+          l.memberId === user.id
         );
       });
     }
@@ -137,7 +137,7 @@ export default function LoansPage() {
 
     setSubmitting(true);
     try {
-      await addLoan({
+      const newLoan = await addLoan({
         memberId: targetMember.id,
         memberName: targetMember.name,
         loanType,
@@ -151,6 +151,26 @@ export default function LoansPage() {
         approvedBy: user?.name || 'Administrator',
         notes: notes.trim(),
       });
+
+      // Send email alert to borrower if member has registered email
+      if (targetMember.email) {
+        fetch('/api/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'loan_disbursed',
+            to: targetMember.email,
+            data: {
+              memberName: targetMember.name,
+              loanNo: newLoan.loanNo,
+              amount: newLoan.principalAmount,
+              interestRate: newLoan.interestRate,
+              dueDate: newLoan.dueDate,
+            }
+          })
+        }).catch(err => console.warn('Loan disbursement notification email failed:', err));
+      }
+
       setIssueModalOpen(false);
       setPurpose('');
       setGuarantorName('');
