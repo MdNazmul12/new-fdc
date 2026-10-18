@@ -118,11 +118,13 @@ export default function UsersPage() {
       collections: ['view'],
       investments: [],
       expenses: [],
+      loans: ['view'],
       accounting: [],
       reports: [],
       users: [],
       audit: [],
-      documents: ['view']
+      documents: ['view'],
+      backup: []
     };
 
     const updated = {
@@ -285,11 +287,13 @@ export default function UsersPage() {
     { key: 'collections', name: 'Collection Management' },
     { key: 'investments', name: 'Investment Management' },
     { key: 'expenses', name: 'Expense Management' },
+    { key: 'loans', name: 'Loan Management' },
     { key: 'accounting', name: 'Accounting Bookkeeping' },
     { key: 'reports', name: 'Financial Reports' },
     { key: 'users', name: 'User Accounts' },
     { key: 'audit', name: 'Audit Logs' },
     { key: 'documents', name: 'File Repository' },
+    { key: 'backup', name: 'Database Backup & Restore' },
   ];
 
   const actionsList = [

@@ -58,7 +58,8 @@ const DEFAULT_PERMISSIONS: Record<UserRole, Record<string, string[]>> = {
     reports: ['view', 'export'],
     users: [],
     audit: [],
-    documents: ['view', 'create', 'delete']
+    documents: ['view', 'create', 'delete'],
+    backup: ['view', 'export']
   },
   collector: {
     dashboard: ['view'],
@@ -84,7 +85,8 @@ const DEFAULT_PERMISSIONS: Record<UserRole, Record<string, string[]>> = {
     reports: ['view', 'export'],
     users: [],
     audit: ['view'],
-    documents: ['view']
+    documents: ['view'],
+    backup: ['view']
   },
   member: {
     dashboard: ['view'],
@@ -199,6 +201,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
+      // Helper to merge loaded permissions with DEFAULT_PERMISSIONS so new modules are never lost
+      const mergeWithDefaults = (loaded: any) => {
+        const merged: any = {};
+        (Object.keys(DEFAULT_PERMISSIONS) as UserRole[]).forEach((role) => {
+          const defaultRolePerms = DEFAULT_PERMISSIONS[role] || {};
+          const loadedRolePerms = loaded?.[role] || {};
+          merged[role] = { ...defaultRolePerms, ...loadedRolePerms };
+          // Ensure every module from default is present with at least default actions
+          Object.keys(defaultRolePerms).forEach((mod) => {
+            if (!merged[role][mod] || merged[role][mod].length === 0) {
+              merged[role][mod] = defaultRolePerms[mod];
+            }
+          });
+        });
+        return merged;
+      };
+
       // 2. Load permissions from MongoDB
       try {
         const res = await fetch('/api/db/permissions');
@@ -209,8 +228,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             data.forEach((item: any) => {
               loadedPerms[item.role] = item.modules;
             });
-            setPermissions(loadedPerms);
-            localStorage.setItem('fdc_permissions', JSON.stringify(loadedPerms));
+            const merged = mergeWithDefaults(loadedPerms);
+            setPermissions(merged);
+            localStorage.setItem('fdc_permissions', JSON.stringify(merged));
             setLoading(false);
             return;
           }
@@ -223,7 +243,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const storedPerms = localStorage.getItem('fdc_permissions');
       if (storedPerms) {
         try {
-          setPermissions(JSON.parse(storedPerms));
+          const parsed = JSON.parse(storedPerms);
+          const merged = mergeWithDefaults(parsed);
+          setPermissions(merged);
+          localStorage.setItem('fdc_permissions', JSON.stringify(merged));
         } catch (e) {
           setPermissions(DEFAULT_PERMISSIONS);
         }
@@ -444,9 +467,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     action: 'view' | 'create' | 'update' | 'delete' | 'approve' | 'export' | 'print'
   ): boolean => {
     if (!user) return false;
-    const rolePermissions = permissions[user.role];
+    // Super admin has full unrestricted access to all modules and actions
+    if (user.role === 'super_admin') return true;
+
+    const rolePermissions = permissions[user.role] || DEFAULT_PERMISSIONS[user.role];
     if (!rolePermissions) return false;
-    const modulePermissions = rolePermissions[module];
+    const modulePermissions = rolePermissions[module] || DEFAULT_PERMISSIONS[user.role]?.[module];
     if (!modulePermissions) return false;
     return modulePermissions.includes(action);
   };

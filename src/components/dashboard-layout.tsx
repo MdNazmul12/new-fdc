@@ -101,9 +101,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Backup & Restore', path: '/backup', icon: Database, permission: { module: 'backup', action: 'view' as const } },
   ];
 
-  const filteredNavItems = navigationItems.filter(item => 
-    hasPermission(item.permission.module, item.permission.action)
-  );
+  const filteredNavItems = navigationItems.filter(item => {
+    if (user.role === 'super_admin') return true;
+    return hasPermission(item.permission.module, item.permission.action);
+  });
 
   const userNotifications = notifications.filter(n => {
     if (user.role !== 'member') return true;
