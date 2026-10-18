@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,11 +9,14 @@ const APP_NAME = 'Friends Development Committee (FDC)';
 
 export async function POST(request: Request) {
   try {
+    const gmailUser = process.env.GMAIL_USER || process.env.SMTP_USER;
+    const gmailPass = process.env.GMAIL_APP_PASSWORD || process.env.SMTP_PASS;
     const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      console.warn('RESEND_API_KEY is not configured in environment.');
+
+    if (!apiKey && !(gmailUser && gmailPass)) {
+      console.warn('Neither RESEND_API_KEY nor GMAIL_USER/GMAIL_APP_PASSWORD configured.');
       return NextResponse.json(
-        { error: 'RESEND_API_KEY is not set. Please configure RESEND_API_KEY in .env.local' },
+        { error: 'Email service not configured. Please set GMAIL_USER & GMAIL_APP_PASSWORD or RESEND_API_KEY in environment.' },
         { status: 503 }
       );
     }
@@ -165,14 +169,42 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Unknown email type' }, { status: 400 });
     }
 
-    const result = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: Array.isArray(to) ? to : [to],
-      subject,
-      html,
-    });
+    const recipientList = Array.isArray(to) ? to : [to];
 
-    return NextResponse.json({ success: true, id: result.data?.id });
+    // If Gmail SMTP is configured, send via nodemailer
+    if (gmailUser && gmailPass) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: gmailUser,
+          pass: gmailPass,
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"${APP_NAME}" <${gmailUser}>`,
+        to: recipientList.join(', '),
+        subject,
+        html,
+      });
+
+      return NextResponse.json({ success: true, method: 'gmail_smtp' });
+    }
+
+    // Otherwise send via Resend
+    if (apiKey) {
+      const resend = new Resend(apiKey);
+      const result = await resend.emails.send({
+        from: FROM_EMAIL,
+        to: recipientList,
+        subject,
+        html,
+      });
+
+      return NextResponse.json({ success: true, id: result.data?.id, method: 'resend' });
+    }
+
+    return NextResponse.json({ error: 'No email service configured' }, { status: 500 });
   } catch (error: any) {
     console.error('Email send error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
