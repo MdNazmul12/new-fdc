@@ -30,7 +30,8 @@ const DEFAULT_PERMISSIONS: Record<UserRole, Record<string, string[]>> = {
     reports: ['view', 'export'],
     users: ['view', 'create', 'update', 'delete'],
     audit: ['view'],
-    documents: ['view', 'create', 'delete']
+    documents: ['view', 'create', 'delete'],
+    backup: ['view', 'create', 'update', 'delete', 'export']
   },
   president: {
     dashboard: ['view'],
@@ -43,7 +44,8 @@ const DEFAULT_PERMISSIONS: Record<UserRole, Record<string, string[]>> = {
     reports: ['view', 'export'],
     users: ['view'],
     audit: ['view'],
-    documents: ['view']
+    documents: ['view'],
+    backup: ['view', 'export']
   },
   treasurer: {
     dashboard: ['view'],

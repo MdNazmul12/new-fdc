@@ -31,7 +31,8 @@ import {
   Sun,
   Moon,
   Palette,
-  Banknote
+  Banknote,
+  Database
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -97,6 +98,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Accounting', path: '/accounting', icon: BookOpen, permission: { module: 'accounting', action: 'view' as const } },
     { name: 'Reports', path: '/reports', icon: FileText, permission: { module: 'reports', action: 'view' as const } },
     { name: 'User Management', path: '/users', icon: UserCog, permission: { module: 'users', action: 'view' as const } },
+    { name: 'Backup & Restore', path: '/backup', icon: Database, permission: { module: 'backup', action: 'view' as const } },
   ];
 
   const filteredNavItems = navigationItems.filter(item => 
