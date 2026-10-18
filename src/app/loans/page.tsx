@@ -398,6 +398,7 @@ export default function LoansPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[var(--secondary)] text-[var(--muted-foreground)]">
+                  <th className="p-3.5 font-bold uppercase tracking-wider text-[10px] w-12 text-center">SL</th>
                   <th className="p-3.5 font-bold uppercase tracking-wider text-[10px]">Loan No</th>
                   <th className="p-3.5 font-bold uppercase tracking-wider text-[10px]">Member</th>
                   <th className="p-3.5 font-bold uppercase tracking-wider text-[10px]">Type & Purpose</th>
@@ -412,7 +413,7 @@ export default function LoansPage() {
               <tbody className="divide-y divide-[var(--border)]">
                 {paginatedLoans.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="p-8 text-center text-[var(--muted-foreground)]">
+                    <td colSpan={10} className="p-8 text-center text-[var(--muted-foreground)]">
                       <Banknote className="w-8 h-8 mx-auto mb-2 opacity-30" />
                       <p className="font-semibold text-sm">No loan records found.</p>
                       <p className="text-[11px] mt-0.5">
@@ -421,7 +422,8 @@ export default function LoansPage() {
                     </td>
                   </tr>
                 ) : (
-                  paginatedLoans.map((loan) => {
+                  paginatedLoans.map((loan, idx) => {
+                    const serialNo = pageSize === -1 ? idx + 1 : (currentPage - 1) * pageSize + idx + 1;
                     const balance = Math.max(0, loan.totalPayable - loan.totalRepaid);
                     const progressPercent = Math.min(
                       100,
@@ -430,6 +432,9 @@ export default function LoansPage() {
 
                     return (
                       <tr key={loan.id} className="hover:bg-[var(--accent)]/30 transition-colors">
+                        <td className="p-3.5 text-center font-mono text-[11px] text-[var(--muted-foreground)] font-bold">
+                          {serialNo}
+                        </td>
                         <td className="p-3.5 font-mono font-bold text-indigo-400">{loan.loanNo}</td>
 
                         <td className="p-3.5">

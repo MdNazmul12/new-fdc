@@ -301,6 +301,7 @@ export default function GenerateDuesPage() {
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
+                    <th className="pb-3 font-semibold w-12 text-center">SL</th>
                     <th className="pb-3 font-semibold">Month</th>
                     <th className="pb-3 font-semibold">Demand Title</th>
                     <th className="pb-3 font-semibold">Fee Structure</th>
@@ -312,8 +313,11 @@ export default function GenerateDuesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
-                  {demandStatsList.map((item) => (
+                  {demandStatsList.map((item, idx) => (
                     <tr key={item.demand.id} className="hover:bg-[var(--muted)]/40 transition-colors">
+                      <td className="py-3 text-center font-mono text-[11px] text-[var(--muted-foreground)] font-bold">
+                        {idx + 1}
+                      </td>
                       <td className="py-3 text-[var(--card-foreground)] font-bold font-mono text-xs">{item.demand.month}</td>
                       <td className="py-3 text-[var(--foreground)]/80 font-medium">{item.demand.title}</td>
                       <td className="py-3">

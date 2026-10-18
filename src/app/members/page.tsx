@@ -289,6 +289,7 @@ export default function MembersPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[var(--secondary)]/40 text-[var(--muted-foreground)]">
+                  <th className="p-4 font-semibold w-12 text-center">SL</th>
                   <th className="p-4 font-semibold">Member Info</th>
                   <th className="p-4 font-semibold">Joined Date</th>
                   <th className="p-4 font-semibold">Monthly Sub.</th>
@@ -300,11 +301,16 @@ export default function MembersPage() {
               <tbody className="divide-y divide-[var(--border)]">
                 {paginatedMembers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-[var(--muted-foreground)]/70">No members found</td>
+                    <td colSpan={7} className="p-8 text-center text-[var(--muted-foreground)]/70">No members found</td>
                   </tr>
                 ) : (
-                  paginatedMembers.map((member) => (
+                  paginatedMembers.map((member, idx) => {
+                    const serialNo = pageSize === -1 ? idx + 1 : (currentPage - 1) * pageSize + idx + 1;
+                    return (
                     <tr key={member.id} className="hover:bg-[var(--secondary)]/40 transition-colors">
+                      <td className="p-4 text-center font-mono text-[11px] text-[var(--muted-foreground)] font-bold">
+                        {serialNo}
+                      </td>
                       
                       {/* Member profile detail */}
                       <td className="p-4">
@@ -395,7 +401,8 @@ export default function MembersPage() {
                       </td>
 
                     </tr>
-                  ))
+                  );
+                })
                 )}
               </tbody>
             </table>

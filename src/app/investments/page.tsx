@@ -231,6 +231,7 @@ export default function InvestmentsPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[var(--secondary)]/40 text-[var(--muted-foreground)]">
+                  <th className="p-4 font-semibold w-12 text-center">SL</th>
                   <th className="p-4 font-semibold">Asset Category / Provider</th>
                   <th className="p-4 font-semibold">Principal Capital</th>
                   <th className="p-4 font-semibold text-center">Interest Rate</th>
@@ -243,14 +244,16 @@ export default function InvestmentsPage() {
               <tbody className="divide-y divide-[var(--border)]">
                 {filteredInvestments.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-[var(--muted-foreground)]/70">No investments found</td>
+                    <td colSpan={8} className="p-8 text-center text-[var(--muted-foreground)]/70">No investments found</td>
                   </tr>
                 ) : (
-                  filteredInvestments.map((inv) => {
+                  filteredInvestments.map((inv, idx) => {
                     const isMatured = inv.status === 'running' && new Date(inv.maturityDate).getTime() < Date.now();
                     return (
                       <tr key={inv.id} className="hover:bg-[var(--secondary)]/40 transition-colors">
-                        
+                        <td className="p-4 text-center font-mono text-[11px] text-[var(--muted-foreground)] font-bold">
+                          {idx + 1}
+                        </td>
                         <td className="p-4">
                           <p className="font-bold text-[var(--foreground)] flex items-center space-x-1.5">
                             <span className="px-1.5 py-0.5 rounded bg-[var(--accent)] text-[10px] text-[var(--foreground)]/80 font-extrabold">{inv.type}</span>

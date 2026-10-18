@@ -714,6 +714,7 @@ export default function DuesPage() {
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
                         <tr className="border-b border-[var(--border)] bg-[var(--secondary)]/50 text-[var(--muted-foreground)]">
+                          <th className="p-3.5 font-semibold w-12 text-center">SL</th>
                           <th className="p-3.5 font-semibold">Member</th>
                           <th className="p-3.5 font-semibold">Monthly Fee</th>
                           <th className="p-3.5 font-semibold">Late Fine</th>
@@ -725,13 +726,18 @@ export default function DuesPage() {
                       <tbody className="divide-y divide-[var(--border)]">
                         {paginatedDues.length === 0 ? (
                           <tr>
-                            <td colSpan={6} className="p-8 text-center text-[var(--muted-foreground)]/70">
+                            <td colSpan={7} className="p-8 text-center text-[var(--muted-foreground)]/70">
                               No member records found matching your filters.
                             </td>
                           </tr>
                         ) : (
-                          paginatedDues.map((item) => (
+                          paginatedDues.map((item, idx) => {
+                            const serialNo = pageSize === -1 ? idx + 1 : (currentPage - 1) * pageSize + idx + 1;
+                            return (
                           <tr key={item.member.id} className="hover:bg-[var(--secondary)]/40 transition-colors">
+                            <td className="p-3.5 text-center font-mono text-[11px] text-[var(--muted-foreground)] font-bold">
+                              {serialNo}
+                            </td>
                             <td className="p-3.5">
                               <div className="flex items-center space-x-2.5">
                                 <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs uppercase shrink-0">
@@ -821,7 +827,8 @@ export default function DuesPage() {
                               )}
                             </td>
                           </tr>
-                        ))
+                          );
+                        })
                       )}
                     </tbody>
                   </table>

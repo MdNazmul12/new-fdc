@@ -18,6 +18,8 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [countdown, setCountdown] = useState(0);
+  const [devOtp, setDevOtp] = useState<string | null>(null);
+  const [emailNotice, setEmailNotice] = useState<string | null>(null);
 
   const startCountdown = () => {
     setCountdown(60);
@@ -38,10 +40,12 @@ export default function ForgotPasswordPage() {
       const res = await fetch('/api/otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      if (data.devOtp) setDevOtp(data.devOtp);
+      setEmailNotice(data.message || 'OTP sent to your email.');
       setStep('otp');
       startCountdown();
     } catch (err: any) {
@@ -60,10 +64,12 @@ export default function ForgotPasswordPage() {
       const res = await fetch('/api/otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      if (data.devOtp) setDevOtp(data.devOtp);
+      setEmailNotice(data.message || 'New OTP sent to your email.');
       startCountdown();
     } catch (err: any) {
       setError(err.message);
@@ -218,6 +224,30 @@ export default function ForgotPasswordPage() {
                 <p className="text-xs text-[var(--muted-foreground)] mt-1">
                   6-digit OTP পাঠানো হয়েছে <strong className="text-[var(--foreground)]">{email}</strong>-এ
                 </p>
+                <div className="mt-2.5 p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-300 space-y-1 text-left">
+                  <p className="font-semibold flex items-center space-x-1">
+                    <span>⏱️ ইমেইল আসতে কত সময় লাগবে?</span>
+                  </p>
+                  <p className="text-[10px] text-[var(--muted-foreground)] leading-relaxed">
+                    সাধারণত <strong>১০ থেকে ৩০ সেকেন্ডের</strong> মধ্যে ইনবক্সে পৌঁছায়। ইনবক্সে না পেলে অনুগ্রহ করে আপনার ইমেইলের <strong>Spam / Junk</strong> ফোল্ডার চেক করুন।
+                  </p>
+                </div>
+
+                {devOtp && (
+                  <div className="mt-2.5 p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-[11px] flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-emerald-400 block font-bold">Instant OTP Code:</span>
+                      <span className="font-mono text-base font-black text-emerald-400 tracking-wider">{devOtp}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setOtp(devOtp)}
+                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-[10px] transition-colors cursor-pointer"
+                    >
+                      Fill OTP
+                    </button>
+                  </div>
+                )}
               </div>
               <form onSubmit={handleVerifyOTP} className="space-y-4">
                 <div>

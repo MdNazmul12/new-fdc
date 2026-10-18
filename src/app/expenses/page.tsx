@@ -203,6 +203,7 @@ export default function ExpensesPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[var(--secondary)]/40 text-[var(--muted-foreground)]">
+                  <th className="p-4 font-semibold w-12 text-center">SL</th>
                   <th className="p-4 font-semibold">Expense Category</th>
                   <th className="p-4 font-semibold">Description</th>
                   <th className="p-4 font-semibold">Payer Info</th>
@@ -214,12 +215,16 @@ export default function ExpensesPage() {
               <tbody className="divide-y divide-[var(--border)]">
                 {paginatedExpenses.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-[var(--muted-foreground)]/70">No expenses found</td>
+                    <td colSpan={7} className="p-8 text-center text-[var(--muted-foreground)]/70">No expenses found</td>
                   </tr>
                 ) : (
-                  paginatedExpenses.map((exp) => (
+                  paginatedExpenses.map((exp, idx) => {
+                    const serialNo = pageSize === -1 ? idx + 1 : (currentPage - 1) * pageSize + idx + 1;
+                    return (
                     <tr key={exp.id} className="hover:bg-[var(--secondary)]/40 transition-colors">
-                      
+                      <td className="p-4 text-center font-mono text-[11px] text-[var(--muted-foreground)] font-bold">
+                        {serialNo}
+                      </td>
                       <td className="p-4">
                         <span className="px-2 py-0.5 rounded bg-[var(--accent)] text-[10px] text-[var(--foreground)]/80 font-extrabold">{exp.category}</span>
                       </td>
@@ -253,7 +258,8 @@ export default function ExpensesPage() {
                       </td>
 
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>

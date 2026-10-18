@@ -300,6 +300,7 @@ export default function AccountingPage() {
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-[var(--border)] bg-[var(--secondary)]/40 text-[var(--muted-foreground)]">
+                      <th className="p-4 font-semibold w-12 text-center">SL</th>
                       <th className="p-4 font-semibold">TxID</th>
                       <th className="p-4 font-semibold">Date</th>
                       <th className="p-4 font-semibold">Account</th>
@@ -314,13 +315,17 @@ export default function AccountingPage() {
                   <tbody className="divide-y divide-[var(--border)]">
                     {paginatedTxs.length === 0 ? (
                       <tr>
-                        <td colSpan={canDeleteAccounting ? 9 : 8} className="p-8 text-center text-[var(--muted-foreground)]/70">No ledger transactions logged for this filter.</td>
+                        <td colSpan={canDeleteAccounting ? 10 : 9} className="p-8 text-center text-[var(--muted-foreground)]/70">No ledger transactions logged for this filter.</td>
                       </tr>
                     ) : (
-                      paginatedTxs.map((tx) => {
+                      paginatedTxs.map((tx, idx) => {
+                        const serialNo = pageSize === -1 ? idx + 1 : (currentPage - 1) * pageSize + idx + 1;
                         const isCredit = tx.type === 'credit';
                         return (
                           <tr key={tx.id} className="hover:bg-[var(--secondary)]/40 transition-colors">
+                            <td className="p-4 text-center font-mono text-[11px] text-[var(--muted-foreground)] font-bold">
+                              {serialNo}
+                            </td>
                             <td className="p-4 font-medium text-[var(--muted-foreground)]/70 text-[10px]">{tx.id}</td>
                             <td className="p-4 text-zinc-450 truncate max-w-[200px]">{tx.date}</td>
                             <td className="p-4 capitalize text-[var(--foreground)]/80">{tx.account}</td>

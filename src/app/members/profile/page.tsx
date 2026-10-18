@@ -947,6 +947,7 @@ export default function MemberProfilePage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
+                  <th className="pb-2 font-semibold w-12 text-center">SL</th>
                   <th className="pb-2 font-semibold">Date</th>
                   <th className="pb-2 font-semibold">Receipt / Ref</th>
                   <th className="pb-2 font-semibold">Target Month</th>
@@ -960,16 +961,20 @@ export default function MemberProfilePage() {
               <tbody className="divide-y divide-[var(--border)]">
                 {paginatedPayments.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-6 text-center text-[var(--muted-foreground)]/70">No payment logs recorded yet.</td>
+                    <td colSpan={9} className="py-6 text-center text-[var(--muted-foreground)]/70">No payment logs recorded yet.</td>
                   </tr>
                 ) : (
-                  paginatedPayments.map((p) => {
+                  paginatedPayments.map((p, idx) => {
+                    const serialNo = paymentPageSize === -1 ? idx + 1 : (paymentPage - 1) * paymentPageSize + idx + 1;
                     const isPending = p.status === 'pending';
                     const isRejected = p.status === 'rejected';
                     const isPaid = p.status === 'paid' || (!p.status && true);
 
                     return (
                       <tr key={p.id} className="hover:bg-[var(--secondary)]/30 transition-colors">
+                        <td className="py-3 text-center font-mono text-[11px] text-[var(--muted-foreground)] font-bold">
+                          {serialNo}
+                        </td>
                         <td className="py-3 text-[var(--muted-foreground)]">{p.date}</td>
                         <td className="py-3 text-[var(--card-foreground)] font-mono text-[11px] font-medium">
                           {p.receiptNo}
@@ -1232,6 +1237,7 @@ export default function MemberProfilePage() {
                             <table className="w-full text-left text-xs border-collapse">
                               <thead>
                                 <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)] text-[10px]">
+                                  <th className="pb-1.5 font-semibold w-10 text-center">SL</th>
                                   <th className="pb-1.5 font-semibold">Date</th>
                                   <th className="pb-1.5 font-semibold">Amount Paid</th>
                                   <th className="pb-1.5 font-semibold">Payment Note / Method</th>
@@ -1239,8 +1245,11 @@ export default function MemberProfilePage() {
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-[var(--border)]/50">
-                                {loan.repayments.map((rep) => (
+                                {loan.repayments.map((rep, repIdx) => (
                                   <tr key={rep.id} className="hover:bg-[var(--accent)]/30">
+                                    <td className="py-2 text-center font-mono text-[10px] text-[var(--muted-foreground)] font-bold">
+                                      {repIdx + 1}
+                                    </td>
                                     <td className="py-2 text-[var(--muted-foreground)]">{rep.date}</td>
                                     <td className="py-2 text-emerald-400 font-bold font-mono">+{rep.amount.toLocaleString()} TK</td>
                                     <td className="py-2 text-[var(--foreground)]/80 text-[11px]">{rep.note || 'Monthly Installment'}</td>

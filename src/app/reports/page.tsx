@@ -112,6 +112,7 @@ export default function ReportsPage() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
+                    <th className="pb-2 w-10 text-center">SL</th>
                     <th className="pb-2">Receipt No</th>
                     <th className="pb-2">Member</th>
                     <th className="pb-2">Month</th>
@@ -121,8 +122,9 @@ export default function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
-                  {collections.map(c => (
+                  {collections.map((c, idx) => (
                     <tr key={c.id}>
+                      <td className="py-2 text-center font-mono text-[11px] text-[var(--muted-foreground)] font-bold">{idx + 1}</td>
                       <td className="py-2 text-[var(--foreground)]/80">{c.receiptNo}</td>
                       <td className="py-2 text-[var(--card-foreground)] font-bold">{c.memberName}</td>
                       <td className="py-2 text-indigo-400 font-semibold">{c.month}</td>
@@ -146,6 +148,7 @@ export default function ReportsPage() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
+                    <th className="pb-2 w-10 text-center">SL</th>
                     <th className="pb-2">Member ID</th>
                     <th className="pb-2">Member Name</th>
                     <th className="pb-2">Phone Number</th>
@@ -154,8 +157,9 @@ export default function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
-                  {members.filter(m => m.status === 'active').slice(0, 3).map(m => (
+                  {members.filter(m => m.status === 'active').slice(0, 3).map((m, idx) => (
                     <tr key={m.id}>
+                      <td className="py-2 text-center font-mono text-[11px] text-[var(--muted-foreground)] font-bold">{idx + 1}</td>
                       <td className="py-2 text-[var(--muted-foreground)]/70 font-medium">{m.id}</td>
                       <td className="py-2 text-[var(--card-foreground)] font-bold">{m.name}</td>
                       <td className="py-2 text-[var(--muted-foreground)]">{m.phone}</td>
@@ -177,6 +181,7 @@ export default function ReportsPage() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
+                    <th className="pb-2 w-10 text-center">SL</th>
                     <th className="pb-2">Provider</th>
                     <th className="pb-2">Category</th>
                     <th className="pb-2">Principal Value</th>
@@ -186,8 +191,9 @@ export default function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
-                  {investments.map(i => (
+                  {investments.map((i, idx) => (
                     <tr key={i.id}>
+                      <td className="py-2 text-center font-mono text-[11px] text-[var(--muted-foreground)] font-bold">{idx + 1}</td>
                       <td className="py-2 text-[var(--card-foreground)] font-bold">{i.provider}</td>
                       <td className="py-2"><span className="px-1.5 py-0.5 rounded bg-[var(--accent)] text-[10px] text-zinc-350">{i.type}</span></td>
                       <td className="py-2 text-[var(--card-foreground)] font-bold">{i.principalAmount.toLocaleString()} TK</td>
@@ -212,6 +218,7 @@ export default function ReportsPage() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
+                    <th className="pb-2 w-10 text-center">SL</th>
                     <th className="pb-2">Category</th>
                     <th className="pb-2">Description</th>
                     <th className="pb-2">Payer</th>
@@ -220,8 +227,9 @@ export default function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
-                  {expenses.map(e => (
+                  {expenses.map((e, idx) => (
                     <tr key={e.id}>
+                      <td className="py-2 text-center font-mono text-[11px] text-[var(--muted-foreground)] font-bold">{idx + 1}</td>
                       <td className="py-2 text-[var(--card-foreground)]"><span className="px-1.5 py-0.5 rounded bg-[var(--accent)] text-[10px] text-[var(--foreground)]/80 font-extrabold">{e.category}</span></td>
                       <td className="py-2 text-[var(--foreground)]/80">{e.description}</td>
                       <td className="py-2 text-[var(--muted-foreground)] capitalize">{e.paidBy}</td>
@@ -243,6 +251,7 @@ export default function ReportsPage() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
+                    <th className="pb-2 w-10 text-center">SL</th>
                     <th className="pb-2">Tx ID</th>
                     <th className="pb-2">Date</th>
                     <th className="pb-2">Account</th>
@@ -253,10 +262,11 @@ export default function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
-                  {transactions.slice(0, 8).map(t => {
+                  {transactions.slice(0, 8).map((t, idx) => {
                     const isCredit = t.type === 'credit';
                     return (
                       <tr key={t.id}>
+                        <td className="py-2 text-center font-mono text-[11px] text-[var(--muted-foreground)] font-bold">{idx + 1}</td>
                         <td className="py-2 text-zinc-550 text-[10px]">{t.id}</td>
                         <td className="py-2 text-[var(--muted-foreground)]/70 text-[10px]">{t.date}</td>
                         <td className="py-2 capitalize text-[var(--foreground)]/80">{t.account}</td>

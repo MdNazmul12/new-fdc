@@ -959,6 +959,7 @@ export default function CollectionsPage() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
+                    <th className="pb-2 font-semibold w-12 text-center">SL</th>
                     <th className="pb-2 font-semibold">Receipt No</th>
                     <th className="pb-2 font-semibold">Member</th>
                     <th className="pb-2 font-semibold text-center">Month</th>
@@ -970,15 +971,19 @@ export default function CollectionsPage() {
                 <tbody className="divide-y divide-[var(--border)]">
                   {paginatedCollections.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-6 text-center text-[var(--muted-foreground)]/70">No collections matched filters</td>
+                      <td colSpan={7} className="py-6 text-center text-[var(--muted-foreground)]/70">No collections matched filters</td>
                     </tr>
                   ) : (
-                    paginatedCollections.map((col) => {
+                    paginatedCollections.map((col, idx) => {
+                      const serialNo = pageSize === -1 ? idx + 1 : (currentPage - 1) * pageSize + idx + 1;
                       const grandTotal = col.amount + (col.lateFine || 0);
                       const isPending = col.status === 'pending';
                       const isPaid = col.status === 'paid';
                       return (
                         <tr key={col.id} className="hover:bg-[var(--secondary)]/30 transition-colors">
+                          <td className="py-2.5 text-center font-mono text-[11px] text-[var(--muted-foreground)] font-bold">
+                            {serialNo}
+                          </td>
                           <td className="py-2.5 font-medium text-[var(--foreground)]">
                             <span className="font-mono">{col.receiptNo}</span>
                             {col.transactionRef && (

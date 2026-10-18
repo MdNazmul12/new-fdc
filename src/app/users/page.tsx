@@ -382,6 +382,7 @@ export default function UsersPage() {
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-[var(--border)] bg-[var(--secondary)]/40 text-[var(--muted-foreground)]">
+                      <th className="p-4 font-semibold w-12 text-center">SL</th>
                       <th className="p-4 font-semibold">User Info</th>
                       <th className="p-4 font-semibold">System Role</th>
                       <th className="p-4 font-semibold">Phone Number</th>
@@ -391,9 +392,11 @@ export default function UsersPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border)]">
-                    {users.map((u) => (
+                    {users.map((u, idx) => (
                       <tr key={u.id} className="hover:bg-[var(--secondary)]/30 transition-colors">
-                        
+                        <td className="p-4 text-center font-mono text-[11px] text-[var(--muted-foreground)] font-bold">
+                          {idx + 1}
+                        </td>
                         <td className="p-4">
                           <p className="font-bold text-[var(--card-foreground)]">{u.name}</p>
                           <p className="text-[10px] text-[var(--muted-foreground)]/70">{u.email}</p>
@@ -634,6 +637,7 @@ export default function UsersPage() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-[var(--border)] bg-[var(--secondary)]/40 text-[var(--muted-foreground)]">
+                    <th className="p-4 font-semibold w-12 text-center">SL</th>
                     <th className="p-4 font-semibold">Document Name</th>
                     <th className="p-4 font-semibold">Category</th>
                     <th className="p-4 font-semibold">File Size</th>
@@ -645,12 +649,14 @@ export default function UsersPage() {
                 <tbody className="divide-y divide-[var(--border)]">
                   {documents.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="p-8 text-center text-[var(--muted-foreground)]/70">No documents uploaded</td>
+                      <td colSpan={7} className="p-8 text-center text-[var(--muted-foreground)]/70">No documents uploaded</td>
                     </tr>
                   ) : (
-                    documents.map((doc) => (
+                    documents.map((doc, idx) => (
                       <tr key={doc.id} className="hover:bg-[var(--secondary)]/30 transition-colors">
-                        
+                        <td className="p-4 text-center font-mono text-[11px] text-[var(--muted-foreground)] font-bold">
+                          {idx + 1}
+                        </td>
                         <td className="p-4">
                           <div className="flex items-center space-x-3">
                             <span className="shrink-0">{getDocIcon(doc.type)}</span>
