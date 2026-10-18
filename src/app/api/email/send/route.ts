@@ -21,7 +21,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const resend = new Resend(apiKey);
+    let resend: Resend | null = null;
+    if (apiKey && !apiKey.startsWith('re_your') && apiKey.length > 10) {
+      resend = new Resend(apiKey);
+    }
     const body = await request.json();
     const { type, to, data } = body;
 
@@ -78,6 +81,34 @@ export async function POST(request: Request) {
                 <tr><td style="padding:10px 14px;color:#6b7280;font-size:12px;font-weight:600;">Approved By</td><td style="padding:10px 14px;color:#111827;font-size:12px;">${data.approvedBy}</td></tr>
               </table>
               <p style="color:#6b7280;font-size:13px;margin:20px 0 0;">আপনার বকেয়া পরিশোধ সম্পন্ন হয়েছে। ধন্যবাদ!</p>
+            </div>
+            <div style="background:#f9fafb;padding:16px;text-align:center;border-top:1px solid #e5e7eb;">
+              <p style="color:#9ca3af;font-size:11px;margin:0;">© ${new Date().getFullYear()} ${APP_NAME}</p>
+            </div>
+          </div>`;
+        break;
+      }
+
+      // ─── 2B. Direct Collection Receipt Alert ─────────────────────────
+      case 'collection_receipt': {
+        subject = `🧾 Payment Receipt (${data.receiptNo || 'Paid'}) — ${data.month} | ${APP_NAME}`;
+        html = `
+          <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
+            <div style="background:linear-gradient(135deg,#2563eb,#3b82f6);padding:28px;text-align:center;">
+              <h1 style="color:#fff;font-size:18px;margin:0;font-weight:700;">🧾 Payment Received Successfully!</h1>
+              <p style="color:#bfdbfe;font-size:13px;margin:6px 0 0;">চাঁদা / বকেয়া পরিশোধের মানি রিসিট</p>
+            </div>
+            <div style="padding:28px;">
+              <p style="color:#374151;font-size:14px;margin:0 0 20px;">Dear <strong>${data.memberName}</strong>,</p>
+              <p style="color:#6b7280;font-size:13px;margin:0 0 20px;">আপনার চাঁদা / পেমেন্ট সফলভাবে জমা নেওয়া হয়েছে। পেমেন্টের বিবরণ নিচে দেওয়া হলো:</p>
+              <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;">
+                <tr style="border-bottom:1px solid #e2e8f0;"><td style="padding:10px 14px;color:#64748b;font-size:12px;font-weight:600;">Receipt No</td><td style="padding:10px 14px;color:#0f172a;font-size:12px;font-family:monospace;font-weight:700;">${data.receiptNo}</td></tr>
+                <tr style="border-bottom:1px solid #e2e8f0;"><td style="padding:10px 14px;color:#64748b;font-size:12px;font-weight:600;">Billing Month</td><td style="padding:10px 14px;color:#0f172a;font-size:12px;font-weight:600;">${data.month}</td></tr>
+                <tr style="border-bottom:1px solid #e2e8f0;"><td style="padding:10px 14px;color:#64748b;font-size:12px;font-weight:600;">Amount Paid</td><td style="padding:10px 14px;color:#2563eb;font-size:15px;font-weight:800;">${data.amount} TK</td></tr>
+                <tr style="border-bottom:1px solid #e2e8f0;"><td style="padding:10px 14px;color:#64748b;font-size:12px;font-weight:600;">Payment Method</td><td style="padding:10px 14px;color:#0f172a;font-size:12px;text-transform:uppercase;">${data.paymentType || 'Cash'}</td></tr>
+                <tr><td style="padding:10px 14px;color:#64748b;font-size:12px;font-weight:600;">Collected By</td><td style="padding:10px 14px;color:#0f172a;font-size:12px;">${data.collectedBy || 'Admin / Treasurer'}</td></tr>
+              </table>
+              <p style="color:#6b7280;font-size:13px;margin:20px 0 0;">FDC প্লাটফর্মে নিয়মিত চাঁদা পরিশোধের জন্য ধন্যবাদ!</p>
             </div>
             <div style="background:#f9fafb;padding:16px;text-align:center;border-top:1px solid #e5e7eb;">
               <p style="color:#9ca3af;font-size:11px;margin:0;">© ${new Date().getFullYear()} ${APP_NAME}</p>

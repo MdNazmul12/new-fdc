@@ -28,7 +28,9 @@ import {
   FileCheck,
   Plus,
   Trash2,
-  Tag
+  Tag,
+  Send,
+  Mail
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import PaymentSubmitModal from '../../components/payment-submit-modal';
@@ -269,7 +271,7 @@ export default function DuesPage() {
         ? (activeDemand.fixedAmount || 1000)
         : (selectedMember.monthlyFee || 1000);
 
-      await addCollection({
+      const newCol = await addCollection({
         memberId: selectedMember.id,
         memberName: selectedMember.name,
         amount: baseFee,
@@ -280,6 +282,26 @@ export default function DuesPage() {
         status: 'paid',
         collectedBy: user?.name || 'Treasurer',
       });
+
+      // Send Instant Email Receipt to Member
+      if (selectedMember.email) {
+        fetch('/api/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'collection_receipt',
+            to: selectedMember.email,
+            data: {
+              memberName: selectedMember.name,
+              receiptNo: newCol?.receiptNo || 'PAID',
+              month: targetMonth,
+              amount: baseFee + customLateFine,
+              paymentType,
+              collectedBy: user?.name || 'Treasurer'
+            }
+          })
+        }).catch(err => console.warn('Due collection receipt email error:', err));
+      }
 
       setSuccessMessage(`Payment of ${(baseFee + customLateFine).toLocaleString()} TK successfully collected for ${selectedMember.name}!`);
       setTimeout(() => {
@@ -377,6 +399,88 @@ export default function DuesPage() {
     XLSX.writeFile(wb, `FDC_Dues_Report_${targetMonth}.xlsx`);
   };
 
+  // State for sending reminders
+  const [sendingReminder, setSendingReminder] = useState<string | null>(null);
+  const [sendingBulkReminders, setSendingBulkReminders] = useState(false);
+  const [reminderResult, setReminderResult] = useState<string | null>(null);
+
+  // Send single due reminder
+  const handleSendDueReminder = async (item: typeof duesList[0]) => {
+    if (!item.member.email) {
+      alert(`No email address registered for ${item.member.name}`);
+      return;
+    }
+    setSendingReminder(item.member.id);
+    try {
+      const res = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'due_reminder',
+          to: item.member.email,
+          data: {
+            memberName: item.member.name,
+            month: targetMonth,
+            amount: item.totalPayable,
+            dueDate: activeDemand?.dueDate || `${targetMonth}-10`,
+            lateFine: activeDemand?.lateFine || 50
+          }
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setReminderResult(`Reminder email sent to ${item.member.name} (${item.member.email})!`);
+      setTimeout(() => setReminderResult(null), 4000);
+    } catch (err: any) {
+      alert(`Failed to send reminder: ${err.message}`);
+    } finally {
+      setSendingReminder(null);
+    }
+  };
+
+  // Send bulk reminders to all due members who have an email
+  const handleSendBulkReminders = async () => {
+    const dueMembersWithEmail = duesList.filter(d => !d.isPaid && !d.isPending && d.member.email);
+    if (dueMembersWithEmail.length === 0) {
+      alert('No unpaid members with valid email found for this month.');
+      return;
+    }
+    if (!confirm(`Send due reminder email to ${dueMembersWithEmail.length} members for ${targetMonth}?`)) {
+      return;
+    }
+
+    setSendingBulkReminders(true);
+    let sentCount = 0;
+    try {
+      for (const item of dueMembersWithEmail) {
+        try {
+          await fetch('/api/email/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'due_reminder',
+              to: item.member.email,
+              data: {
+                memberName: item.member.name,
+                month: targetMonth,
+                amount: item.totalPayable,
+                dueDate: activeDemand?.dueDate || `${targetMonth}-10`,
+                lateFine: activeDemand?.lateFine || 50
+              }
+            })
+          });
+          sentCount++;
+        } catch (e) {
+          console.warn('Failed to send reminder to', item.member.name);
+        }
+      }
+      setReminderResult(`Successfully sent due reminders to ${sentCount} members!`);
+      setTimeout(() => setReminderResult(null), 5000);
+    } finally {
+      setSendingBulkReminders(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -410,6 +514,19 @@ export default function DuesPage() {
               </button>
             )}
 
+            {canManageDues && (
+              <button
+                type="button"
+                onClick={handleSendBulkReminders}
+                disabled={sendingBulkReminders || !activeDemand || metrics.dueCount === 0}
+                className="flex items-center space-x-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-lg shadow-amber-600/30 transition-all cursor-pointer"
+                title="Send due reminder email to all unpaid members"
+              >
+                {sendingBulkReminders ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+                <span>{sendingBulkReminders ? 'Sending Emails...' : `Send Due Reminder (${metrics.dueCount})`}</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={handleExportExcel}
@@ -430,6 +547,14 @@ export default function DuesPage() {
             </button>
           </div>
         </div>
+
+        {/* Reminder Result Toast Banner */}
+        {reminderResult && (
+          <div className="p-3.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-semibold flex items-center space-x-2 animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>{reminderResult}</span>
+          </div>
+        )}
 
         {/* Generated Due Months Selector & Delete Manager */}
         <div className="p-4 bg-[var(--secondary)]/90 border border-[var(--border)] rounded-2xl">
@@ -816,14 +941,31 @@ export default function DuesPage() {
                                   <span>Pay / Submit</span>
                                 </button>
                               ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenCollectModal(item.member)}
-                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer inline-flex items-center space-x-1"
-                                >
-                                  <span>Collect Due</span>
-                                  <ArrowRight className="w-3 h-3" />
-                                </button>
+                                <div className="flex items-center justify-end space-x-1.5">
+                                  {canManageDues && item.member.email && (
+                                    <button
+                                      type="button"
+                                      disabled={sendingReminder === item.member.id}
+                                      onClick={() => handleSendDueReminder(item)}
+                                      className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 rounded-xl text-xs font-semibold transition-all cursor-pointer inline-flex items-center"
+                                      title={`Send due reminder email to ${item.member.email}`}
+                                    >
+                                      {sendingReminder === item.member.id ? (
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      ) : (
+                                        <Mail className="w-3.5 h-3.5" />
+                                      )}
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenCollectModal(item.member)}
+                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer inline-flex items-center space-x-1"
+                                  >
+                                    <span>Collect Due</span>
+                                    <ArrowRight className="w-3 h-3" />
+                                  </button>
+                                </div>
                               )}
                             </td>
                           </tr>

@@ -346,6 +346,26 @@ export default function CollectionsPage() {
       setActiveReceipt(coll);
       setPrintOpen(true);
       setSelectedMemberId('');
+
+      // Send Instant Email Receipt to Member if paid directly
+      if (member.email) {
+        fetch('/api/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'collection_receipt',
+            to: member.email,
+            data: {
+              memberName: member.name,
+              receiptNo: coll.receiptNo,
+              month: targetMonth,
+              amount: amount + lateFine,
+              paymentType,
+              collectedBy: user?.name || 'Treasurer'
+            }
+          })
+        }).catch(err => console.warn('Collection email notification error:', err));
+      }
     }
 
     // Reset Form
