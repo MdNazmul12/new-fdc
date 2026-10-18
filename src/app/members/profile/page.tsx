@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import PrintableReceipt from '../../../components/receipt';
 import PaymentSubmitModal from '../../../components/payment-submit-modal';
+import MemberCard from '../../../components/member-card';
 
 export default function MemberProfilePage() {
   const { user } = useAuth();
@@ -133,6 +134,7 @@ export default function MemberProfilePage() {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  const [cardModalOpen, setCardModalOpen] = useState(false);
 
   const handleOpenEditProfile = () => {
     if (!memberProfile) return;
@@ -550,6 +552,15 @@ export default function MemberProfilePage() {
                 <span>Password</span>
               </button>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setCardModalOpen(true)}
+              className="w-full mt-2 flex items-center justify-center space-x-1.5 py-2 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-purple-600/20 cursor-pointer"
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              <span>Digital Member ID Card</span>
+            </button>
           </div>
 
           {/* Card 2: Nominee & Emergency info */}
@@ -1285,6 +1296,15 @@ export default function MemberProfilePage() {
               fee: d.baseFee,
               fine: d.fine
             }))}
+          />
+        )}
+
+        {/* Digital Member Card Modal */}
+        {cardModalOpen && (
+          <MemberCard
+            member={memberProfile}
+            collections={myPayments}
+            onClose={() => setCardModalOpen(false)}
           />
         )}
 

@@ -18,10 +18,14 @@ import {
   Eye, 
   X, 
   Edit,
-  FileSpreadsheet
+  FileSpreadsheet,
+  FileText,
+  CreditCard as IdCard
 } from 'lucide-react';
 import ExcelImportModal from '../../components/excel-import-modal';
 import ConfirmModal from '../../components/confirm-modal';
+import MemberCard from '../../components/member-card';
+import { exportTableToPDF } from '../../lib/pdf-export';
 
 export default function MembersPage() {
   const { members, addMember, importMembers, updateMember, deleteMember } = useStore();
@@ -36,6 +40,7 @@ export default function MembersPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [cardModalMember, setCardModalMember] = useState<Member | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<Member | null>(null);
@@ -168,6 +173,21 @@ export default function MembersPage() {
     document.body.removeChild(link);
   };
 
+  // Export to PDF
+  const handleExportPDF = () => {
+    const columns = [
+      { key: 'id', label: 'Member ID' },
+      { key: 'name', label: 'Full Name' },
+      { key: 'phone', label: 'Phone' },
+      { key: 'email', label: 'Email' },
+      { key: 'monthlyFee', label: 'Monthly Fee (Tk)' },
+      { key: 'status', label: 'Status' },
+      { key: 'joinDate', label: 'Join Date' },
+      { key: 'nomineeName', label: 'Nominee' },
+    ];
+    exportTableToPDF(filteredMembers, columns, 'FDC Member Directory', `fdc_members_${new Date().toISOString().split('T')[0]}`);
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -212,13 +232,24 @@ export default function MembersPage() {
             )}
 
             {hasPermission('members', 'export') && (
-              <button
-                onClick={handleExportCSV}
-                className="flex items-center space-x-1.5 px-3 py-2 bg-[var(--secondary)] border border-[var(--border)] hover:bg-[var(--accent)] text-[var(--foreground)]/80 text-xs font-bold rounded-xl transition-all cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Export CSV</span>
-              </button>
+              <>
+                <button
+                  onClick={handleExportCSV}
+                  className="flex items-center space-x-1.5 px-3 py-2 bg-[var(--secondary)] border border-[var(--border)] hover:bg-[var(--accent)] text-[var(--foreground)]/80 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                  title="Export to CSV"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>CSV</span>
+                </button>
+                <button
+                  onClick={handleExportPDF}
+                  className="flex items-center space-x-1.5 px-3 py-2 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 border border-rose-500/20 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                  title="Export to PDF"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>PDF</span>
+                </button>
+              </>
             )}
 
             {hasPermission('members', 'create') && (
@@ -303,6 +334,14 @@ export default function MembersPage() {
                       {/* Action buttons */}
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end space-x-1">
+                          <button
+                            onClick={() => setCardModalMember(member)}
+                            className="p-1.5 text-[var(--muted-foreground)] hover:text-indigo-400 hover:bg-[var(--accent)] rounded-lg transition-colors cursor-pointer"
+                            title="View Digital ID Card"
+                          >
+                            <IdCard className="w-4 h-4" />
+                          </button>
+
                           <button
                             onClick={() => {
                               setSelectedMember(member);
@@ -631,6 +670,14 @@ export default function MembersPage() {
             setMemberToDelete(null);
           }}
         />
+
+        {/* Digital Member Card Modal */}
+        {cardModalMember && (
+          <MemberCard
+            member={cardModalMember}
+            onClose={() => setCardModalMember(null)}
+          />
+        )}
 
       </div>
     </DashboardLayout>

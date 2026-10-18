@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   Trash2
 } from 'lucide-react';
+import { exportElementToPDF } from '../../lib/pdf-export';
 
 type ReportType = 'collection' | 'due' | 'investment' | 'expense' | 'ledger' | 'summary';
 
@@ -33,6 +34,7 @@ export default function ReportsPage() {
 
   // Preview generated trigger
   const [previewGenerated, setPreviewGenerated] = useState(true);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   // Format Currency
   const formatCurrency = (value: number) => {
@@ -77,6 +79,18 @@ export default function ReportsPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Export report preview as PDF
+  const handleExportPDF = async () => {
+    setExportingPdf(true);
+    try {
+      await exportElementToPDF('reports-preview-area', `fdc_report_${reportType}_${new Date().toISOString().split('T')[0]}`);
+    } catch (e) {
+      console.error('PDF export failed:', e);
+    } finally {
+      setExportingPdf(false);
+    }
   };
 
   // Rendering matching preview content
@@ -418,20 +432,34 @@ export default function ReportsPage() {
                   className="flex items-center space-x-1.5 px-3 py-1.5 bg-[var(--secondary)] border border-[var(--border)] text-[var(--foreground)]/80 hover:bg-[var(--accent)] text-[10px] font-bold rounded-lg transition-colors cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Download CSV</span>
+                  <span>CSV</span>
+                </button>
+                <button
+                  onClick={handleExportPDF}
+                  disabled={exportingPdf}
+                  className="flex items-center space-x-1.5 px-3 py-1.5 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 border border-rose-500/20 text-[10px] font-bold rounded-lg transition-colors cursor-pointer"
+                >
+                  {exportingPdf ? (
+                    <span className="w-3.5 h-3.5 border-2 border-rose-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>PDF</span>
+                    </>
+                  )}
                 </button>
                 <button
                   onClick={() => window.print()}
                   className="flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold rounded-lg transition-colors cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
-                  <span>Print Report (PDF)</span>
+                  <span>Print</span>
                 </button>
               </div>
             </div>
 
             {/* Renders preview table content */}
-            <div>
+            <div id="reports-preview-area" className="p-2 rounded-xl bg-[var(--card)]">
               {renderPreviewTable()}
             </div>
 

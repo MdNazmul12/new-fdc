@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Member, Collection, Investment, Expense, Transaction, AuditLog, SystemNotification, DocumentFile, UserRole, User, DueDemand } from '../types';
+import { Member, Collection, Investment, Expense, Transaction, AuditLog, SystemNotification, DocumentFile, UserRole, User, DueDemand, Loan, LoanRepayment, LoanStatus } from '../types';
 
 interface StoreContextProps {
   members: Member[];
@@ -14,6 +14,13 @@ interface StoreContextProps {
   documents: DocumentFile[];
   users: User[];
   dueDemands: DueDemand[];
+  loans: Loan[];
+
+  // Loan actions
+  addLoan: (loanData: Omit<Loan, 'id' | 'loanNo' | 'totalPayable' | 'totalRepaid' | 'status' | 'repayments' | 'createdAt'>) => Promise<Loan>;
+  recordLoanRepayment: (loanId: string, repayment: Omit<LoanRepayment, 'id'>) => Promise<boolean>;
+  updateLoanStatus: (loanId: string, status: LoanStatus, notes?: string) => Promise<boolean>;
+  deleteLoan: (loanId: string) => Promise<boolean>;
   
   // Due actions
   addDueDemand: (demand: Omit<DueDemand, 'id' | 'createdAt'>) => Promise<DueDemand>;
@@ -245,12 +252,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [documents, setDocuments] = useState<DocumentFile[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [dueDemands, setDueDemands] = useState<DueDemand[]>(initialDueDemands);
+  const [loans, setLoans] = useState<Loan[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   // Initialize from MongoDB (with LocalStorage fallback)
   useEffect(() => {
     const initDb = async () => {
-      const collectionsToFetch = ['members', 'collections', 'investments', 'expenses', 'transactions', 'auditLogs', 'notifications', 'documents', 'users', 'permissions', 'due_demands'];
+      const collectionsToFetch = ['members', 'collections', 'investments', 'expenses', 'transactions', 'auditLogs', 'notifications', 'documents', 'users', 'permissions', 'due_demands', 'loans'];
 
       try {
         const dbStates: Record<string, any[]> = {};
@@ -317,6 +325,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setAuditLogs(dbStates['auditLogs'] || []);
         setNotifications(dbStates['notifications'] || []);
         setDocuments(dbStates['documents'] || []);
+        setLoans(dbStates['loans'] || []);
 
         const loadedDueDemands = dbStates['due_demands'] || [];
         setDueDemands(loadedDueDemands.length > 0 ? loadedDueDemands : initialDueDemands);
@@ -348,6 +357,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setDocuments(loadLocal('documents', []));
         setUsers(loadLocal('users', initialUsers));
         setDueDemands(loadLocal('due_demands', initialDueDemands));
+        setLoans(loadLocal('loans', []));
       } finally {
         setLoaded(true);
       }
@@ -1246,6 +1256,135 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  // ---------------- LOAN ACTIONS ----------------
+  const addLoan = async (loanData: Omit<Loan, 'id' | 'loanNo' | 'totalPayable' | 'totalRepaid' | 'status' | 'repayments' | 'createdAt'>): Promise<Loan> => {
+    const d1 = new Date(loanData.disbursedDate);
+    const d2 = new Date(loanData.dueDate);
+    const diffMonths = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24 * 30.4375)));
+    const interest = loanData.principalAmount * (loanData.interestRate / 100) * (diffMonths / 12);
+    const totalPayable = Math.round(loanData.principalAmount + interest);
+    
+    // Auto-generate Loan No
+    const loanSeq = loans.length + 1;
+    const loanNo = `FDC-LN-${String(loanSeq).padStart(4, '0')}`;
+
+    const newLoan: Loan = {
+      ...loanData,
+      id: `ln-${Date.now()}`,
+      loanNo,
+      totalPayable,
+      totalRepaid: 0,
+      status: 'active',
+      repayments: [],
+      createdAt: new Date().toISOString()
+    };
+
+    const updated = [newLoan, ...loans];
+    setLoans(updated);
+    syncToDbAndLocal('loans', updated, 'create', newLoan);
+
+    // Ledger debit entry
+    recordTransaction(
+      'debit',
+      'bank',
+      newLoan.principalAmount,
+      'Other',
+      newLoan.id,
+      `Loan Disbursed: ${newLoan.loanNo} to ${newLoan.memberName} (${newLoan.purpose})`
+    );
+
+    addAuditLog(`Issued Loan ${newLoan.loanNo} to ${newLoan.memberName} of Tk ${newLoan.principalAmount}`, 'treasurer', 'System Log');
+
+    // Notify member
+    addNotification({
+      userId: newLoan.memberId,
+      title: `Loan Disbursed (${newLoan.loanNo})`,
+      message: `Tk ${newLoan.principalAmount} loan has been approved & disbursed. Due Date: ${newLoan.dueDate}.`,
+      type: 'success',
+      link: '/loans'
+    });
+
+    return newLoan;
+  };
+
+  const recordLoanRepayment = async (loanId: string, repayment: Omit<LoanRepayment, 'id'>): Promise<boolean> => {
+    const loan = loans.find(l => l.id === loanId);
+    if (!loan) return false;
+
+    const newRepayment: LoanRepayment = {
+      ...repayment,
+      id: `rep-${Date.now()}`
+    };
+
+    const updatedRepayments = [...(loan.repayments || []), newRepayment];
+    const newTotalRepaid = (loan.totalRepaid || 0) + repayment.amount;
+    const isFullyPaid = newTotalRepaid >= loan.totalPayable;
+    const newStatus: LoanStatus = isFullyPaid ? 'fully_paid' : loan.status;
+
+    const updatedLoan: Loan = {
+      ...loan,
+      totalRepaid: newTotalRepaid,
+      status: newStatus,
+      repayments: updatedRepayments
+    };
+
+    const updatedLoans = loans.map(l => l.id === loanId ? updatedLoan : l);
+    setLoans(updatedLoans);
+    syncToDbAndLocal('loans', updatedLoans, 'update', { filter: { id: loanId }, update: updatedLoan });
+
+    // Ledger credit entry
+    recordTransaction(
+      'credit',
+      'bank',
+      repayment.amount,
+      'Other',
+      newRepayment.id,
+      `Loan Repayment for ${loan.loanNo} (${loan.memberName}): Tk ${repayment.amount}`
+    );
+
+    addAuditLog(`Recorded Loan Repayment: Tk ${repayment.amount} for ${loan.loanNo} (${loan.memberName})`, 'treasurer', 'System Log');
+
+    addNotification({
+      userId: loan.memberId,
+      title: `Loan Repayment Received (${loan.loanNo})`,
+      message: `Tk ${repayment.amount} repayment recorded. Remaining Balance: Tk ${Math.max(0, loan.totalPayable - newTotalRepaid)}.`,
+      type: 'success',
+      link: '/loans'
+    });
+
+    return true;
+  };
+
+  const updateLoanStatus = async (loanId: string, status: LoanStatus, notes?: string): Promise<boolean> => {
+    const loan = loans.find(l => l.id === loanId);
+    if (!loan) return false;
+
+    const updatedLoan: Loan = {
+      ...loan,
+      status,
+      notes: notes ? (loan.notes ? `${loan.notes}\n${notes}` : notes) : loan.notes
+    };
+
+    const updatedLoans = loans.map(l => l.id === loanId ? updatedLoan : l);
+    setLoans(updatedLoans);
+    syncToDbAndLocal('loans', updatedLoans, 'update', { filter: { id: loanId }, update: updatedLoan });
+
+    addAuditLog(`Updated Loan Status: ${loan.loanNo} -> ${status}`, 'super_admin', 'System Log');
+    return true;
+  };
+
+  const deleteLoan = async (loanId: string): Promise<boolean> => {
+    const loan = loans.find(l => l.id === loanId);
+    if (!loan) return false;
+
+    const updated = loans.filter(l => l.id !== loanId);
+    setLoans(updated);
+    syncToDbAndLocal('loans', updated, 'delete', { id: loanId });
+
+    addAuditLog(`Deleted Loan Record: ${loan.loanNo} (${loan.memberName})`, 'super_admin', 'System Log');
+    return true;
+  };
+
   // ---------------- CALCULATE METRICS ----------------
   const getCashBalance = () => {
     return transactions
@@ -1314,6 +1453,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         documents,
         users,
         dueDemands,
+        loans,
+        addLoan,
+        recordLoanRepayment,
+        updateLoanStatus,
+        deleteLoan,
         addDueDemand,
         deleteDueDemand,
         addMember,

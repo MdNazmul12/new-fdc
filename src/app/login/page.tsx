@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '../../contexts/auth-context';
 import { Mail, KeyRound, AlertCircle, Eye, EyeOff, CheckCircle } from 'lucide-react';
 
@@ -131,6 +132,17 @@ export default function LoginPage() {
               <span>Sign In</span>
             )}
           </button>
+
+          {/* Forgot Password Link */}
+          <div className="text-center pt-1">
+            <Link
+              href="/forgot-password"
+              className="text-xs text-[var(--muted-foreground)] hover:text-indigo-400 transition-colors"
+            >
+              Forgot password? &nbsp;
+              <span className="text-indigo-400 font-semibold underline underline-offset-2">Reset via Email OTP →</span>
+            </Link>
+          </div>
         </form>
 
 

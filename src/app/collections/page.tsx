@@ -376,6 +376,26 @@ export default function CollectionsPage() {
       };
       setApprovedCollection(updatedCol);
       setApprovalSuccessOpen(true);
+
+      // Send Email Notification to member
+      const member = members.find(m => m.id === pendingApprovalCol.memberId);
+      if (member?.email) {
+        fetch('/api/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'approval',
+            to: member.email,
+            data: {
+              memberName: member.name,
+              receiptNo: pendingApprovalCol.receiptNo,
+              month: pendingApprovalCol.month,
+              amount: pendingApprovalCol.amount + (pendingApprovalCol.lateFine || 0),
+              approvedBy: user?.name || 'Admin'
+            }
+          })
+        }).catch(err => console.warn('Approval email notification failed:', err));
+      }
     }
     setPendingApprovalCol(null);
   };
@@ -394,6 +414,25 @@ export default function CollectionsPage() {
     await rejectCollection(pendingRejectCol.id, rejectReason.trim() || 'Rejected by admin');
     setRejecting(false);
     setRejectModalOpen(false);
+
+    // Send Rejection Email to member
+    const member = members.find(m => m.id === pendingRejectCol.memberId);
+    if (member?.email) {
+      fetch('/api/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'rejection',
+          to: member.email,
+          data: {
+            memberName: member.name,
+            month: pendingRejectCol.month,
+            reason: rejectReason.trim() || 'Rejected by admin'
+          }
+        })
+      }).catch(err => console.warn('Rejection email notification failed:', err));
+    }
+
     setPendingRejectCol(null);
   };
 

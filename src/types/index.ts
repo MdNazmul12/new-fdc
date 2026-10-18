@@ -130,3 +130,48 @@ export interface DocumentFile {
   category: 'Agreements' | 'Receipts' | 'Bank Statements' | 'Others';
   url: string;
 }
+
+// ==================== LOAN MANAGEMENT ====================
+export type LoanStatus = 'active' | 'fully_paid' | 'overdue' | 'written_off';
+export type LoanType = 'personal' | 'emergency' | 'business' | 'education' | 'other';
+
+export interface LoanRepayment {
+  id: string;
+  amount: number;
+  date: string;
+  note?: string;
+  recordedBy: string;
+}
+
+export interface Loan {
+  id: string;
+  loanNo: string;             // e.g. FDC-LN-0001
+  memberId: string;
+  memberName: string;
+  loanType: LoanType;
+  principalAmount: number;    // Original loan amount
+  interestRate: number;       // Annual % rate
+  disbursedDate: string;      // When loan was given
+  dueDate: string;            // Expected full repayment
+  totalPayable: number;       // principalAmount + total interest
+  totalRepaid: number;        // Sum of all repayments
+  status: LoanStatus;
+  purpose: string;
+  repayments: LoanRepayment[];
+  guarantorName?: string;
+  guarantorPhone?: string;
+  approvedBy: string;
+  notes?: string;
+  createdAt: string;
+}
+
+// ==================== OTP TOKEN ====================
+export interface OtpToken {
+  id: string;
+  email: string;
+  otp: string;
+  expiresAt: string;          // ISO datetime string
+  used: boolean;
+  createdAt: string;
+}
+

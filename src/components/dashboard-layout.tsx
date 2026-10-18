@@ -30,7 +30,8 @@ import {
   Info,
   Sun,
   Moon,
-  Palette
+  Palette,
+  Banknote
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -92,6 +93,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Generate Dues', path: '/generate-dues', icon: PlusCircle, permission: { module: 'collections', action: 'create' as const } },
     { name: 'Investments', path: '/investments', icon: TrendingUp, permission: { module: 'investments', action: 'view' as const } },
     { name: 'Expenses', path: '/expenses', icon: CreditCard, permission: { module: 'expenses', action: 'view' as const } },
+    { name: 'Loans', path: '/loans', icon: Banknote, permission: { module: 'loans', action: 'view' as const } },
     { name: 'Accounting', path: '/accounting', icon: BookOpen, permission: { module: 'accounting', action: 'view' as const } },
     { name: 'Reports', path: '/reports', icon: FileText, permission: { module: 'reports', action: 'view' as const } },
     { name: 'User Management', path: '/users', icon: UserCog, permission: { module: 'users', action: 'view' as const } },
