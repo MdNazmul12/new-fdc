@@ -365,6 +365,37 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     if (typeof window !== 'undefined') {
       initDb();
+
+      // Real-time synchronization:
+      // 1. When user switches back to the app / unlocks phone
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          initDb();
+        }
+      };
+
+      // 2. When internet connection is restored
+      const handleOnline = () => {
+        initDb();
+      };
+
+      // 3. Periodic background sync every 15 seconds
+      const pollInterval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          initDb();
+        }
+      }, 15000);
+
+      window.addEventListener('visibilitychange', handleVisibilityChange);
+      window.addEventListener('focus', handleVisibilityChange);
+      window.addEventListener('online', handleOnline);
+
+      return () => {
+        clearInterval(pollInterval);
+        window.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('focus', handleVisibilityChange);
+        window.removeEventListener('online', handleOnline);
+      };
     }
   }, []);
 
