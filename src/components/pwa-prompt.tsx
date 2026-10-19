@@ -101,7 +101,7 @@ export default function PwaPrompt() {
   return (
     <>
       {/* Floating Bottom Install Banner */}
-      <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:w-96 z-50 animate-in slide-in-from-bottom duration-300">
+      <div className="fixed bottom-20 md:bottom-4 left-4 right-4 md:left-auto md:right-6 md:w-96 z-50 animate-in slide-in-from-bottom duration-300">
         <div className="bg-gradient-to-r from-slate-900 to-indigo-950 border border-indigo-500/30 rounded-2xl p-4 shadow-2xl backdrop-blur-xl flex items-center space-x-3.5">
           <div className="w-12 h-12 rounded-xl bg-indigo-600/30 border border-indigo-500/40 p-1 flex items-center justify-center shrink-0 overflow-hidden">
             <img src="/icons/icon-192x192.png" alt="FDC App Icon" className="w-full h-full object-contain rounded-lg" />

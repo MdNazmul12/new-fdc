@@ -520,9 +520,62 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Content Section */}
-        <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-x-hidden">
+        <main className="flex-1 p-3 sm:p-4 lg:p-6 pb-20 lg:pb-6 overflow-x-hidden">
           {children}
         </main>
+
+        {/* ---------------- MOBILE BOTTOM NAVIGATION BAR ---------------- */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[var(--card)]/95 backdrop-blur-xl border-t border-[var(--border)] px-2 py-1.5 flex items-center justify-around shadow-2xl safe-area-pb">
+          <Link
+            href="/dashboard"
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
+              pathname === '/dashboard' ? 'text-[var(--primary)] font-bold' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+            }`}
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            <span className="text-[10px] mt-0.5">Home</span>
+          </Link>
+
+          <Link
+            href="/collections"
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
+              pathname.startsWith('/collections') ? 'text-[var(--primary)] font-bold' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+            }`}
+          >
+            <DollarSign className="w-5 h-5" />
+            <span className="text-[10px] mt-0.5">Collection</span>
+          </Link>
+
+          <Link
+            href="/dues"
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
+              pathname.startsWith('/dues') ? 'text-[var(--primary)] font-bold' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+            }`}
+          >
+            <CalendarClock className="w-5 h-5" />
+            <span className="text-[10px] mt-0.5">Dues</span>
+          </Link>
+
+          <Link
+            href="/loans"
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
+              pathname.startsWith('/loans') ? 'text-[var(--primary)] font-bold' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+            }`}
+          >
+            <Banknote className="w-5 h-5" />
+            <span className="text-[10px] mt-0.5">Loans</span>
+          </Link>
+
+          <Link
+            href={user.role === 'member' ? '/members/profile' : '/members'}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
+              pathname.startsWith('/members') ? 'text-[var(--primary)] font-bold' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+            }`}
+          >
+            <Users className="w-5 h-5" />
+            <span className="text-[10px] mt-0.5">{user.role === 'member' ? 'Profile' : 'Members'}</span>
+          </Link>
+        </nav>
       </div>
     </div>
   );
