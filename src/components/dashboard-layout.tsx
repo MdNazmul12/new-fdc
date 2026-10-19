@@ -33,7 +33,10 @@ import {
   Moon,
   Palette,
   Banknote,
-  Database
+  Database,
+  Smartphone,
+  Download,
+  Share2
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -48,6 +51,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark' | 'night'>('light');
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
 
   // Sync theme on mount
   useEffect(() => {
@@ -270,6 +274,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </div>
                 </div>
               </Link>
+              {/* Permanent Install App Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setShowInstallGuide(true);
+                }}
+                className="w-full py-2.5 px-3 text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 rounded-xl flex items-center justify-center space-x-2 transition-all mb-2 shadow-md shadow-indigo-600/20 cursor-pointer"
+              >
+                <Smartphone className="w-4 h-4" />
+                <span>Install FDC App (iOS / Android)</span>
+              </button>
+
               <button 
                 onClick={logout} 
                 className="w-full py-2 px-3 text-xs font-medium text-rose-500 hover:bg-rose-500/10 rounded-lg flex items-center justify-center space-x-2 transition-colors border border-rose-500/20"
@@ -581,6 +598,77 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Link>
         </nav>
       </div>
+
+      {/* ──────────────── INSTALL FDC APP MODAL (iOS & Android) ──────────────── */}
+      {showInstallGuide && (
+        <div 
+          className="fixed inset-0 z-[9999999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in"
+          onClick={() => setShowInstallGuide(false)}
+        >
+          <div 
+            className="bg-slate-900 border border-indigo-500/40 rounded-3xl w-full max-w-md p-6 relative shadow-2xl space-y-4 text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-10 h-10 rounded-xl bg-indigo-600/30 flex items-center justify-center text-indigo-400 shrink-0">
+                  <Smartphone className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">FDC App ইনস্টলেশন গাইড</h3>
+                  <p className="text-[10px] text-zinc-400">iPhone / iPad এবং Android এর জন্য</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInstallGuide(false)}
+                className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* iOS Instructions Section */}
+            <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 space-y-2">
+              <div className="flex items-center space-x-2 text-indigo-300 font-bold text-xs">
+                <span>🍏 iPhone / iPad (Safari) ব্যবহারকারীদের জন্য:</span>
+              </div>
+              <div className="space-y-2 text-xs text-zinc-300">
+                <div className="flex items-start space-x-2.5">
+                  <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">১</span>
+                  <p>Safari ব্রাউজারের নিচে থাকা <strong className="text-white">Share (শেয়ার)</strong> আইকনে চাপ দিন (<Share2 className="w-3.5 h-3.5 inline mx-0.5 text-indigo-400" />)।</p>
+                </div>
+                <div className="flex items-start space-x-2.5">
+                  <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">২</span>
+                  <p>একটু নিচে স্ক্রোল করে <strong className="text-white">&ldquo;Add to Home Screen&rdquo;</strong> অপশনে ট্যাপ করুন।</p>
+                </div>
+                <div className="flex items-start space-x-2.5">
+                  <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">৩</span>
+                  <p>উপরে ডান কোণায় <strong className="text-emerald-400">&ldquo;Add&rdquo;</strong> বাটনে ট্যাপ করলেই আপনার হোম স্ক্রিনে FDC অ্যাপ যুক্ত হয়ে যাবে!</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Android Instructions Section */}
+            <div className="p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-500/30 space-y-2">
+              <div className="flex items-center space-x-2 text-emerald-300 font-bold text-xs">
+                <span>🤖 Android (Chrome) ব্যবহারকারীদের জন্য:</span>
+              </div>
+              <div className="space-y-1.5 text-xs text-zinc-300">
+                <p>Chrome ব্রাউজারের উপরে ডান কোণায় <strong className="text-white">থ্রি-ডট (⋮)</strong> মেনুতে চাপ দিয়ে <strong className="text-emerald-400">&ldquo;Install app&rdquo;</strong> বা <strong className="text-emerald-400">&ldquo;Add to Home Screen&rdquo;</strong> ট্যাপ করুন।</p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowInstallGuide(false)}
+              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
+            >
+              বুঝেছি / Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
