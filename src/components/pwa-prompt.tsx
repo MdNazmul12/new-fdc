@@ -47,10 +47,12 @@ export default function PwaPrompt() {
         setDismissed(true);
       }
 
-      // Detect iOS Safari
+      // Detect iOS Safari (including modern iPadOS which sends Macintosh UA)
       const ua = window.navigator.userAgent.toLowerCase();
-      const isApple = /iphone|ipad|ipod/.test(ua) && !(window as any).MSStream;
-      setIsIos(isApple);
+      const isClassicIos = /iphone|ipad|ipod/.test(ua) && !(window as any).MSStream;
+      const isModernIpad = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+      const appleDevice = isClassicIos || isModernIpad;
+      setIsIos(appleDevice);
 
       // On Android/Chrome: listen to beforeinstallprompt
       const handleBeforeInstall = (e: Event) => {
@@ -80,7 +82,8 @@ export default function PwaPrompt() {
         setIsInstalled(true);
       }
       setDeferredPrompt(null);
-    } else if (isIos) {
+    } else {
+      // For iOS or browsers that don't support automated prompt
       setShowIosPrompt(true);
     }
   };
@@ -94,9 +97,6 @@ export default function PwaPrompt() {
 
   // Don't show if already installed or dismissed
   if (isInstalled || dismissed) return null;
-
-  // Only show if we either have an Android install prompt or iOS is detected
-  if (!deferredPrompt && !isIos) return null;
 
   return (
     <>

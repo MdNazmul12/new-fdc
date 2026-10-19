@@ -62,6 +62,25 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                function purgeNetlifyBadge() {
+                  try {
+                    var elms = document.querySelectorAll('[data-netlify-deploy-preview-badge], #netlify-badge, .netlify-badge, iframe[src*="netlify"], [class*="netlify-feedback"], [id*="netlify-feedback"], [class*="netlify-drawer"]');
+                    elms.forEach(function(el) { el.remove(); });
+                  } catch (e) {}
+                }
+                if (typeof window !== 'undefined') {
+                  window.addEventListener('DOMContentLoaded', purgeNetlifyBadge);
+                  window.addEventListener('load', purgeNetlifyBadge);
+                  setInterval(purgeNetlifyBadge, 1500);
+                }
+              })();
+            `,
+          }}
+        />
       </head>
       <body 
         className="min-h-screen bg-[var(--background)] text-zinc-50 font-sans selection:bg-indigo-500 selection:text-white antialiased"

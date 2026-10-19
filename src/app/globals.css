@@ -259,3 +259,19 @@ body {
   }
 }
 
+/* Cleanly hide Netlify badge and drawer widgets */
+[data-netlify-deploy-preview-badge],
+#netlify-badge,
+.netlify-badge,
+iframe[src*="netlify"] {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* Mobile Bottom Navigation Safe Stacking */
+.safe-area-pb {
+  padding-bottom: max(10px, env(safe-area-inset-bottom, 12px)) !important;
+}
+
+

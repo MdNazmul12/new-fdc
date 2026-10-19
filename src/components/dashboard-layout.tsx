@@ -529,7 +529,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
 
         {/* ---------------- MOBILE BOTTOM NAVIGATION BAR ---------------- */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[var(--card)]/95 backdrop-blur-xl border-t border-[var(--border)] px-2 py-1.5 flex items-center justify-around shadow-2xl safe-area-pb">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[99999] bg-[var(--card)]/95 backdrop-blur-xl border-t border-[var(--border)] px-2 py-1.5 flex items-center justify-around shadow-2xl safe-area-pb">
           <Link
             href="/dashboard"
             className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
