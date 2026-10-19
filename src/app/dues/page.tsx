@@ -427,9 +427,21 @@ export default function DuesPage() {
           }
         })
       });
+      // Also dispatch Web Push Notification directly to the member phone
+      fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `⏰ চাঁদা পরিশোধের অনুস্মারক (${targetMonth})`,
+          message: `${item.member.name}, আপনার ${targetMonth} মাসের ${item.totalPayable} টাকা চাঁদা বকেয়া রয়েছে। অনুগ্রহ করে নির্ধারিত সময়ের মধ্যে পরিশোধ করুন।`,
+          targetUserId: item.member.id,
+          url: '/dues',
+        })
+      }).catch(err => console.warn('Due reminder push notification error:', err));
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setReminderResult(`Reminder email sent to ${item.member.name} (${item.member.email})!`);
+      setReminderResult(`Reminder email & push sent to ${item.member.name}!`);
       setTimeout(() => setReminderResult(null), 4000);
     } catch (err: any) {
       alert(`Failed to send reminder: ${err.message}`);

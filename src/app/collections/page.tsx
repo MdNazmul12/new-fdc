@@ -416,6 +416,18 @@ export default function CollectionsPage() {
             }
           })
         }).catch(err => console.warn('Approval email notification failed:', err));
+
+        // Send Web Push Notification to member phone
+        fetch('/api/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: '✅ পেমেন্ট অনুমোদিত হয়েছে!',
+            message: `${pendingApprovalCol.month} মাসের ${pendingApprovalCol.amount + (pendingApprovalCol.lateFine || 0)} টাকা পেমেন্ট এডমিন দ্বারা অনুমোদিত হয়েছে। রিসিট নং: ${pendingApprovalCol.receiptNo}`,
+            targetUserId: pendingApprovalCol.memberId,
+            url: '/members/profile',
+          })
+        }).catch(err => console.warn('Approval push notification error:', err));
       }
     }
     setPendingApprovalCol(null);

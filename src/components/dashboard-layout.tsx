@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '../contexts/auth-context';
 import { useStore } from '../contexts/store-context';
 import { UserRole } from '../types';
+import PushNotificationManager from './push-notification-manager';
 import { 
   LayoutDashboard, 
   Users, 
@@ -396,6 +397,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 )}
               </div>
             )}
+
+            {/* Web Push Notification Toggle Button */}
+            <PushNotificationManager />
 
             {/* Notification Dropdown */}
             <div className="relative">

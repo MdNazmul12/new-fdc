@@ -89,3 +89,66 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
+
+// ─── Web Push Notifications Listener ─────────────────────────────────────────
+self.addEventListener('push', (event) => {
+  let data = {
+    title: 'FDC Notification',
+    body: 'You have a new update from FDC Platform.',
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/icon-72x72.png',
+    data: { url: '/dashboard' }
+  };
+
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: data.icon || '/icons/icon-192x192.png',
+    badge: data.badge || '/icons/icon-72x72.png',
+    vibrate: [100, 50, 100],
+    data: data.data || { url: '/dashboard' },
+    actions: [
+      { action: 'open', title: 'Open App' },
+      { action: 'close', title: 'Dismiss' }
+    ]
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+// Notification Click Handler: Open URL in app
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  if (event.action === 'close') {
+    return;
+  }
+
+  const targetUrl = event.notification.data?.url || '/dashboard';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // If a window is already open, focus it and navigate
+      for (const client of windowClients) {
+        if ('focus' in client) {
+          client.navigate(targetUrl);
+          return client.focus();
+        }
+      }
+      // Otherwise open a new window
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+
