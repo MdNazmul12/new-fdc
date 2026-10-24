@@ -68,14 +68,27 @@ export default function RootLayout({
               (function() {
                 function purgeNetlifyBadge() {
                   try {
-                    var elms = document.querySelectorAll('[data-netlify-deploy-preview-badge], #netlify-badge, .netlify-badge, iframe[src*="netlify"], [class*="netlify-feedback"], [id*="netlify-feedback"], [class*="netlify-drawer"]');
-                    elms.forEach(function(el) { el.remove(); });
+                    var selectors = [
+                      'netlify-drawer', '#netlify-drawer', '.netlify-drawer',
+                      '[data-netlify-deploy-preview-badge]', '#netlify-badge', '.netlify-badge',
+                      'iframe[src*="netlify"]', '[class*="netlify"]', '[id*="netlify"]',
+                      'a[href*="netlify.com"]', 'div[data-netlify]'
+                    ];
+                    var elms = document.querySelectorAll(selectors.join(', '));
+                    elms.forEach(function(el) {
+                      try { el.remove(); } catch(e) { el.style.display = 'none'; el.style.pointerEvents = 'none'; }
+                    });
                   } catch (e) {}
                 }
                 if (typeof window !== 'undefined') {
+                  purgeNetlifyBadge();
                   window.addEventListener('DOMContentLoaded', purgeNetlifyBadge);
                   window.addEventListener('load', purgeNetlifyBadge);
-                  setInterval(purgeNetlifyBadge, 1500);
+                  setInterval(purgeNetlifyBadge, 500);
+                  if (window.MutationObserver) {
+                    var obs = new MutationObserver(function() { purgeNetlifyBadge(); });
+                    obs.observe(document.documentElement, { childList: true, subtree: true });
+                  }
                 }
               })();
             `,

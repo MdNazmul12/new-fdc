@@ -259,14 +259,30 @@ body {
   }
 }
 
-/* Cleanly hide Netlify badge and drawer widgets */
+/* Cleanly hide Netlify badge, drawer widgets, feedback buttons and injected scripts */
 [data-netlify-deploy-preview-badge],
 #netlify-badge,
 .netlify-badge,
-iframe[src*="netlify"] {
+[class*="netlify-"],
+[id*="netlify-"],
+div[data-netlify],
+iframe[src*="netlify"],
+netlify-drawer,
+#netlify-drawer,
+.netlify-drawer,
+div[style*="z-index: 2147483647"],
+div[style*="z-index: 999999"] > a[href*="netlify"],
+a[href*="netlify.com"] {
   display: none !important;
-  pointer-events: none !important;
+  opacity: 0 !important;
   visibility: hidden !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  bottom: -99999px !important;
+  right: -99999px !important;
 }
 
 /* Mobile Bottom Navigation Safe Stacking */
