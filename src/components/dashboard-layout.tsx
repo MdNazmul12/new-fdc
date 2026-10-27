@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '../contexts/auth-context';
 import { useStore } from '../contexts/store-context';
 import { UserRole } from '../types';
-import PushNotificationManager from './push-notification-manager';
+import PushNotificationManager, { PushNotificationRow } from './push-notification-manager';
 import { 
   LayoutDashboard, 
   Users, 
@@ -415,10 +415,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             )}
 
-            {/* Web Push Notification Toggle Button */}
-            <PushNotificationManager />
-
-            {/* Notification Dropdown */}
+            {/* Notification Dropdown - Single Bell Icon */}
             <div className="relative">
               <button 
                 onClick={() => {
@@ -427,6 +424,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   setRoleSwitcherOpen(false);
                 }}
                 className="p-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] rounded-lg hover:bg-[var(--accent)] relative transition-all"
+                title="Notifications"
               >
                 <Bell className="w-4 h-4" />
                 {unreadNotifications.length > 0 && (
@@ -435,9 +433,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </button>
 
               {notificationsOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-[var(--card)] border border-[var(--border)] rounded-lg shadow-xl z-50">
+                <div className="absolute right-0 mt-2 w-80 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl z-50 overflow-hidden">
                   <div className="p-3 border-b border-[var(--border)] flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-[var(--foreground)]">System Notifications</h3>
+                    <h3 className="text-xs font-bold text-[var(--foreground)]">Notifications</h3>
                     {unreadNotifications.length > 0 && (
                       <button 
                         onClick={markAllNotificationsRead}
@@ -447,6 +445,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       </button>
                     )}
                   </div>
+
+                  {/* Phone Push Notification integrated toggle row */}
+                  <PushNotificationRow />
                   
                   <div className="max-h-72 overflow-y-auto divide-y divide-[var(--border)]">
                     {userNotifications.length === 0 ? (
@@ -669,6 +670,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       )}
+    <PushNotificationManager />
     </div>
   );
 }

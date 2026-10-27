@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fdc-cache-v2';
+const CACHE_NAME = 'fdc-cache-v3';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',

@@ -107,58 +107,72 @@ export default function PwaPrompt() {
     }
   };
 
+  const handleCloseIosModal = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setShowIosPrompt(false);
+    setDismissed(true);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('fdc_pwa_dismissed', 'true');
+    }
+  };
+
   if (!mounted || isInstalled || dismissed) return null;
 
   return (
     <>
-      {/* Floating Bottom Install Banner - High Z-Index & iOS Safe Area */}
-      <div 
-        className="fixed bottom-20 md:bottom-6 left-3 right-3 md:left-auto md:right-6 md:w-96 z-[999999] pointer-events-auto"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-      >
-        <div className="bg-slate-900/95 border-2 border-indigo-500/50 rounded-2xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] backdrop-blur-2xl flex items-center space-x-3 text-left ring-1 ring-white/10">
-          <div className="w-12 h-12 rounded-xl bg-indigo-600/30 border border-indigo-500/40 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
-            <img src="/icons/icon-192x192.png" alt="FDC App Icon" className="w-full h-full object-contain rounded-lg" />
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-1.5">
-              <span className="text-xs font-black text-white">Install FDC App</span>
-              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-indigo-500/30 text-indigo-300 border border-indigo-500/40">
-                {isIos ? 'iPhone / iPad' : 'PWA App'}
-              </span>
+      {/* Floating Bottom Install Banner - Hidden when iOS guide modal is open */}
+      {!showIosPrompt && (
+        <div 
+          className="fixed bottom-20 md:bottom-6 left-3 right-3 md:left-auto md:right-6 md:w-96 z-[999999] pointer-events-auto"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
+          <div className="bg-slate-900/95 border-2 border-indigo-500/50 rounded-2xl p-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] backdrop-blur-2xl flex items-center space-x-3 text-left ring-1 ring-white/10">
+            <div className="w-12 h-12 rounded-xl bg-indigo-600/30 border border-indigo-500/40 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
+              <img src="/icons/icon-192x192.png" alt="FDC App Icon" className="w-full h-full object-contain rounded-lg" />
             </div>
-            <p className="text-[11px] text-zinc-300 truncate mt-0.5">
-              {isIos ? 'iPhone-এ অ্যাপ ইনস্টল করুন' : 'ফোনে অ্যাপ ইনস্টল করুন'}
-            </p>
-          </div>
 
-          <div className="flex items-center space-x-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={handleInstallClick}
-              className="px-3.5 py-2 bg-indigo-600 active:bg-indigo-700 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/40 transition-all flex items-center space-x-1.5 cursor-pointer touch-manipulation"
-            >
-              <Download className="w-4 h-4" />
-              <span>{isIos ? 'ইনস্টল' : 'Install'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleDismiss}
-              className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors touch-manipulation cursor-pointer"
-              title="Close"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center space-x-1.5">
+                <span className="text-xs font-black text-white">Install FDC App</span>
+                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-indigo-500/30 text-indigo-300 border border-indigo-500/40">
+                  {isIos ? 'iPhone / iPad' : 'PWA App'}
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-300 truncate mt-0.5">
+                {isIos ? 'iPhone-এ অ্যাপ ইনস্টল করুন' : 'ফোনে অ্যাপ ইনস্টল করুন'}
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={handleInstallClick}
+                className="px-3.5 py-2 bg-indigo-600 active:bg-indigo-700 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/40 transition-all flex items-center space-x-1.5 cursor-pointer touch-manipulation"
+              >
+                <Download className="w-4 h-4" />
+                <span>{isIos ? 'ইনস্টল' : 'Install'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleDismiss}
+                className="p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors touch-manipulation cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* iOS Safari Instructions Modal */}
       {showIosPrompt && (
         <div 
           className="fixed inset-0 z-[9999999] flex items-end sm:items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in"
-          onClick={() => setShowIosPrompt(false)}
+          onClick={handleCloseIosModal}
         >
           <div 
             className="bg-slate-900 border border-indigo-500/40 rounded-3xl w-full max-w-sm p-5 relative shadow-2xl space-y-4 text-left"
@@ -176,7 +190,7 @@ export default function PwaPrompt() {
               </div>
               <button
                 type="button"
-                onClick={() => setShowIosPrompt(false)}
+                onClick={handleCloseIosModal}
                 className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 hover:text-white touch-manipulation"
               >
                 <X className="w-4 h-4" />
@@ -216,7 +230,7 @@ export default function PwaPrompt() {
 
             <button
               type="button"
-              onClick={() => setShowIosPrompt(false)}
+              onClick={handleCloseIosModal}
               className="w-full py-3 bg-indigo-600 active:bg-indigo-700 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer touch-manipulation shadow-lg shadow-indigo-600/30"
             >
               বুঝেছি / ঠিক আছে

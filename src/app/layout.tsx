@@ -72,12 +72,22 @@ export default function RootLayout({
                       'netlify-drawer', '#netlify-drawer', '.netlify-drawer',
                       '[data-netlify-deploy-preview-badge]', '#netlify-badge', '.netlify-badge',
                       'iframe[src*="netlify"]', '[class*="netlify"]', '[id*="netlify"]',
-                      'a[href*="netlify.com"]', 'div[data-netlify]'
+                      'a[href*="netlify.com"]', 'div[data-netlify]', '[data-testid="netlify-drawer"]'
                     ];
                     var elms = document.querySelectorAll(selectors.join(', '));
                     elms.forEach(function(el) {
                       try { el.remove(); } catch(e) { el.style.display = 'none'; el.style.pointerEvents = 'none'; }
                     });
+
+                    // Search for elements containing "Powered by Netlify"
+                    var elements = document.querySelectorAll('div, a, span, p, button');
+                    for (var i = 0; i < elements.length; i++) {
+                      var item = elements[i];
+                      if (item && item.textContent && item.textContent.trim().indexOf('Powered by Netlify') !== -1) {
+                        var target = item.closest('a') || item.closest('div[style*="fixed"]') || item.closest('div[style*="z-index"]') || item;
+                        try { target.remove(); } catch(e) { target.style.display = 'none'; }
+                      }
+                    }
                   } catch (e) {}
                 }
                 if (typeof window !== 'undefined') {
