@@ -466,15 +466,159 @@ export default function ReportsPage() {
     }
   };
 
-  // ── EXPORT TO PDF ────────────────────────────────────────────────────────
-  const handleExportPDF = async () => {
+  // ── EXPORT TO PDF (PURE VECTOR JSDOC - NO LAB/OKLCH CRASH) ───────────────
+  const handleExportPDF = () => {
     setExportingPdf(true);
     try {
       const today = new Date().toISOString().split('T')[0];
-      const filename = `FDC_${reportType.toUpperCase()}_REPORT_${today}`;
-      await exportElementToPDF('reports-preview-area', filename);
+      const filename = `FDC_${reportType.toUpperCase()}_REPORT_${selectedCategory !== 'all' ? selectedCategory + '_' : ''}${today}`;
+
+      let columns: { key: string; label: string; align?: 'left' | 'center' | 'right'; widthRatio?: number }[] = [];
+      let rows: Record<string, any>[] = [];
+
+      if (reportType === 'expense') {
+        columns = [
+          { key: 'sl', label: 'SL', align: 'center', widthRatio: 0.8 },
+          { key: 'date', label: 'Date', widthRatio: 1.5 },
+          { key: 'category', label: 'Category', widthRatio: 2.2 },
+          { key: 'description', label: 'Description', widthRatio: 3.5 },
+          { key: 'paidBy', label: 'Paid By', widthRatio: 1.8 },
+          { key: 'amountText', label: 'Amount (BDT)', align: 'right', widthRatio: 2.2 },
+        ];
+        rows = (filteredData as any[]).map((e, idx) => ({
+          sl: idx + 1,
+          date: e.date,
+          category: e.category,
+          description: e.description,
+          paidBy: e.paidBy,
+          amountText: `${(Number(e.amount) || 0).toLocaleString()} TK`,
+        }));
+      } else if (reportType === 'collection') {
+        columns = [
+          { key: 'sl', label: 'SL', align: 'center', widthRatio: 0.8 },
+          { key: 'receiptNo', label: 'Receipt No', widthRatio: 2 },
+          { key: 'memberName', label: 'Member Name', widthRatio: 3 },
+          { key: 'month', label: 'Month', widthRatio: 1.6 },
+          { key: 'date', label: 'Date', widthRatio: 1.6 },
+          { key: 'paymentType', label: 'Method', widthRatio: 1.5 },
+          { key: 'lateFine', label: 'Fine', align: 'right', widthRatio: 1.2 },
+          { key: 'totalText', label: 'Total (BDT)', align: 'right', widthRatio: 2.2 },
+        ];
+        rows = (filteredData as any[]).map((c, idx) => ({
+          sl: idx + 1,
+          receiptNo: c.receiptNo,
+          memberName: c.memberName,
+          month: c.month,
+          date: c.date,
+          paymentType: (c.paymentType || 'Cash').toUpperCase(),
+          lateFine: c.lateFine > 0 ? `${c.lateFine} TK` : '-',
+          totalText: `${((Number(c.amount) || 0) + (Number(c.lateFine) || 0)).toLocaleString()} TK`,
+        }));
+      } else if (reportType === 'investment') {
+        columns = [
+          { key: 'sl', label: 'SL', align: 'center', widthRatio: 0.8 },
+          { key: 'provider', label: 'Provider / Bank', widthRatio: 3 },
+          { key: 'type', label: 'Category', widthRatio: 1.8 },
+          { key: 'principal', label: 'Principal (BDT)', align: 'right', widthRatio: 2.5 },
+          { key: 'rate', label: 'Rate (%)', align: 'center', widthRatio: 1.2 },
+          { key: 'maturityDate', label: 'Maturity Date', widthRatio: 2 },
+          { key: 'returns', label: 'Interest Received', align: 'right', widthRatio: 2.5 },
+          { key: 'status', label: 'Status', align: 'center', widthRatio: 1.5 },
+        ];
+        rows = (filteredData as any[]).map((i, idx) => ({
+          sl: idx + 1,
+          provider: i.provider,
+          type: i.type,
+          principal: `${(Number(i.principalAmount) || 0).toLocaleString()} TK`,
+          rate: `${i.interestRate}%`,
+          maturityDate: i.maturityDate,
+          returns: `${(Number(i.interestReceived) || 0).toLocaleString()} TK`,
+          status: (i.status || '').toUpperCase(),
+        }));
+      } else if (reportType === 'loan') {
+        columns = [
+          { key: 'sl', label: 'SL', align: 'center', widthRatio: 0.8 },
+          { key: 'loanNo', label: 'Loan No', widthRatio: 2 },
+          { key: 'memberName', label: 'Borrower', widthRatio: 3 },
+          { key: 'loanType', label: 'Type', widthRatio: 1.8 },
+          { key: 'principal', label: 'Principal', align: 'right', widthRatio: 2.2 },
+          { key: 'payable', label: 'Total Payable', align: 'right', widthRatio: 2.2 },
+          { key: 'repaid', label: 'Repaid', align: 'right', widthRatio: 2.2 },
+          { key: 'status', label: 'Status', align: 'center', widthRatio: 1.5 },
+        ];
+        rows = (filteredData as any[]).map((l, idx) => ({
+          sl: idx + 1,
+          loanNo: l.loanNo,
+          memberName: l.memberName,
+          loanType: (l.loanType || '').toUpperCase(),
+          principal: `${(Number(l.principalAmount) || 0).toLocaleString()} TK`,
+          payable: `${(Number(l.totalPayable) || 0).toLocaleString()} TK`,
+          repaid: `${(Number(l.totalRepaid) || 0).toLocaleString()} TK`,
+          status: (l.status || '').toUpperCase(),
+        }));
+      } else if (reportType === 'ledger') {
+        columns = [
+          { key: 'sl', label: 'SL', align: 'center', widthRatio: 0.8 },
+          { key: 'date', label: 'Date', widthRatio: 1.6 },
+          { key: 'account', label: 'Account', widthRatio: 1.6 },
+          { key: 'category', label: 'Category', widthRatio: 2 },
+          { key: 'description', label: 'Description', widthRatio: 3.5 },
+          { key: 'debit', label: 'Debit (BDT)', align: 'right', widthRatio: 2 },
+          { key: 'credit', label: 'Credit (BDT)', align: 'right', widthRatio: 2 },
+        ];
+        rows = (filteredData as any[]).map((t, idx) => ({
+          sl: idx + 1,
+          date: t.date,
+          account: (t.account || '').toUpperCase(),
+          category: t.category,
+          description: t.description,
+          debit: t.type === 'debit' ? `${(Number(t.amount) || 0).toLocaleString()} TK` : '-',
+          credit: t.type === 'credit' ? `${(Number(t.amount) || 0).toLocaleString()} TK` : '-',
+        }));
+      } else if (reportType === 'due') {
+        columns = [
+          { key: 'sl', label: 'SL', align: 'center', widthRatio: 0.8 },
+          { key: 'id', label: 'Member ID', widthRatio: 2 },
+          { key: 'name', label: 'Member Name', widthRatio: 3.5 },
+          { key: 'phone', label: 'Phone', widthRatio: 2.2 },
+          { key: 'joinDate', label: 'Join Date', widthRatio: 2 },
+          { key: 'fee', label: 'Monthly Fee', align: 'right', widthRatio: 2.2 },
+        ];
+        rows = (filteredData as any[]).map((m, idx) => ({
+          sl: idx + 1,
+          id: m.id,
+          name: m.name,
+          phone: m.phone,
+          joinDate: m.joinDate,
+          fee: `${(Number(m.monthlyFee) || 0).toLocaleString()} TK`,
+        }));
+      } else {
+        // Summary
+        columns = [
+          { key: 'sl', label: 'SL', align: 'center', widthRatio: 0.8 },
+          { key: 'category', label: 'Category Name', widthRatio: 4 },
+          { key: 'count', label: 'Record Count', align: 'center', widthRatio: 2 },
+          { key: 'totalText', label: 'Total Amount', align: 'right', widthRatio: 3 },
+        ];
+        rows = categoryBreakdown.map((c, idx) => ({
+          sl: idx + 1,
+          category: c.category,
+          count: c.count,
+          totalText: formatCurrency(c.totalAmount),
+        }));
+      }
+
+      const meta = {
+        category: selectedCategory !== 'all' ? selectedCategory : undefined,
+        period: dateFrom && dateTo ? `${dateFrom} to ${dateTo}` : quickPeriod !== 'all' ? quickPeriod.replace('_', ' ') : 'All Time',
+        totalRecords: filteredData.length,
+        totalAmountText: formatCurrency(totalSummaryAmount),
+      };
+
+      exportTableToPDF(rows, columns, `${reportType.toUpperCase()} STATEMENT REPORT`, filename, meta);
     } catch (err) {
       console.error('PDF Export Error:', err);
+      alert('Could not export PDF. Please try again.');
     } finally {
       setExportingPdf(false);
     }
