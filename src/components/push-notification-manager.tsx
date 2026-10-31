@@ -4,6 +4,9 @@ import React, { useEffect, useState, useCallback, createContext, useContext } fr
 import { BellRing, BellOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/auth-context';
 
+const FALLBACK_VAPID_PUBLIC_KEY =
+  'BNnVdd1nN7aYXnJ7czvMz9El_eVXDTImVa2Yj9Pdn9WZWp2eVg4SyYcuNg_yBLoUEolchh6-Vu837YX-jN9ugrU';
+
 // ── VAPID key helper ─────────────────────────────────────────────────────────
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -83,11 +86,19 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
         return;
       }
 
-      // 2. Get VAPID public key from server
-      const resKey = await fetch('/api/push/subscribe');
-      if (!resKey.ok) throw new Error('Could not fetch VAPID public key from server');
-      const { publicKey } = await resKey.json();
-      if (!publicKey) throw new Error('VAPID public key is empty');
+      // 2. Get VAPID public key from server (with client fallback)
+      let publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || FALLBACK_VAPID_PUBLIC_KEY;
+      try {
+        const resKey = await fetch('/api/push/subscribe');
+        if (resKey.ok) {
+          const data = await resKey.json();
+          if (data?.publicKey) {
+            publicKey = data.publicKey;
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch VAPID key from server, using fallback key:', err);
+      }
 
       // 3. Subscribe via Service Worker PushManager
       const reg = await navigator.serviceWorker.ready;

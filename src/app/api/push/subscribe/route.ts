@@ -3,12 +3,12 @@ import clientPromise from '../../../../lib/mongodb';
 
 export const dynamic = 'force-dynamic';
 
+const DEFAULT_VAPID_PUBLIC_KEY =
+  'BNnVdd1nN7aYXnJ7czvMz9El_eVXDTImVa2Yj9Pdn9WZWp2eVg4SyYcuNg_yBLoUEolchh6-Vu837YX-jN9ugrU';
+
 // GET: Return public VAPID key to the client
 export async function GET() {
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  if (!publicKey) {
-    return NextResponse.json({ error: 'VAPID public key not configured' }, { status: 500 });
-  }
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || DEFAULT_VAPID_PUBLIC_KEY;
   return NextResponse.json({ publicKey });
 }
 

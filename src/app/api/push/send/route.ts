@@ -4,14 +4,17 @@ import webpush from 'web-push';
 
 export const dynamic = 'force-dynamic';
 
-function getWebPushConfig() {
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
-  const subject = process.env.VAPID_SUBJECT || 'mailto:admin@fdc.org';
+const DEFAULT_VAPID_PUBLIC_KEY =
+  'BNnVdd1nN7aYXnJ7czvMz9El_eVXDTImVa2Yj9Pdn9WZWp2eVg4SyYcuNg_yBLoUEolchh6-Vu837YX-jN9ugrU';
+const DEFAULT_VAPID_PRIVATE_KEY =
+  '3glMG6BYmcv92o2Flh5IZfOmAP8ei0FMUGyhl4XId4Y';
+const DEFAULT_VAPID_SUBJECT =
+  'mailto:21223203087@cse.bubt.edu.bd';
 
-  if (!publicKey || !privateKey) {
-    throw new Error('VAPID keys not configured in environment variables');
-  }
+function getWebPushConfig() {
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || DEFAULT_VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY || DEFAULT_VAPID_PRIVATE_KEY;
+  const subject = process.env.VAPID_SUBJECT || DEFAULT_VAPID_SUBJECT;
 
   webpush.setVapidDetails(subject, publicKey, privateKey);
 }
