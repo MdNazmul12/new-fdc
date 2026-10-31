@@ -1,56 +1,95 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Bell, BellRing, BellOff, Loader2, Check, Smartphone } from 'lucide-react';
+import React, { useEffect, useState, useCallback, createContext, useContext } from 'react';
+import { BellRing, BellOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/auth-context';
 
-function urlBase64ToUint8Array(base64String: string) {
+// ── VAPID key helper ─────────────────────────────────────────────────────────
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
   const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
+  const buffer = new ArrayBuffer(rawData.length);
+  const outputArray = new Uint8Array(buffer);
   for (let i = 0; i < rawData.length; ++i) {
     outputArray[i] = rawData.charCodeAt(i);
   }
   return outputArray;
 }
 
-// Custom hook to share push notification state between components
-export function usePushSubscription() {
+// ── Shared Push Context (single source of truth) ─────────────────────────────
+interface PushCtx {
+  isSupported: boolean;
+  isSubscribed: boolean;
+  loading: boolean;
+  subscribeToPush: () => Promise<void>;
+  unsubscribeFromPush: () => Promise<void>;
+}
+
+const PushContext = createContext<PushCtx>({
+  isSupported: false,
+  isSubscribed: false,
+  loading: false,
+  subscribeToPush: async () => {},
+  unsubscribeFromPush: async () => {},
+});
+
+export function PushNotificationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [isSupported, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Detect support & check current subscription status
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window) {
-      setIsSupported(true);
+    if (typeof window === 'undefined') return;
 
-      navigator.serviceWorker.ready.then((reg) => {
-        reg.pushManager.getSubscription().then((sub) => {
-          if (sub) {
-            setIsSubscribed(true);
-          }
-        });
-      });
-    }
+    // Check for basic push support
+    const hasPushSupport =
+      'serviceWorker' in navigator &&
+      'PushManager' in window &&
+      'Notification' in window;
+
+    setIsSupported(hasPushSupport);
+
+    if (!hasPushSupport) return;
+
+    // Check if already subscribed
+    navigator.serviceWorker.ready
+      .then((reg) => reg.pushManager.getSubscription())
+      .then((sub) => {
+        setIsSubscribed(!!sub);
+      })
+      .catch(() => {});
   }, [user]);
 
-  const subscribeToPush = async () => {
-    if (!isSupported) return;
+  const subscribeToPush = useCallback(async () => {
+    if (!isSupported) {
+      alert('Push notifications are not supported on this browser/device.');
+      return;
+    }
     setLoading(true);
     try {
+      // 1. Request browser permission
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
-        alert('Notification permission denied. Please allow notifications in site settings.');
+        alert(
+          'Notification permission was denied.\n\n' +
+          'To fix this:\n' +
+          '• iPhone: Settings → Safari → [this site] → Notifications → Allow\n' +
+          '• Android: Site settings → Notifications → Allow'
+        );
         setLoading(false);
         return;
       }
 
+      // 2. Get VAPID public key from server
       const resKey = await fetch('/api/push/subscribe');
+      if (!resKey.ok) throw new Error('Could not fetch VAPID public key from server');
       const { publicKey } = await resKey.json();
-      if (!publicKey) throw new Error('Could not get VAPID public key');
+      if (!publicKey) throw new Error('VAPID public key is empty');
 
+      // 3. Subscribe via Service Worker PushManager
       const reg = await navigator.serviceWorker.ready;
       const convertedVapidKey = urlBase64ToUint8Array(publicKey);
       const subscription = await reg.pushManager.subscribe({
@@ -58,6 +97,7 @@ export function usePushSubscription() {
         applicationServerKey: convertedVapidKey,
       });
 
+      // 4. Save subscription token to MongoDB
       const saveRes = await fetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -70,30 +110,35 @@ export function usePushSubscription() {
         }),
       });
 
-      if (!saveRes.ok) throw new Error('Failed to save subscription to database');
+      if (!saveRes.ok) {
+        const errBody = await saveRes.json().catch(() => ({}));
+        throw new Error(errBody.error || 'Server failed to save push subscription');
+      }
 
+      // 5. Update UI state immediately (no reload needed)
       setIsSubscribed(true);
 
-      // Trigger a test welcoming push notification
-      await fetch('/api/push/send', {
+      // 6. Send a welcome push notification
+      fetch('/api/push/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: '🎉 Notifications Active!',
-          message: 'FDC Push Notifications are now successfully enabled on this phone.',
+          title: '🎉 Notifications Enabled!',
+          message: 'FDC push notifications are now active on this device.',
           targetUserId: user?.id || 'all',
           url: '/dashboard',
         }),
       }).catch(() => {});
+
     } catch (err: any) {
-      console.error('Push subscription error:', err);
-      alert(`Could not enable notifications: ${err.message}`);
+      console.error('[PushNotification] Subscribe error:', err);
+      alert(`Could not enable notifications:\n${err.message}`);
     } finally {
       setLoading(false);
     }
-  };
+  }, [isSupported, user]);
 
-  const unsubscribeFromPush = async () => {
+  const unsubscribeFromPush = useCallback(async () => {
     setLoading(true);
     try {
       const reg = await navigator.serviceWorker.ready;
@@ -106,37 +151,52 @@ export function usePushSubscription() {
           body: JSON.stringify({ endpoint: sub.endpoint }),
         });
       }
+      // Update UI state immediately (no reload needed)
       setIsSubscribed(false);
     } catch (err: any) {
-      console.error('Error unsubscribing:', err);
+      console.error('[PushNotification] Unsubscribe error:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  return { isSupported, isSubscribed, loading, subscribeToPush, unsubscribeFromPush };
+  return (
+    <PushContext.Provider value={{ isSupported, isSubscribed, loading, subscribeToPush, unsubscribeFromPush }}>
+      {children}
+    </PushContext.Provider>
+  );
 }
 
-// Integrated toggle row inside the single Notification Dropdown
+// ── Hook for any component to consume push state ─────────────────────────────
+export function usePushSubscription() {
+  return useContext(PushContext);
+}
+
+// ── Phone Alerts Row inside Notification Dropdown ────────────────────────────
 export function PushNotificationRow() {
   const { isSupported, isSubscribed, loading, subscribeToPush, unsubscribeFromPush } = usePushSubscription();
 
-  if (!isSupported) return null;
-
+  // Show the row regardless of isSupported — so user can see an explanation on unsupported browsers
   return (
-    <div className="p-3 bg-zinc-900/40 border-b border-[var(--border)] flex items-center justify-between">
-      <div className="flex items-center space-x-2.5">
-        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-          isSubscribed 
-            ? 'bg-emerald-500/20 text-emerald-400' 
-            : 'bg-zinc-800 text-zinc-400'
-        }`}>
+    <div className="p-3 bg-zinc-900/40 border-b border-[var(--border)] flex items-center justify-between gap-3">
+      <div className="flex items-center space-x-2.5 min-w-0">
+        <div
+          className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+            isSubscribed
+              ? 'bg-emerald-500/20 text-emerald-400'
+              : 'bg-zinc-800 text-zinc-400'
+          }`}
+        >
           {isSubscribed ? <BellRing className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
         </div>
-        <div>
+        <div className="min-w-0">
           <p className="text-xs font-bold text-[var(--foreground)]">Phone Alerts</p>
-          <p className="text-[10px] text-[var(--muted-foreground)]">
-            {isSubscribed ? 'Active on this device' : 'Push notifications off'}
+          <p className="text-[10px] text-[var(--muted-foreground)] truncate">
+            {!isSupported
+              ? 'Install as app for notifications'
+              : isSubscribed
+              ? 'Active on this device ✓'
+              : 'Push notifications off'}
           </p>
         </div>
       </div>
@@ -145,11 +205,11 @@ export function PushNotificationRow() {
         type="button"
         onClick={isSubscribed ? unsubscribeFromPush : subscribeToPush}
         disabled={loading}
-        className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all touch-manipulation cursor-pointer flex items-center space-x-1 ${
+        className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all touch-manipulation cursor-pointer flex items-center space-x-1 shrink-0 ${
           isSubscribed
             ? 'bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 border border-rose-500/30'
             : 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-sm'
-        }`}
+        } disabled:opacity-60`}
       >
         {loading ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -163,7 +223,7 @@ export function PushNotificationRow() {
   );
 }
 
-// Background manager: Only handles prompt banner if desired, DOES NOT render duplicate navbar icon
+// ── Background manager: shows first-time prompt banner (no duplicate bell) ───
 export default function PushNotificationManager() {
   const { isSupported, isSubscribed, loading, subscribeToPush } = usePushSubscription();
   const [showPromptBanner, setShowPromptBanner] = useState(false);
@@ -171,20 +231,24 @@ export default function PushNotificationManager() {
   useEffect(() => {
     if (!isSupported || isSubscribed) return;
 
-    // Check if user dismissed previously
     const dismissed = localStorage.getItem('fdc_push_dismissed');
     if (!dismissed && Notification.permission === 'default') {
-      const timer = setTimeout(() => setShowPromptBanner(true), 4000);
+      const timer = setTimeout(() => setShowPromptBanner(true), 5000);
       return () => clearTimeout(timer);
     }
   }, [isSupported, isSubscribed]);
+
+  // Auto-hide banner once subscribed
+  useEffect(() => {
+    if (isSubscribed) setShowPromptBanner(false);
+  }, [isSubscribed]);
 
   const dismissBanner = () => {
     setShowPromptBanner(false);
     localStorage.setItem('fdc_push_dismissed', 'true');
   };
 
-  if (!isSupported || isSubscribed || !showPromptBanner) return null;
+  if (!showPromptBanner) return null;
 
   return (
     <div className="fixed top-16 right-4 left-4 sm:left-auto sm:right-6 sm:w-96 z-50 animate-in slide-in-from-top duration-300">
@@ -196,7 +260,7 @@ export default function PushNotificationManager() {
         <div className="flex-1 min-w-0">
           <p className="text-xs font-bold text-white">Enable Phone Notifications?</p>
           <p className="text-[11px] text-zinc-300 mt-0.5 leading-relaxed">
-            চাঁদা জমা হলে রিসিট, মাসিক বকেয়া রিমাইন্ডার ও লোন নোটিফিকেশন সরাসরি মোবাইল স্ক্রিনে পেতে নোটিফিকেশন অন করুন।
+            চাঁদা জমা হলে রিসিট, মাসিক বকেয়া রিমাইন্ডার ও লোন নোটিফিকেশন সরাসরি ফোনে পেতে চাইলে নোটিফিকেশন অন করুন।
           </p>
 
           <div className="flex items-center space-x-2 mt-3">
@@ -204,7 +268,7 @@ export default function PushNotificationManager() {
               type="button"
               onClick={subscribeToPush}
               disabled={loading}
-              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/30 transition-all flex items-center space-x-1 cursor-pointer"
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/30 transition-all flex items-center space-x-1.5 cursor-pointer disabled:opacity-60"
             >
               {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               <span>Allow Notifications</span>
