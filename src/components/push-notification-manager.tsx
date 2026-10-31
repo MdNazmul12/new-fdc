@@ -103,6 +103,15 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
   }, [user]);
 
   const subscribeToPush = useCallback(async () => {
+    // 0. Secure context check (Push requires HTTPS or localhost)
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      alert(
+        '⚠️ পুশ নোটিফিকেশনের জন্য নিরাপদ সংযোগ (HTTPS) আবশ্যক।\n\n' +
+        'লোকাল নেটওয়ার্ক আইপি (http://...) দিয়ে পুশ সার্ভিস কাজ করে না। দয়া করে লাইভ HTTPS লিংক (Netlify) দিয়ে চেষ্টা করুন।'
+      );
+      return;
+    }
+
     // 1. Specific iOS in regular Safari check
     if (isIos && !isStandalone) {
       alert(
@@ -219,7 +228,18 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
 
     } catch (err: any) {
       console.error('[PushNotification] Subscribe error:', err);
-      alert(`Could not enable notifications:\n${err.message}`);
+      const errMsg = err?.message || String(err);
+      if (errMsg.toLowerCase().includes('push service not available')) {
+        alert(
+          '⚠️ পুশ সার্ভিস উপলব্ধ নেই (Push Service Not Available)।\n\n' +
+          'সম্ভাব্য কারণ:\n' +
+          '১. আপনি VS Code / কোড এডিটরের প্রিভিউ ব্রাউজার থেকে ট্রাই করছেন — প্রিভিউ উইন্ডোতে পুশ নোটিফিকেশন ইঞ্জিন থাকে না।\n' +
+          '২. লোকাল নেটওয়ার্ক বা কোনো ব্রাউজার (যেমন Brave) এ Push Messaging সার্ভিস ডিসেবল থাকতে পারে।\n\n' +
+          '✅ সমাধান: ফোনের আসল ব্রাউজার (Google Chrome বা Safari) দিয়ে লাইভ ওয়েবসাইট (Netlify HTTPS) লিংক ভিজিট করে ট্রাই করুন।'
+        );
+      } else {
+        alert(`Could not enable notifications:\n${errMsg}`);
+      }
     } finally {
       setLoading(false);
     }
