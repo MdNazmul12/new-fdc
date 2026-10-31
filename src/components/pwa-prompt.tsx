@@ -19,18 +19,16 @@ export default function PwaPrompt() {
   useEffect(() => {
     setMounted(true);
 
-    // 1. Register Service Worker
+    // 1. Register Service Worker immediately
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker
-          .register('/sw.js')
-          .then((reg) => {
-            console.log('FDC PWA ServiceWorker registered with scope:', reg.scope);
-          })
-          .catch((err) => {
-            console.warn('FDC PWA ServiceWorker registration failed:', err);
-          });
-      });
+      navigator.serviceWorker
+        .register('/sw.js', { scope: '/' })
+        .then((reg) => {
+          console.log('FDC PWA ServiceWorker registered with scope:', reg.scope);
+        })
+        .catch((err) => {
+          console.warn('FDC PWA ServiceWorker registration failed:', err);
+        });
     }
 
     // 2. Check if already in standalone display mode (already installed as PWA)

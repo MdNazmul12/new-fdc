@@ -25,6 +25,9 @@ interface PushCtx {
   isSupported: boolean;
   isSubscribed: boolean;
   loading: boolean;
+  isIos: boolean;
+  isStandalone: boolean;
+  permissionStatus: NotificationPermission | 'unsupported';
   subscribeToPush: () => Promise<void>;
   unsubscribeFromPush: () => Promise<void>;
 }
@@ -33,6 +36,9 @@ const PushContext = createContext<PushCtx>({
   isSupported: false,
   isSubscribed: false,
   loading: false,
+  isIos: false,
+  isStandalone: false,
+  permissionStatus: 'unsupported',
   subscribeToPush: async () => {},
   unsubscribeFromPush: async () => {},
 });
@@ -42,51 +48,111 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
   const [isSupported, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isIos, setIsIos] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState<NotificationPermission | 'unsupported'>('unsupported');
 
-  // Detect support & check current subscription status
+  // Detect support, register SW, & check current subscription status
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Check for basic push support
-    const hasPushSupport =
-      'serviceWorker' in navigator &&
-      'PushManager' in window &&
-      'Notification' in window;
+    // Detect iOS & Standalone PWA mode
+    const ua = window.navigator.userAgent || '';
+    const classicIos = /iphone|ipad|ipod/i.test(ua);
+    const modernIpad = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+    const appleDevice = classicIos || modernIpad;
+    setIsIos(appleDevice);
 
-    setIsSupported(hasPushSupport);
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true;
+    setIsStandalone(standalone);
 
-    if (!hasPushSupport) return;
+    // Check basic notification & push support
+    const hasSW = 'serviceWorker' in navigator;
+    const hasPush = 'PushManager' in window;
+    const hasNotification = 'Notification' in window;
+    const supported = hasSW && hasPush && hasNotification;
 
-    // Check if already subscribed
-    navigator.serviceWorker.ready
-      .then((reg) => reg.pushManager.getSubscription())
-      .then((sub) => {
-        setIsSubscribed(!!sub);
+    setIsSupported(supported);
+
+    if (hasNotification) {
+      setPermissionStatus(Notification.permission);
+    } else {
+      setPermissionStatus('unsupported');
+    }
+
+    if (!hasSW) return;
+
+    // Proactively register SW so navigator.serviceWorker.ready never hangs
+    navigator.serviceWorker
+      .register('/sw.js', { scope: '/' })
+      .then(async (reg) => {
+        if (supported) {
+          try {
+            const sub = await reg.pushManager.getSubscription();
+            setIsSubscribed(!!sub);
+          } catch (e) {
+            console.warn('[PushNotification] Error checking subscription:', e);
+          }
+        }
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.warn('[PushNotification] SW registration failed:', err);
+      });
   }, [user]);
 
   const subscribeToPush = useCallback(async () => {
-    if (!isSupported) {
-      alert('Push notifications are not supported on this browser/device.');
+    // 1. Specific iOS in regular Safari check
+    if (isIos && !isStandalone) {
+      alert(
+        '📱 iPhone-এ পুশ নোটিফিকেশন পেতে:\n\n' +
+        'Apple iOS শুধুমাত্র হোমস্ক্রিনে ইনস্টল করা অ্যাপে পুশ নোটিফিকেশন সাপোর্ট করে।\n\n' +
+        'সহজ ৩টি ধাপ:\n' +
+        '১. Safari ব্রাউজারের নিচে "Share" (শেয়ার) আইকনে চাপুন\n' +
+        '২. স্ক্রোল করে "Add to Home Screen" চাপুন\n' +
+        '৩. উপরে "Add" চাপুন\n\n' +
+        'এরপর হোমস্ক্রিনের FDC অ্যাপ থেকে নোটিফিকেশন অন করলেই সক্রিয় হবে! (iOS 16.4+)'
+      );
       return;
     }
+
+    // 2. Generic unsupported check
+    if (!isSupported) {
+      alert(
+        '⚠️ এই ব্রাউজার বা ডিভাইসে পুশ নোটিফিকেশন সমর্থিত নয়।\n\n' +
+        'অনুগ্রহ করে Google Chrome অথবা Safari ব্যবহার করুন এবং ব্রাউজার আপডেট রাখুন।'
+      );
+      return;
+    }
+
+    // 3. Check if previously blocked/denied
+    if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+      alert(
+        '⚠️ নোটিফিকেশন পারমিশন ব্লক করা আছে!\n\n' +
+        'অন করতে ফোন সেটিংস থেকে অ্যালাউ করুন:\n' +
+        '• iPhone: Settings → Safari (বা FDC App) → Notifications → Allow\n' +
+        '• Android: Chrome সেটিংস → Site Settings → Notifications → Allow'
+      );
+      return;
+    }
+
     setLoading(true);
     try {
-      // 1. Request browser permission
+      // 4. Request browser permission
       const permission = await Notification.requestPermission();
+      setPermissionStatus(permission);
+
       if (permission !== 'granted') {
         alert(
-          'Notification permission was denied.\n\n' +
-          'To fix this:\n' +
-          '• iPhone: Settings → Safari → [this site] → Notifications → Allow\n' +
-          '• Android: Site settings → Notifications → Allow'
+          '⚠️ নোটিফিকেশন পারমিশন অ্যালাউ করা হয়নি।\n\n' +
+          'পরবর্তীতে অন করতে ফোন সেটিংস থেকে নোটিফিকেশন অন করুন।'
         );
         setLoading(false);
         return;
       }
 
-      // 2. Get VAPID public key from server (with client fallback)
+      // 5. Get VAPID public key with client fallback
       let publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || FALLBACK_VAPID_PUBLIC_KEY;
       try {
         const resKey = await fetch('/api/push/subscribe');
@@ -97,18 +163,28 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
           }
         }
       } catch (err) {
-        console.warn('Could not fetch VAPID key from server, using fallback key:', err);
+        console.warn('[PushNotification] Server VAPID fetch failed, using fallback:', err);
       }
 
-      // 3. Subscribe via Service Worker PushManager
-      const reg = await navigator.serviceWorker.ready;
+      // 6. Ensure Service Worker registration is ready
+      let reg: ServiceWorkerRegistration;
+      try {
+        reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      } catch (e) {
+        reg = await navigator.serviceWorker.ready;
+      }
+      if (!reg || !reg.active) {
+        reg = await navigator.serviceWorker.ready;
+      }
+
+      // 7. Subscribe via PushManager
       const convertedVapidKey = urlBase64ToUint8Array(publicKey);
       const subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: convertedVapidKey,
       });
 
-      // 4. Save subscription token to MongoDB
+      // 8. Save subscription token to MongoDB
       const saveRes = await fetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -126,10 +202,10 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
         throw new Error(errBody.error || 'Server failed to save push subscription');
       }
 
-      // 5. Update UI state immediately (no reload needed)
+      // 9. Update UI state immediately
       setIsSubscribed(true);
 
-      // 6. Send a welcome push notification
+      // 10. Send a welcome push notification
       fetch('/api/push/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -147,7 +223,7 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
     } finally {
       setLoading(false);
     }
-  }, [isSupported, user]);
+  }, [isIos, isStandalone, isSupported, user]);
 
   const unsubscribeFromPush = useCallback(async () => {
     setLoading(true);
@@ -162,7 +238,6 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
           body: JSON.stringify({ endpoint: sub.endpoint }),
         });
       }
-      // Update UI state immediately (no reload needed)
       setIsSubscribed(false);
     } catch (err: any) {
       console.error('[PushNotification] Unsubscribe error:', err);
@@ -172,7 +247,18 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
   }, []);
 
   return (
-    <PushContext.Provider value={{ isSupported, isSubscribed, loading, subscribeToPush, unsubscribeFromPush }}>
+    <PushContext.Provider
+      value={{
+        isSupported,
+        isSubscribed,
+        loading,
+        isIos,
+        isStandalone,
+        permissionStatus,
+        subscribeToPush,
+        unsubscribeFromPush,
+      }}
+    >
       {children}
     </PushContext.Provider>
   );
@@ -185,9 +271,32 @@ export function usePushSubscription() {
 
 // ── Phone Alerts Row inside Notification Dropdown ────────────────────────────
 export function PushNotificationRow() {
-  const { isSupported, isSubscribed, loading, subscribeToPush, unsubscribeFromPush } = usePushSubscription();
+  const {
+    isSupported,
+    isSubscribed,
+    loading,
+    isIos,
+    isStandalone,
+    permissionStatus,
+    subscribeToPush,
+    unsubscribeFromPush,
+  } = usePushSubscription();
 
-  // Show the row regardless of isSupported — so user can see an explanation on unsupported browsers
+  const getSubtext = () => {
+    if (isSubscribed) return 'Active on this device ✓';
+    if (isIos && !isStandalone) return 'Add to Home Screen first';
+    if (permissionStatus === 'denied') return 'Blocked in Phone Settings';
+    if (!isSupported) return 'Not supported on this browser';
+    return 'Push notifications off';
+  };
+
+  const getButtonText = () => {
+    if (isSubscribed) return 'Turn Off';
+    if (isIos && !isStandalone) return 'Guide';
+    if (permissionStatus === 'denied') return 'Fix';
+    return 'Turn On';
+  };
+
   return (
     <div className="p-3 bg-zinc-900/40 border-b border-[var(--border)] flex items-center justify-between gap-3">
       <div className="flex items-center space-x-2.5 min-w-0">
@@ -203,11 +312,7 @@ export function PushNotificationRow() {
         <div className="min-w-0">
           <p className="text-xs font-bold text-[var(--foreground)]">Phone Alerts</p>
           <p className="text-[10px] text-[var(--muted-foreground)] truncate">
-            {!isSupported
-              ? 'Install as app for notifications'
-              : isSubscribed
-              ? 'Active on this device ✓'
-              : 'Push notifications off'}
+            {getSubtext()}
           </p>
         </div>
       </div>
@@ -219,15 +324,15 @@ export function PushNotificationRow() {
         className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all touch-manipulation cursor-pointer flex items-center space-x-1 shrink-0 ${
           isSubscribed
             ? 'bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 border border-rose-500/30'
+            : isIos && !isStandalone
+            ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 hover:bg-indigo-600/40'
             : 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-sm'
         } disabled:opacity-60`}
       >
         {loading ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-        ) : isSubscribed ? (
-          <span>Turn Off</span>
         ) : (
-          <span>Turn On</span>
+          <span>{getButtonText()}</span>
         )}
       </button>
     </div>
