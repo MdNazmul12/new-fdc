@@ -113,7 +113,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const userNotifications = notifications.filter(n => {
     if (user.role !== 'member') return true;
-    return !n.userId || n.userId === 'all' || n.userId === user.id || n.userId === user.id.replace('u-', 'm-');
+    return !n.userId || n.userId === 'all' || n.userId === user.id || n.userId === user.id.replace('u-', 'm-') || (user.memberId && n.userId === user.memberId);
   });
 
   const unreadNotifications = userNotifications.filter(n => !n.read);

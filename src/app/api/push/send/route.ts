@@ -55,7 +55,11 @@ export async function POST(request: Request) {
         { memberId: targetUserId.replace('m-', 'u-') },
       ];
     } else if (targetRole && targetRole !== 'all') {
-      filter.role = targetRole;
+      if (targetRole === 'admin' || targetRole === 'admins') {
+        filter.role = { $in: ['super_admin', 'president', 'treasurer', 'auditor', 'collector'] };
+      } else {
+        filter.role = targetRole;
+      }
     }
 
     const subscriptions = await col.find(filter).toArray();

@@ -464,6 +464,21 @@ export default function DuesPage() {
     setSendingBulkReminders(true);
     let sentCount = 0;
     try {
+      // 1. Dispatch Web Push notification to all due members
+      duesList.forEach(item => {
+        fetch('/api/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: `⏰ চাঁদা পরিশোধের অনুস্মারক (${targetMonth})`,
+            message: `${item.member.name}, আপনার ${targetMonth} মাসের ${item.totalPayable} টাকা চাঁদা বকেয়া রয়েছে। নির্ধারিত তারিখ: ${activeDemand?.dueDate || `${targetMonth}-10`}।`,
+            targetUserId: item.member.id,
+            url: '/dues',
+          })
+        }).catch(err => console.warn('Bulk push send error:', err));
+      });
+
+      // 2. Dispatch Emails to members with email addresses
       for (const item of dueMembersWithEmail) {
         try {
           await fetch('/api/email/send', {
@@ -486,7 +501,7 @@ export default function DuesPage() {
           console.warn('Failed to send reminder to', item.member.name);
         }
       }
-      setReminderResult(`Successfully sent due reminders to ${sentCount} members!`);
+      setReminderResult(`Successfully sent due reminders (push + ${sentCount} emails)!`);
       setTimeout(() => setReminderResult(null), 5000);
     } finally {
       setSendingBulkReminders(false);

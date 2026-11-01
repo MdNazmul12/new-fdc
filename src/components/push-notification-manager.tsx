@@ -92,6 +92,19 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
           try {
             const sub = await reg.pushManager.getSubscription();
             setIsSubscribed(!!sub);
+            if (sub && user?.id) {
+              fetch('/api/push/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  subscription: sub,
+                  userId: user.id,
+                  memberId: user.memberId || null,
+                  role: user.role || 'member',
+                  userAgent: navigator.userAgent,
+                }),
+              }).catch(() => {});
+            }
           } catch (e) {
             console.warn('[PushNotification] Error checking subscription:', e);
           }

@@ -685,8 +685,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Auto-dispatch confirmation notification to member profile
       addNotification({
         userId: newColl.memberId,
-        title: `Payment Received (${newColl.month})`,
-        message: `Tk ${newColl.amount + (newColl.lateFine || 0)} deposited for ${newColl.month} via ${newColl.paymentType.toUpperCase()}. Receipt No: ${newColl.receiptNo}.`,
+        title: `💰 চাঁদা জমা গৃহীত (${newColl.month})`,
+        message: `${newColl.memberName}, আপনার ${newColl.month} মাসের ৳${newColl.amount + (newColl.lateFine || 0)} চাঁদা সফলভাবে জমা হয়েছে। রশিদ নং: ${newColl.receiptNo}।`,
         type: 'success',
         link: '/members/profile'
       });
@@ -697,8 +697,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Notification to Admins / Collectors
       addNotification({
         userId: 'all',
-        title: `Pending Payment Submission (${newColl.memberName})`,
-        message: `${newColl.memberName} submitted Tk ${newColl.amount + (newColl.lateFine || 0)} for ${newColl.month} via ${newColl.paymentType.toUpperCase()}.${newColl.transactionRef ? ' TrxID: ' + newColl.transactionRef : ''} Verification & approval required.`,
+        title: `📝 নতুন পেমেন্ট জমা (${newColl.memberName})`,
+        message: `${newColl.memberName} ${newColl.month} মাসের ৳${newColl.amount + (newColl.lateFine || 0)} চাঁদা জমা দিয়েছেন (${newColl.paymentType.toUpperCase()})। রশিদ/ট্রানজ্যাকশন যাচাই করে অনুমোদন করুন।`,
         type: 'warning',
         link: '/collections'
       });
@@ -706,8 +706,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Notification to Member
       addNotification({
         userId: newColl.memberId,
-        title: `Payment Submitted for Review (${newColl.month})`,
-        message: `Your payment submission of Tk ${newColl.amount + (newColl.lateFine || 0)} for ${newColl.month} is pending admin approval. Dues will be cleared once verified.`,
+        title: `⏳ পেমেন্ট সাবমিট হয়েছে (${newColl.month})`,
+        message: `আপনার ${newColl.month} মাসের ৳${newColl.amount + (newColl.lateFine || 0)} জমা তথ্য গৃহীত হয়েছে। অ্যাডমিন অনুমোদনের পর বকেয়া পরিশোধ সম্পন্ন হবে।`,
         type: 'warning',
         link: '/members/profile'
       });
@@ -751,8 +751,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Notify member that payment has been approved and dues are cleared
     await addNotification({
       userId: updatedCol.memberId,
-      title: `Payment Approved (${updatedCol.month})`,
-      message: `Your payment of Tk ${totalAmt} for ${updatedCol.month} has been approved by ${approvedBy}. Receipt No: ${updatedCol.receiptNo}. Dues cleared!`,
+      title: `✅ পেমেন্ট অনুমোদিত (${updatedCol.month})`,
+      message: `আপনার ${updatedCol.month} মাসের ৳${totalAmt} পেমেন্ট ${approvedBy} কর্তৃক অনুমোদিত হয়েছে। রশিদ নং: ${updatedCol.receiptNo}। বকেয়া ক্লিয়ার!`,
       type: 'success',
       link: '/members/profile'
     });
@@ -778,8 +778,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     await addNotification({
       userId: col.memberId,
-      title: `Payment Submission Not Approved (${col.month})`,
-      message: `Your payment submission of Tk ${col.amount + (col.lateFine || 0)} for ${col.month} was rejected.${reason ? ' Reason: ' + reason : ''} Please check and re-submit or contact admin.`,
+      title: `❌ পেমেন্ট বাতিল করা হয়েছে (${col.month})`,
+      message: `আপনার ${col.month} মাসের ৳${col.amount + (col.lateFine || 0)} পেমেন্ট অনুমোদন করা হয়নি।${reason ? ' কারণ: ' + reason : ''} প্রয়োজনে অ্যাডমিনের সাথে যোগাযোগ করুন।`,
       type: 'alert',
       link: '/members/profile'
     });
@@ -866,8 +866,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Auto-dispatch notification for monthly due demand
     addNotification({
       userId: 'all',
-      title: `New Monthly Due Demand (${newDemand.month})`,
-      message: `Subscription due demand for ${newDemand.month} (${newDemand.amountType === 'fixed' ? newDemand.fixedAmount + ' TK' : 'Individual Member Fee'}) has been generated. Due cutoff: ${newDemand.dueDate}.`,
+      title: `📋 নতুন মাসিক চাঁদা ধার্য (${newDemand.month})`,
+      message: `${newDemand.title} - চাঁদা জমা দেওয়ার শেষ সময়: ${newDemand.dueDate}। সময়মতো পরিশোধের অনুরোধ করা হচ্ছে।`,
       type: 'warning',
       link: '/dues'
     });
@@ -1112,6 +1112,33 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   };
 
+  // Helper to dispatch Web Push notifications asynchronously to registered devices
+  const sendPushNotification = async (payload: {
+    title: string;
+    message: string;
+    url?: string;
+    targetUserId?: string;
+    targetRole?: string;
+  }) => {
+    try {
+      fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: payload.title,
+          message: payload.message,
+          url: payload.url || '/dashboard',
+          targetUserId: payload.targetUserId || 'all',
+          targetRole: payload.targetRole,
+        }),
+      }).catch((err) => {
+        console.warn('[PushNotification] async push dispatch warning:', err);
+      });
+    } catch (e) {
+      // Ignore background fetch errors
+    }
+  };
+
   // ---------------- NOTIFICATIONS ACTIONS ----------------
   const addNotification = async (notifData: Omit<SystemNotification, 'id' | 'date' | 'read'>): Promise<SystemNotification> => {
     const newNotif: SystemNotification = {
@@ -1123,6 +1150,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const updated = [newNotif, ...notifications];
     setNotifications(updated);
     await syncToDbAndLocal('notifications', updated, 'create', newNotif);
+
+    // Automatically trigger Web Push notification to user's phone / all devices
+    sendPushNotification({
+      title: newNotif.title,
+      message: newNotif.message,
+      url: newNotif.link || '/dashboard',
+      targetUserId: newNotif.userId || 'all',
+    });
+
     return newNotif;
   };
 
@@ -1329,8 +1365,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Notify member
     addNotification({
       userId: newLoan.memberId,
-      title: `Loan Disbursed (${newLoan.loanNo})`,
-      message: `Tk ${newLoan.principalAmount} loan has been approved & disbursed. Due Date: ${newLoan.dueDate}.`,
+      title: `💳 লোন প্রদান সম্পন্ন (${newLoan.loanNo})`,
+      message: `আপনার অনুকূলে ৳${newLoan.principalAmount} লোন প্রদান করা হয়েছে। কিস্তির শেষ সময়: ${newLoan.dueDate}।`,
       type: 'success',
       link: '/loans'
     });
@@ -1377,8 +1413,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     addNotification({
       userId: loan.memberId,
-      title: `Loan Repayment Received (${loan.loanNo})`,
-      message: `Tk ${repayment.amount} repayment recorded. Remaining Balance: Tk ${Math.max(0, loan.totalPayable - newTotalRepaid)}.`,
+      title: `💵 লোন কিস্তি জমা (${loan.loanNo})`,
+      message: `৳${repayment.amount} কিস্তি সফলভাবে জমা হয়েছে। অবশিষ্ট বকেয়া: ৳${Math.max(0, loan.totalPayable - newTotalRepaid)}।`,
       type: 'success',
       link: '/loans'
     });
