@@ -11,7 +11,7 @@ export default function LoginPage() {
   const router = useRouter();
   
   const [loginId, setLoginId] = useState('');
-  const [password, setPassword] = useState('password123'); // Default mock password
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -28,6 +28,10 @@ export default function LoginPage() {
     e.preventDefault();
     if (!loginId.trim()) {
       setError('Please enter your User ID, Email or Phone Number');
+      return;
+    }
+    if (!password) {
+      setError('Please enter your password');
       return;
     }
     
@@ -106,9 +110,10 @@ export default function LoginPage() {
               <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-foreground)]/70" />
               <input
                 type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
+                placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
                 className="w-full pl-10 pr-10 py-2.5 bg-[var(--background)] border border-[var(--border)] rounded-xl text-sm text-[var(--foreground)] placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
               />
               <button
