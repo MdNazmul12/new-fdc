@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Member, Collection, Investment, Expense, Transaction, AuditLog, SystemNotification, DocumentFile, UserRole, User, DueDemand, Loan, LoanRepayment, LoanStatus } from '../types';
+import { Member, Collection, Investment, Expense, Transaction, AuditLog, SystemNotification, DocumentFile, UserRole, User, DueDemand, Loan, LoanRepayment, LoanStatus, FineWaiver } from '../types';
 
 interface StoreContextProps {
   members: Member[];
@@ -15,16 +15,20 @@ interface StoreContextProps {
   users: User[];
   dueDemands: DueDemand[];
   loans: Loan[];
+  fineWaivers: FineWaiver[];
 
   // Loan actions
   addLoan: (loanData: Omit<Loan, 'id' | 'loanNo' | 'totalPayable' | 'totalRepaid' | 'status' | 'repayments' | 'createdAt'>) => Promise<Loan>;
   recordLoanRepayment: (loanId: string, repayment: Omit<LoanRepayment, 'id'>) => Promise<boolean>;
   updateLoanStatus: (loanId: string, status: LoanStatus, notes?: string) => Promise<boolean>;
   deleteLoan: (loanId: string) => Promise<boolean>;
+  sendLoanReminder: (loanId: string) => Promise<boolean>;
   
   // Due actions
   addDueDemand: (demand: Omit<DueDemand, 'id' | 'createdAt'>) => Promise<DueDemand>;
   deleteDueDemand: (id: string) => Promise<void>;
+  waiveFine: (memberId: string, month: string, reason?: string) => Promise<boolean>;
+  removeFineWaiver: (memberId: string, month: string) => Promise<boolean>;
   
   // Member actions
   addMember: (member: Omit<Member, 'id'>) => Member;
@@ -34,7 +38,7 @@ interface StoreContextProps {
   deleteMember: (id: string) => void;
   
   // Collection actions
-  addCollection: (collection: Omit<Collection, 'id' | 'receiptNo' | 'date' | 'status'> & { date?: string; status?: 'paid' | 'pending'; transactionRef?: string; notes?: string }) => Collection;
+  addCollection: (collection: Omit<Collection, 'id' | 'receiptNo' | 'date' | 'status'> & { date?: string; status?: 'paid' | 'pending'; transactionRef?: string; notes?: string; isPartial?: boolean; isAdvance?: boolean; expectedAmount?: number; remainingDue?: number }) => Collection;
   approveCollection: (id: string, approvedBy?: string) => Promise<boolean>;
   rejectCollection: (id: string, reason?: string) => Promise<boolean>;
   importCollections: (collections: Omit<Collection, 'id' | 'receiptNo' | 'date'>[]) => Promise<Collection[]>;
@@ -56,6 +60,7 @@ interface StoreContextProps {
   // System actions
   addAuditLog: (action: string, role: UserRole, userName: string) => void;
   addNotification: (notif: Omit<SystemNotification, 'id' | 'date' | 'read'>) => Promise<SystemNotification>;
+  broadcastAnnouncement: (title: string, message: string, type?: 'info' | 'warning' | 'alert', target?: 'all' | 'due_members' | 'admins') => Promise<boolean>;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
   
@@ -253,12 +258,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [users, setUsers] = useState<User[]>([]);
   const [dueDemands, setDueDemands] = useState<DueDemand[]>(initialDueDemands);
   const [loans, setLoans] = useState<Loan[]>([]);
+  const [fineWaivers, setFineWaivers] = useState<FineWaiver[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   // Initialize from MongoDB (with LocalStorage fallback)
   useEffect(() => {
     const initDb = async () => {
-      const collectionsToFetch = ['members', 'collections', 'investments', 'expenses', 'transactions', 'auditLogs', 'notifications', 'documents', 'users', 'permissions', 'due_demands', 'loans'];
+      const collectionsToFetch = ['members', 'collections', 'investments', 'expenses', 'transactions', 'auditLogs', 'notifications', 'documents', 'users', 'permissions', 'due_demands', 'loans', 'fine_waivers'];
 
       try {
         const dbStates: Record<string, any[]> = {};
@@ -326,6 +332,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setNotifications(dbStates['notifications'] || []);
         setDocuments(dbStates['documents'] || []);
         setLoans(dbStates['loans'] || []);
+        setFineWaivers(dbStates['fine_waivers'] || []);
 
         const loadedDueDemands = dbStates['due_demands'] || [];
         setDueDemands(loadedDueDemands.length > 0 ? loadedDueDemands : initialDueDemands);
@@ -358,6 +365,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setUsers(loadLocal('users', initialUsers));
         setDueDemands(loadLocal('due_demands', initialDueDemands));
         setLoans(loadLocal('loans', []));
+        setFineWaivers(loadLocal('fine_waivers', []));
       } finally {
         setLoaded(true);
       }
@@ -885,6 +893,49 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const waiveFine = async (memberId: string, month: string, reason?: string): Promise<boolean> => {
+    const existing = fineWaivers.find(w => w.memberId === memberId && w.month === month);
+    if (existing) return true;
+
+    const newWaiver: FineWaiver = {
+      id: `fw-${Date.now()}`,
+      memberId,
+      month,
+      waivedBy: 'Admin',
+      waivedAt: new Date().toISOString(),
+      reason: reason || 'কমিটির সিদ্ধান্তক্রমে জরিমানা মওকুফ'
+    };
+
+    const updated = [newWaiver, ...fineWaivers];
+    setFineWaivers(updated);
+    await syncToDbAndLocal('fine_waivers', updated, 'create', newWaiver);
+
+    const m = members.find(mem => mem.id === memberId);
+    addAuditLog(`Waived Late Fine for ${m?.name || memberId} (${month})`, 'super_admin', 'Admin');
+
+    // Notify member
+    addNotification({
+      userId: memberId,
+      title: `🎁 জরিমানা মওকুফ (${month})`,
+      message: `আপনার ${month} মাসের চাঁদার বিলম্ব জরিমানা মওকুফ করা হয়েছে। নির্ধারিত ফি পরিশোধ করতে পারেন।`,
+      type: 'info',
+      link: '/dues',
+      category: 'due'
+    });
+
+    return true;
+  };
+
+  const removeFineWaiver = async (memberId: string, month: string): Promise<boolean> => {
+    const targetWaiver = fineWaivers.find(w => w.memberId === memberId && w.month === month);
+    const updated = fineWaivers.filter(w => !(w.memberId === memberId && w.month === month));
+    setFineWaivers(updated);
+    if (targetWaiver) {
+      await syncToDbAndLocal('fine_waivers', updated, 'delete', { id: targetWaiver.id });
+    }
+    return true;
+  };
+
   // ---------------- INVESTMENTS ACTIONS ----------------
   const addInvestment = (invData: Omit<Investment, 'id' | 'status' | 'interestReceived'>) => {
     const newInv: Investment = {
@@ -1175,6 +1226,48 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     syncToDbAndLocal('notifications', updated, 'update', { filter: {}, update: { read: true } });
   };
 
+  const broadcastAnnouncement = async (
+    title: string,
+    message: string,
+    type: 'info' | 'warning' | 'alert' = 'info',
+    target: 'all' | 'due_members' | 'admins' = 'all'
+  ): Promise<boolean> => {
+    try {
+      const cleanTitle = title.startsWith('📢') ? title : `📢 ${title}`;
+      let targetUserId: string | undefined = 'all';
+      let targetRole: string | undefined = undefined;
+
+      if (target === 'admins') {
+        targetUserId = undefined;
+        targetRole = 'admin';
+      }
+
+      const notif = await addNotification({
+        userId: target === 'admins' ? 'admin' : 'all',
+        title: cleanTitle,
+        message,
+        type,
+        link: '/dashboard',
+        category: 'notice'
+      });
+
+      // Explicitly push
+      sendPushNotification({
+        title: cleanTitle,
+        message,
+        url: '/dashboard',
+        targetUserId,
+        targetRole,
+      });
+
+      addAuditLog(`Broadcasted Announcement: ${title} (${target})`, 'super_admin', 'Admin');
+      return true;
+    } catch (e) {
+      console.error('Failed to broadcast announcement:', e);
+      return false;
+    }
+  };
+
   // ---------------- DOCUMENT ACTIONS ----------------
   const addDocument = (docData: Omit<DocumentFile, 'id' | 'uploadDate'>) => {
     const newDoc: DocumentFile = {
@@ -1334,6 +1427,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Auto-generate Loan No
     const loanSeq = loans.length + 1;
     const loanNo = `FDC-LN-${String(loanSeq).padStart(4, '0')}`;
+    const installments = loanData.installmentMonths || diffMonths || 12;
+    const monthlyInstallment = Math.round(totalPayable / installments);
 
     const newLoan: Loan = {
       ...loanData,
@@ -1343,6 +1438,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       totalRepaid: 0,
       status: 'active',
       repayments: [],
+      installmentMonths: installments,
+      monthlyInstallment,
       createdAt: new Date().toISOString()
     };
 
@@ -1452,6 +1549,47 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return true;
   };
 
+  const sendLoanReminder = async (loanId: string): Promise<boolean> => {
+    const loan = loans.find(l => l.id === loanId);
+    if (!loan) return false;
+
+    const remaining = Math.max(0, loan.totalPayable - loan.totalRepaid);
+    const title = `⏰ লোন কিস্তি পরিশোধের সময় এসেছে (${loan.loanNo})`;
+    const message = `${loan.memberName}, আপনার লোন নং ${loan.loanNo}-এর কিস্তি পরিশোধের সময় হয়েছে। অবশিষ্ট বকেয়া: ৳${remaining}। পরিশোধের শেষ তারিখ: ${loan.dueDate}।`;
+
+    await addNotification({
+      userId: loan.memberId,
+      title,
+      message,
+      type: 'warning',
+      link: '/loans',
+      category: 'loan'
+    });
+
+    // Also dispatch email if available
+    const member = members.find(m => m.id === loan.memberId);
+    if (member?.email) {
+      fetch('/api/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'due_reminder',
+          to: member.email,
+          data: {
+            memberName: loan.memberName,
+            month: `Loan ${loan.loanNo}`,
+            amount: remaining,
+            dueDate: loan.dueDate,
+            lateFine: 0
+          }
+        })
+      }).catch(() => {});
+    }
+
+    addAuditLog(`Sent Loan Repayment Reminder to ${loan.memberName} for ${loan.loanNo}`, 'treasurer', 'Treasurer');
+    return true;
+  };
+
   // ---------------- CALCULATE METRICS ----------------
   const getCashBalance = () => {
     return transactions
@@ -1521,12 +1659,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         users,
         dueDemands,
         loans,
+        fineWaivers,
         addLoan,
         recordLoanRepayment,
         updateLoanStatus,
         deleteLoan,
+        sendLoanReminder,
         addDueDemand,
         deleteDueDemand,
+        waiveFine,
+        removeFineWaiver,
+        broadcastAnnouncement,
         addMember,
         importMembers,
         updateMember,

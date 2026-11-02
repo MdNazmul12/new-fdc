@@ -44,6 +44,19 @@ export interface Collection {
   approvedBy?: string;
   approvedAt?: string;
   submittedAt?: string;
+  isPartial?: boolean;
+  isAdvance?: boolean;
+  expectedAmount?: number;
+  remainingDue?: number;
+}
+
+export interface FineWaiver {
+  id: string;
+  memberId: string;
+  month: string; // "YYYY-MM"
+  waivedBy: string;
+  waivedAt: string;
+  reason?: string;
 }
 
 export interface DueDemand {
@@ -118,6 +131,7 @@ export interface SystemNotification {
   date: string;
   read: boolean;
   link?: string;
+  category?: 'payment' | 'due' | 'notice' | 'loan' | 'general';
 }
 
 export interface DocumentFile {
@@ -163,6 +177,8 @@ export interface Loan {
   approvedBy: string;
   notes?: string;
   createdAt: string;
+  installmentMonths?: number;
+  monthlyInstallment?: number;
 }
 
 // ==================== OTP TOKEN ====================

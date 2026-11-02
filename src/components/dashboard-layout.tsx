@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/auth-context';
 import { useStore } from '../contexts/store-context';
 import { UserRole } from '../types';
 import PushNotificationManager, { PushNotificationRow } from './push-notification-manager';
+import BroadcastModal from './broadcast-modal';
 import { 
   LayoutDashboard, 
   Users, 
@@ -36,7 +37,8 @@ import {
   Database,
   Smartphone,
   Download,
-  Share2
+  Share2,
+  Megaphone
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -52,6 +54,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [theme, setTheme] = useState<'light' | 'dark' | 'night'>('light');
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [notifFilter, setNotifFilter] = useState<'all' | 'payment' | 'due' | 'notice' | 'loan'>('all');
 
   // Sync theme on mount
   useEffect(() => {
@@ -117,6 +121,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   });
 
   const unreadNotifications = userNotifications.filter(n => !n.read);
+
+  const filteredNotifications = userNotifications.filter(n => {
+    if (notifFilter === 'all') return true;
+    if (n.category) return n.category === notifFilter;
+    const text = (n.title + ' ' + n.message).toLowerCase();
+    if (notifFilter === 'payment') return text.includes('পেমেন্ট') || text.includes('জমা') || text.includes('payment');
+    if (notifFilter === 'due') return text.includes('বকেয়া') || text.includes('বকেয়া') || text.includes('due') || text.includes('জরিমানা');
+    if (notifFilter === 'notice') return text.includes('নোটিশ') || text.includes('ঘোষণা') || text.includes('notice') || text.includes('মিটিং');
+    if (notifFilter === 'loan') return text.includes('লোন') || text.includes('ঋণ') || text.includes('loan') || text.includes('কিস্তি');
+    return true;
+  });
+
+  const canBroadcast = user.role === 'super_admin' || user.role === 'president' || user.role === 'treasurer' || user.role === 'collector';
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -415,6 +432,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             )}
 
+            {/* BROADCAST ANNOUNCEMENT BUTTON (COMMITTEE / ADMINS) */}
+            {canBroadcast && (
+              <button
+                type="button"
+                onClick={() => setBroadcastOpen(true)}
+                className="flex items-center space-x-1.5 px-2.5 py-1.5 bg-indigo-600/15 hover:bg-indigo-600/25 text-indigo-400 hover:text-indigo-300 border border-indigo-500/30 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+                title="Send Broadcast Announcement (Push & In-App)"
+              >
+                <Megaphone className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">ঘোষণা</span>
+              </button>
+            )}
+
             {/* Notification Dropdown - Single Bell Icon */}
             <div className="relative">
               <button 
@@ -433,42 +463,85 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </button>
 
               {notificationsOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl z-50 overflow-hidden">
+                <div className="absolute right-0 mt-2 w-84 sm:w-96 bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl z-50 overflow-hidden">
                   <div className="p-3 border-b border-[var(--border)] flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-[var(--foreground)]">Notifications</h3>
+                    <div className="flex items-center space-x-2">
+                      <h3 className="text-xs font-bold text-[var(--foreground)]">Notifications</h3>
+                      {unreadNotifications.length > 0 && (
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500/20 text-rose-400 font-bold border border-rose-500/30">
+                          {unreadNotifications.length} new
+                        </span>
+                      )}
+                    </div>
                     {unreadNotifications.length > 0 && (
                       <button 
                         onClick={markAllNotificationsRead}
-                        className="text-[10px] text-[var(--primary)] hover:opacity-80 font-medium"
+                        className="text-[10px] text-[var(--primary)] hover:opacity-80 font-medium cursor-pointer"
                       >
                         Mark all as read
                       </button>
                     )}
                   </div>
 
+                  {/* Notification Category Filter Tabs */}
+                  <div className="px-2.5 py-1.5 bg-zinc-900/60 border-b border-[var(--border)] flex items-center space-x-1 overflow-x-auto scrollbar-none">
+                    {[
+                      { id: 'all', label: 'সব' },
+                      { id: 'payment', label: '💰 পেমেন্ট' },
+                      { id: 'due', label: '📋 বকেয়া' },
+                      { id: 'notice', label: '📢 নোটিশ' },
+                      { id: 'loan', label: '💳 লোন' },
+                    ].map((tab) => {
+                      const isActive = notifFilter === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setNotifFilter(tab.id as any)}
+                          className={`px-2 py-1 rounded-lg text-[10px] font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                            isActive
+                              ? 'bg-indigo-600 text-white shadow-sm'
+                              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
                   {/* Phone Push Notification integrated toggle row */}
                   <PushNotificationRow />
                   
-                  <div className="max-h-72 overflow-y-auto divide-y divide-[var(--border)]">
-                    {userNotifications.length === 0 ? (
-                      <div className="p-4 text-center text-xs text-[var(--muted-foreground)]">No notifications</div>
+                  <div className="max-h-80 overflow-y-auto divide-y divide-[var(--border)]">
+                    {filteredNotifications.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-[var(--muted-foreground)]">
+                        কোনো নোটিফিকেশন পাওয়া যায়নি
+                      </div>
                     ) : (
-                      userNotifications.map((n) => (
+                      filteredNotifications.map((n) => (
                         <div 
                           key={n.id} 
                           onClick={() => {
                             markNotificationRead(n.id);
                           }}
                           className={`p-3 text-left transition-colors cursor-pointer ${
-                            n.read ? 'opacity-60' : 'hover:bg-[var(--accent)]'
+                            n.read ? 'opacity-65' : 'bg-indigo-500/5 hover:bg-indigo-500/10'
                           }`}
                         >
                           <div className="flex items-start space-x-2.5">
                             <span className="mt-0.5 shrink-0">{getNotificationIcon(n.type)}</span>
-                            <div>
-                              <p className="text-xs font-semibold text-[var(--foreground)]">{n.title}</p>
-                              <p className="text-[10px] text-[var(--muted-foreground)] mt-0.5 leading-relaxed">{n.message}</p>
-                              <p className="text-[9px] text-[var(--muted-foreground)] mt-1">{n.date}</p>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-1">
+                                <p className="text-xs font-semibold text-[var(--foreground)] truncate">{n.title}</p>
+                                {n.category && (
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] uppercase font-bold tracking-wider bg-zinc-800 text-zinc-400 shrink-0">
+                                    {n.category}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5 leading-relaxed">{n.message}</p>
+                              <p className="text-[9px] text-[var(--muted-foreground)]/80 mt-1">{n.date}</p>
                             </div>
                           </div>
                         </div>
@@ -670,7 +743,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       )}
-    <PushNotificationManager />
+      <PushNotificationManager />
+      <BroadcastModal isOpen={broadcastOpen} onClose={() => setBroadcastOpen(false)} />
     </div>
   );
 }

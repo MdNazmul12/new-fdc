@@ -59,6 +59,8 @@ export default function CollectionsPage() {
   const [amount, setAmount] = useState(1000);
   const [lateFine, setLateFine] = useState(0);
   const [autoFineEnabled, setAutoFineEnabled] = useState(true);
+  const [isAdvancePayment, setIsAdvancePayment] = useState(false);
+  const [advanceMonthsCount, setAdvanceMonthsCount] = useState(3);
   const [transactionRef, setTransactionRef] = useState('');
   const [notes, setNotes] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -314,8 +316,54 @@ export default function CollectionsPage() {
     if (!member) return;
 
     const isMemberRole = user?.role === 'member';
+    const expectedPerMonth = member.monthlyFee || 1000;
 
-    // Check duplicate payment
+    // Handle Advance Payment for multiple consecutive months
+    if (isAdvancePayment) {
+      const [startYear, startMonthNum] = targetMonth.split('-').map(Number);
+      let firstColl: Collection | null = null;
+      const perMonthAmount = Math.round(amount / advanceMonthsCount) || expectedPerMonth;
+
+      for (let i = 0; i < advanceMonthsCount; i++) {
+        const d = new Date(startYear, (startMonthNum - 1) + i, 1);
+        const mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const c = addCollection({
+          memberId: member.id,
+          memberName: member.name,
+          amount: perMonthAmount,
+          month: mStr,
+          paymentType,
+          lateFine: 0,
+          date: paymentDate,
+          status: isMemberRole ? 'pending' : 'paid',
+          collectedBy: isMemberRole ? 'Member Submission' : (user?.name || 'Treasurer'),
+          transactionRef: transactionRef.trim() || undefined,
+          notes: notes.trim() ? `${notes.trim()} (অগ্রিম চাঁদা ${i + 1}/${advanceMonthsCount})` : `অগ্রিম চাঁদা (${i + 1}/${advanceMonthsCount})`,
+          isAdvance: true,
+          expectedAmount: expectedPerMonth,
+          remainingDue: 0
+        });
+        if (i === 0) firstColl = c;
+      }
+
+      if (isMemberRole) {
+        setSuccessMessage(`${advanceMonthsCount} মাসের মোট ${amount} টাকা অগ্রিম পেমেন্ট জমা দেওয়া হয়েছে! অনুমোদনের জন্য অপেক্ষমাণ।`);
+        setTimeout(() => setSuccessMessage(''), 6000);
+      } else if (firstColl) {
+        setActiveReceipt(firstColl);
+        setPrintOpen(true);
+        setSelectedMemberId('');
+      }
+
+      setAmount(1000);
+      setLateFine(0);
+      setTransactionRef('');
+      setNotes('');
+      setIsAdvancePayment(false);
+      return;
+    }
+
+    // Check duplicate payment for single month
     const alreadyPaid = collections.some(c => 
       c.memberId === memId && c.month === targetMonth && c.status === 'paid'
     );
@@ -324,6 +372,9 @@ export default function CollectionsPage() {
         return;
       }
     }
+
+    const isPartial = amount < expectedPerMonth;
+    const remainingDue = isPartial ? expectedPerMonth - amount : 0;
 
     const coll = addCollection({
       memberId: member.id,
@@ -336,7 +387,10 @@ export default function CollectionsPage() {
       status: isMemberRole ? 'pending' : 'paid',
       collectedBy: isMemberRole ? 'Member Submission' : (user?.name || 'Treasurer'),
       transactionRef: transactionRef.trim() || undefined,
-      notes: notes.trim() || undefined
+      notes: notes.trim() || undefined,
+      isPartial,
+      expectedAmount: expectedPerMonth,
+      remainingDue
     });
 
     if (isMemberRole) {
@@ -668,6 +722,63 @@ export default function CollectionsPage() {
                   </div>
                 </div>
 
+                {/* Advance Payment Option */}
+                <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center space-x-2 cursor-pointer text-xs font-bold text-purple-300">
+                      <input
+                        type="checkbox"
+                        checked={isAdvancePayment}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setIsAdvancePayment(checked);
+                          const mem = members.find(m => m.id === effectiveMemberId) || myMember;
+                          const monthly = mem?.monthlyFee || 1000;
+                          if (checked) {
+                            setAmount(advanceMonthsCount * monthly);
+                            setLateFine(0);
+                          } else {
+                            setAmount(monthly);
+                          }
+                        }}
+                        className="rounded border-purple-500 text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
+                      />
+                      <span>অগ্রিম চাঁদা জমা (Advance Payment)</span>
+                    </label>
+                    {isAdvancePayment && (
+                      <span className="text-[10px] text-purple-400 font-semibold">
+                        {advanceMonthsCount} মাসের জন্য
+                      </span>
+                    )}
+                  </div>
+
+                  {isAdvancePayment && (
+                    <div className="flex items-center space-x-2 pt-1">
+                      <span className="text-[11px] text-zinc-300">কত মাসের চাঁদা?</span>
+                      <div className="flex items-center space-x-1">
+                        {[2, 3, 6, 12].map((mNum) => (
+                          <button
+                            key={mNum}
+                            type="button"
+                            onClick={() => {
+                              setAdvanceMonthsCount(mNum);
+                              const mem = members.find(m => m.id === effectiveMemberId) || myMember;
+                              setAmount(mNum * (mem?.monthlyFee || 1000));
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              advanceMonthsCount === mNum
+                                ? 'bg-purple-600 text-white shadow-sm'
+                                : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                            }`}
+                          >
+                            {mNum} মাস
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Amount & Fine */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -692,6 +803,13 @@ export default function CollectionsPage() {
                     />
                   </div>
                 </div>
+
+                {/* Partial Payment Notice */}
+                {!isAdvancePayment && amount > 0 && amount < ((members.find(m => m.id === effectiveMemberId) || myMember)?.monthlyFee || 1000) && (
+                  <p className="text-[11px] text-amber-400 font-medium bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20">
+                    ⚠️ আংশিক চাঁদা (Partial Payment): নির্ধারিত ফি ৳{((members.find(m => m.id === effectiveMemberId) || myMember)?.monthlyFee || 1000)}। বাকি থাকবে <strong className="text-amber-300">৳{(((members.find(m => m.id === effectiveMemberId) || myMember)?.monthlyFee || 1000) - amount)}</strong>।
+                  </p>
+                )}
 
                 {/* Payment Channel */}
                 <div>
@@ -1028,7 +1146,19 @@ export default function CollectionsPage() {
                               {col.date} • <span className="uppercase">{col.paymentType}</span>
                             </p>
                           </td>
-                          <td className="py-2.5 text-center text-indigo-400 font-semibold">{col.month}</td>
+                          <td className="py-2.5 text-center">
+                            <span className="text-indigo-400 font-semibold">{col.month}</span>
+                            {col.isAdvance && (
+                              <span className="block mt-0.5 text-[9px] font-extrabold text-purple-400 bg-purple-500/10 px-1 py-0.2 rounded border border-purple-500/20">
+                                অগ্রিম
+                              </span>
+                            )}
+                            {col.isPartial && (
+                              <span className="block mt-0.5 text-[9px] font-extrabold text-amber-400 bg-amber-500/10 px-1 py-0.2 rounded border border-amber-500/20">
+                                আংশিক (বাকি ৳{col.remainingDue})
+                              </span>
+                            )}
+                          </td>
                           <td className="py-2.5 text-right">
                             <p className={`font-bold ${isPending ? 'text-amber-400' : 'text-emerald-400'}`}>
                               {grandTotal.toLocaleString()} TK

@@ -22,13 +22,17 @@ import {
   Calendar,
   FileText,
   AlertCircle,
-  Trash2
+  Trash2,
+  BellRing,
+  Loader2,
+  CalendarClock
 } from 'lucide-react';
 import { PageSizeSelector, DataTablePagination, usePagination } from '../../components/pagination';
 
 export default function LoansPage() {
-  const { loans, members, addLoan, recordLoanRepayment, updateLoanStatus, deleteLoan } = useStore();
+  const { loans, members, addLoan, recordLoanRepayment, updateLoanStatus, deleteLoan, sendLoanReminder } = useStore();
   const { user, hasPermission } = useAuth();
+  const [sendingReminderLoanId, setSendingReminderLoanId] = useState<string | null>(null);
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -488,14 +492,35 @@ export default function LoansPage() {
                         <td className="p-3.5 text-right">
                           <div className="flex items-center justify-end space-x-1.5">
                             {canManageLoans && loan.status === 'active' && (
-                              <button
-                                onClick={() => handleOpenRepayModal(loan)}
-                                className="px-2.5 py-1 rounded-lg bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 text-[11px] font-bold transition-all cursor-pointer inline-flex items-center space-x-1"
-                                title="Record Repayment"
-                              >
-                                <DollarSign className="w-3.5 h-3.5" />
-                                <span>Repay</span>
-                              </button>
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    setSendingReminderLoanId(loan.id);
+                                    const ok = await sendLoanReminder(loan.id);
+                                    setSendingReminderLoanId(null);
+                                    if (ok) alert(`✅ ${loan.memberName}-এর কাছে লোনের কিস্তি পরিশোধের রিমাইন্ডার সফলভাবে পাঠানো হয়েছে।`);
+                                  }}
+                                  disabled={sendingReminderLoanId === loan.id}
+                                  className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 text-xs font-bold transition-all cursor-pointer inline-flex items-center"
+                                  title="Send Push & Email Loan Reminder to Borrower"
+                                >
+                                  {sendingReminderLoanId === loan.id ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <BellRing className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+
+                                <button
+                                  onClick={() => handleOpenRepayModal(loan)}
+                                  className="px-2.5 py-1 rounded-lg bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 text-[11px] font-bold transition-all cursor-pointer inline-flex items-center space-x-1"
+                                  title="Record Repayment"
+                                >
+                                  <DollarSign className="w-3.5 h-3.5" />
+                                  <span>Repay</span>
+                                </button>
+                              </>
                             )}
 
                             <button
@@ -664,7 +689,7 @@ export default function LoansPage() {
                       Duration: ~{formCalculation.diffMonths} month(s)
                     </span>
                     <span className="text-[11px] text-zinc-300">
-                      Total Interest: <strong className="text-amber-300">৳{formCalculation.interest.toLocaleString()}</strong>
+                      Total Interest: <strong className="text-amber-300">৳{formCalculation.interest.toLocaleString()}</strong> · মাসিক কিস্তি: <strong className="text-indigo-300">৳{Math.round(formCalculation.totalPayable / formCalculation.diffMonths).toLocaleString()}/মাস</strong>
                     </span>
                   </div>
                   <div className="text-right">
@@ -959,6 +984,70 @@ export default function LoansPage() {
                   </div>
                 </div>
               )}
+
+              {/* Installment Repayment Schedule Calculator & Chart */}
+              <div className="mb-5">
+                <h4 className="font-bold text-xs text-[var(--foreground)] mb-2.5 flex items-center justify-between">
+                  <div className="flex items-center space-x-1.5">
+                    <CalendarClock className="w-4 h-4 text-indigo-400" />
+                    <span>কিস্তির শিডিউল চার্ট (Repayment Schedule)</span>
+                  </div>
+                  <span className="text-[10px] text-zinc-400">
+                    মাসিক কিস্তি: ৳{(selectedLoan.monthlyInstallment || Math.round(selectedLoan.totalPayable / (selectedLoan.installmentMonths || 12))).toLocaleString()}
+                  </span>
+                </h4>
+
+                <div className="border border-[var(--border)] rounded-2xl overflow-hidden bg-[var(--secondary)]/40 max-h-48 overflow-y-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="sticky top-0 bg-[var(--secondary)] border-b border-[var(--border)]">
+                      <tr className="text-[10px] text-[var(--muted-foreground)] uppercase">
+                        <th className="p-2 font-bold text-center w-12">কিস্তি</th>
+                        <th className="p-2 font-bold">তারিখ</th>
+                        <th className="p-2 font-bold text-right">নির্ধারিত</th>
+                        <th className="p-2 font-bold text-center">স্ট্যাটাস</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {(() => {
+                        const count = selectedLoan.installmentMonths || 12;
+                        const perMonth = selectedLoan.monthlyInstallment || Math.round(selectedLoan.totalPayable / count);
+                        const [disbY, disbM, disbD] = selectedLoan.disbursedDate.split('-').map(Number);
+
+                        return Array.from({ length: count }).map((_, i) => {
+                          const dateObj = new Date(disbY, (disbM - 1) + (i + 1), disbD || 1);
+                          const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+                          const cumulativeReq = perMonth * (i + 1);
+                          const isFullyPaid = (selectedLoan.totalRepaid || 0) >= cumulativeReq;
+                          const isPartiallyPaid = !isFullyPaid && (selectedLoan.totalRepaid || 0) > (perMonth * i);
+
+                          return (
+                            <tr key={i} className="hover:bg-zinc-800/30 transition-colors">
+                              <td className="p-2 text-center font-bold text-zinc-400">#{i + 1}</td>
+                              <td className="p-2 font-medium text-zinc-300">{dateStr}</td>
+                              <td className="p-2 text-right font-bold text-emerald-400">৳{perMonth.toLocaleString()}</td>
+                              <td className="p-2 text-center">
+                                {isFullyPaid ? (
+                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                                    পরিশোধিত
+                                  </span>
+                                ) : isPartiallyPaid ? (
+                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                                    চলমান
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-zinc-800 text-zinc-400">
+                                    বাকি
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
               {/* Repayments History */}
               <div>

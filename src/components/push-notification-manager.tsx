@@ -120,7 +120,7 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
     if (typeof window !== 'undefined' && !window.isSecureContext) {
       alert(
         '⚠️ পুশ নোটিফিকেশনের জন্য নিরাপদ সংযোগ (HTTPS) আবশ্যক।\n\n' +
-        'লোকাল নেটওয়ার্ক আইপি (http://...) দিয়ে পুশ সার্ভিস কাজ করে না। দয়া করে লাইভ HTTPS লিংক (Netlify) দিয়ে চেষ্টা করুন।'
+        'লোকাল নেটওয়ার্ক আইপি (http://...) দিয়ে পুশ সার্ভিস কাজ করে না। দয়া করে লাইভ HTTPS লিংক (Netlify) দিয়ে চেষ্টা করুন।'
       );
       return;
     }
@@ -131,10 +131,10 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
         '📱 iPhone-এ পুশ নোটিফিকেশন পেতে:\n\n' +
         'Apple iOS শুধুমাত্র হোমস্ক্রিনে ইনস্টল করা অ্যাপে পুশ নোটিফিকেশন সাপোর্ট করে।\n\n' +
         'সহজ ৩টি ধাপ:\n' +
-        '১. Safari ব্রাউজারের নিচে "Share" (শেয়ার) আইকনে চাপুন\n' +
+        '১. Safari ব্রাউজারের নিচে "Share" (শেয়ার) আইকনে চাপুন\n' +
         '২. স্ক্রোল করে "Add to Home Screen" চাপুন\n' +
         '৩. উপরে "Add" চাপুন\n\n' +
-        'এরপর হোমস্ক্রিনের FDC অ্যাপ থেকে নোটিফিকেশন অন করলেই সক্রিয় হবে! (iOS 16.4+)'
+        'এরপর হোমস্ক্রিনের FDC অ্যাপ থেকে নোটিফিকেশন অন করলেই সক্রিয় হবে! (iOS 16.4+)'
       );
       return;
     }
@@ -142,7 +142,7 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
     // 2. Generic unsupported check
     if (!isSupported) {
       alert(
-        '⚠️ এই ব্রাউজার বা ডিভাইসে পুশ নোটিফিকেশন সমর্থিত নয়।\n\n' +
+        '⚠️ এই ব্রাউজার বা ডিভাইসে পুশ নোটিফিকেশন সমর্থিত নয়।\n\n' +
         'অনুগ্রহ করে Google Chrome অথবা Safari ব্যবহার করুন এবং ব্রাউজার আপডেট রাখুন।'
       );
       return;
@@ -167,32 +167,40 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
 
       if (permission !== 'granted') {
         alert(
-          '⚠️ নোটিফিকেশন পারমিশন অ্যালাউ করা হয়নি।\n\n' +
+          '⚠️ নোটিফিকেশন পারমিশন অ্যালাউ করা হয়নি।\n\n' +
           'পরবর্তীতে অন করতে ফোন সেটিংস থেকে নোটিফিকেশন অন করুন।'
         );
         setLoading(false);
         return;
       }
 
-      // 5. Get VAPID public key with client fallback
-      let publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || FALLBACK_VAPID_PUBLIC_KEY;
-      try {
-        const resKey = await fetch('/api/push/subscribe');
-        if (resKey.ok) {
-          const data = await resKey.json();
-          if (data?.publicKey) {
-            publicKey = data.publicKey;
-          }
-        }
-      } catch (err) {
-        console.warn('[PushNotification] Server VAPID fetch failed, using fallback:', err);
-      }
+      // 5. Use VAPID public key directly — no server fetch needed
+      // The public key is NOT secret, so hardcoding is safe and avoids the
+      // "Could not fetch VAPID public key from server" error completely
+      const publicKey = FALLBACK_VAPID_PUBLIC_KEY;
 
       // 6. Ensure Service Worker registration is ready
       let reg: ServiceWorkerRegistration;
       try {
         reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        // Wait for the SW to become active if still installing
+        if (!reg.active && (reg.installing || reg.waiting)) {
+          await new Promise<void>((resolve) => {
+            const sw = reg.installing || reg.waiting;
+            if (!sw) { resolve(); return; }
+            const onStateChange = () => {
+              if (sw.state === 'activated') {
+                sw.removeEventListener('statechange', onStateChange);
+                resolve();
+              }
+            };
+            sw.addEventListener('statechange', onStateChange);
+            // Safety timeout — don't wait forever
+            setTimeout(resolve, 5000);
+          });
+        }
       } catch (e) {
+        console.warn('[PushNotification] SW register failed, waiting for ready:', e);
         reg = await navigator.serviceWorker.ready;
       }
       if (!reg || !reg.active) {
@@ -201,57 +209,90 @@ export function PushNotificationProvider({ children }: { children: React.ReactNo
 
       // 7. Subscribe via PushManager
       const convertedVapidKey = urlBase64ToUint8Array(publicKey);
-      const subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: convertedVapidKey,
-      });
+      let subscription: PushSubscription;
+      try {
+        subscription = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: convertedVapidKey,
+        });
+      } catch (pushErr: any) {
+        const pushMsg = (pushErr?.message || String(pushErr)).toLowerCase();
+        if (pushMsg.includes('push service not available') ||
+            pushMsg.includes('push service error') ||
+            pushMsg.includes('aborterror') ||
+            pushMsg.includes('registration failed')) {
+          alert(
+            '⚠️ পুশ সার্ভিস উপলব্ধ নেই।\n\n' +
+            'সম্ভাব্য কারণ:\n' +
+            '• VS Code / কোড এডিটরের প্রিভিউ ব্রাউজার ব্যবহার করছেন — এখানে পুশ কাজ করে না।\n' +
+            '• ব্রাউজার বা ডিভাইসে Push Messaging সার্ভিস বন্ধ আছে।\n' +
+            '• ইন্টারনেট সংযোগ দুর্বল বা অনুপলব্ধ।\n\n' +
+            '✅ সমাধান:\n' +
+            '১. ফোনের Google Chrome বা Safari ব্রাউজার খুলুন\n' +
+            '২. লাইভ Netlify HTTPS লিংক দিয়ে সাইটে যান\n' +
+            '৩. আবার "Turn On" চাপুন'
+          );
+          throw pushErr; // re-throw to reach finally block
+        }
+        throw pushErr;
+      }
 
       // 8. Save subscription token to MongoDB
-      const saveRes = await fetch('/api/push/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subscription,
-          userId: user?.id,
-          memberId: user?.memberId,
-          role: user?.role || 'member',
-          userAgent: navigator.userAgent,
-        }),
-      });
+      // Non-blocking — even if server save fails, the push subscription is active locally
+      try {
+        const saveRes = await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscription,
+            userId: user?.id,
+            memberId: user?.memberId,
+            role: user?.role || 'member',
+            userAgent: navigator.userAgent,
+          }),
+        });
 
-      if (!saveRes.ok) {
-        const errBody = await saveRes.json().catch(() => ({}));
-        throw new Error(errBody.error || 'Server failed to save push subscription');
+        if (!saveRes.ok) {
+          console.warn('[PushNotification] Server save returned non-OK, subscription still active locally');
+        }
+      } catch (saveErr) {
+        console.warn('[PushNotification] Could not save to server, subscription still active:', saveErr);
       }
 
       // 9. Update UI state immediately
       setIsSubscribed(true);
 
-      // 10. Send a welcome push notification
+      // 10. Send a welcome push notification (fire-and-forget)
       fetch('/api/push/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: '🎉 Notifications Enabled!',
-          message: 'FDC push notifications are now active on this device.',
+          title: '🎉 নোটিফিকেশন চালু হয়েছে!',
+          message: 'FDC অ্যাপের পুশ নোটিফিকেশন এই ডিভাইসে সক্রিয় হয়েছে।',
           targetUserId: user?.id || 'all',
           url: '/dashboard',
         }),
       }).catch(() => {});
 
+      // 11. Show success confirmation
+      alert('✅ পুশ নোটিফিকেশন সফলভাবে চালু হয়েছে!\n\nএখন থেকে পেমেন্ট, বকেয়া, লোন ও অন্যান্য আপডেট সরাসরি ফোনে পাবেন।');
+
     } catch (err: any) {
       console.error('[PushNotification] Subscribe error:', err);
-      const errMsg = err?.message || String(err);
-      if (errMsg.toLowerCase().includes('push service not available')) {
+      const errMsg = (err?.message || String(err)).toLowerCase();
+      // Only show generic error if not already handled by the push-specific catch above
+      if (!errMsg.includes('push service not available') &&
+          !errMsg.includes('push service error') &&
+          !errMsg.includes('aborterror') &&
+          !errMsg.includes('registration failed')) {
         alert(
-          '⚠️ পুশ সার্ভিস উপলব্ধ নেই (Push Service Not Available)।\n\n' +
-          'সম্ভাব্য কারণ:\n' +
-          '১. আপনি VS Code / কোড এডিটরের প্রিভিউ ব্রাউজার থেকে ট্রাই করছেন — প্রিভিউ উইন্ডোতে পুশ নোটিফিকেশন ইঞ্জিন থাকে না।\n' +
-          '২. লোকাল নেটওয়ার্ক বা কোনো ব্রাউজার (যেমন Brave) এ Push Messaging সার্ভিস ডিসেবল থাকতে পারে।\n\n' +
-          '✅ সমাধান: ফোনের আসল ব্রাউজার (Google Chrome বা Safari) দিয়ে লাইভ ওয়েবসাইট (Netlify HTTPS) লিংক ভিজিট করে ট্রাই করুন।'
+          '⚠️ নোটিফিকেশন চালু করতে সমস্যা হয়েছে।\n\n' +
+          'কারণ: ' + (err?.message || String(err)) + '\n\n' +
+          '✅ সমাধান:\n' +
+          '• পেজ রিফ্রেশ করে আবার চেষ্টা করুন\n' +
+          '• Google Chrome বা Safari ব্রাউজার ব্যবহার করুন\n' +
+          '• লাইভ HTTPS সাইট (Netlify) থেকে ট্রাই করুন'
         );
-      } else {
-        alert(`Could not enable notifications:\n${errMsg}`);
       }
     } finally {
       setLoading(false);

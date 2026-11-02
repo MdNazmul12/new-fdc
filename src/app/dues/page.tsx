@@ -37,7 +37,7 @@ import PaymentSubmitModal from '../../components/payment-submit-modal';
 import { PageSizeSelector, DataTablePagination, usePagination } from '../../components/pagination';
 
 export default function DuesPage() {
-  const { stats, members, collections, addCollection, dueDemands, addDueDemand, deleteDueDemand } = useStore();
+  const { stats, members, collections, addCollection, dueDemands, addDueDemand, deleteDueDemand, fineWaivers, waiveFine, removeFineWaiver } = useStore();
   const { user, hasPermission } = useAuth();
 
   const canManageDues = user?.role === 'super_admin' || user?.role === 'treasurer' || user?.role === 'president';
@@ -184,8 +184,13 @@ export default function DuesPage() {
         ? (activeDemand.fixedAmount || 1000) 
         : (member.monthlyFee || 1000);
       
-      // Calculate late fine: if not paid & not pending and selected date is after cutoff
-      const lateFine = !isPaid && !isPending && isSelectedDateAfterCutoff ? activeDemand.lateFine : 0;
+      // Check if late fine is waived for this member in targetMonth
+      const isWaived = (fineWaivers || []).some(
+        w => (w.memberId === member.id || (user?.memberId && w.memberId === user.memberId)) && w.month === targetMonth
+      );
+
+      // Calculate late fine: if not paid & not pending and selected date is after cutoff (and not waived)
+      const lateFine = !isPaid && !isPending && !isWaived && isSelectedDateAfterCutoff ? activeDemand.lateFine : 0;
       const totalPayable = isPaid 
         ? (paidRecord.amount + (paidRecord.lateFine || 0)) 
         : isPending 
@@ -196,6 +201,7 @@ export default function DuesPage() {
         member,
         isPaid,
         isPending,
+        isWaived,
         paidRecord,
         pendingRecord,
         baseFee,
@@ -204,7 +210,7 @@ export default function DuesPage() {
         targetMonth
       };
     });
-  }, [activeMembers, collections, targetMonth, activeDemand, isSelectedDateAfterCutoff, user]);
+  }, [activeMembers, collections, targetMonth, activeDemand, isSelectedDateAfterCutoff, user, fineWaivers]);
 
   // Filtered list
   const filteredDues = useMemo(() => {
@@ -907,7 +913,11 @@ export default function DuesPage() {
                             </td>
 
                             <td className="p-3.5">
-                              {item.lateFine > 0 ? (
+                              {item.isWaived ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 inline-flex items-center space-x-1" title="জরিমানা মওকুফ করা হয়েছে">
+                                  <span>মওকুফ</span>
+                                </span>
+                              ) : item.lateFine > 0 ? (
                                 <span className="text-rose-400 font-bold">+{item.lateFine} TK</span>
                               ) : (
                                 <span className="text-[var(--muted-foreground)]/70">-</span>
@@ -969,6 +979,27 @@ export default function DuesPage() {
                                 </button>
                               ) : (
                                 <div className="flex items-center justify-end space-x-1.5">
+                                  {canManageDues && !item.isPaid && !item.isPending && (
+                                    item.isWaived ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => removeFineWaiver(item.member.id, item.targetMonth)}
+                                        className="px-2 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-xl text-[10px] font-bold transition-all cursor-pointer"
+                                        title="জরিমানা পুনর্বহাল করুন"
+                                      >
+                                        ফাইন ফেরাও
+                                      </button>
+                                    ) : isSelectedDateAfterCutoff && (activeDemand?.lateFine || 0) > 0 ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => waiveFine(item.member.id, item.targetMonth)}
+                                        className="px-2 py-1.5 bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-400 border border-indigo-500/30 rounded-xl text-[10px] font-bold transition-all cursor-pointer inline-flex items-center space-x-1"
+                                        title="বিলম্ব জরিমানা মওকুফ করুন"
+                                      >
+                                        <span>জরিমানা মওকুফ</span>
+                                      </button>
+                                    ) : null
+                                  )}
                                   {canManageDues && item.member.email && (
                                     <button
                                       type="button"
