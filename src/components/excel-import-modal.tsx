@@ -14,7 +14,30 @@ import {
   Table as TableIcon
 } from 'lucide-react';
 
-export type ImportType = 'members' | 'collections' | 'investments';
+export type ImportType = 'members' | 'collections' | 'investments' | 'dues';
+
+// Standalone helper to download Previous Dues Excel Template directly from any page
+export function downloadDuesTemplate() {
+  const headers = ['Member ID', 'Member Name', 'Phone', 'Due Month', 'Due Amount', 'Late Fine', 'Notes'];
+  const sampleRow1 = ['m-1', 'Kabir Ahmed', '+8801711223344', '2025-11', 1000, 0, 'পূর্বের বকেয়া চাঁদা'];
+  const sampleRow2 = ['m-2', 'Tasnim Jahan', '+8801822334455', '2025-11', 1000, 50, 'নভেম্বর বকেয়া + ফাইন'];
+  const sampleRow3 = ['m-1', 'Kabir Ahmed', '+8801711223344', '2025-12', 1000, 0, 'ডিসেম্বর বকেয়া'];
+
+  const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow1, sampleRow2, sampleRow3]);
+  ws['!cols'] = [
+    { wch: 14 },
+    { wch: 20 },
+    { wch: 18 },
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 12 },
+    { wch: 28 },
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Previous_Dues');
+  XLSX.writeFile(wb, 'FDC_Previous_Dues_Template.xlsx');
+}
 
 interface ExcelImportModalProps {
   isOpen: boolean;
@@ -78,6 +101,9 @@ export default function ExcelImportModal({
       filename = 'FDC_Investments_Template.xlsx';
       headers = ['Type', 'Provider', 'Principal Amount', 'Interest Rate', 'Start Date', 'Maturity Date', 'Notes'];
       sampleRow = ['FDR', 'BRAC Bank', 200000, 9.5, '2026-01-01', '2027-01-01', 'Standard 1-Year FDR'];
+    } else if (type === 'dues') {
+      downloadDuesTemplate();
+      return;
     }
 
     const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
@@ -193,6 +219,24 @@ export default function ExcelImportModal({
               interestRate,
               startDate,
               maturityDate,
+              notes
+            };
+          } else if (type === 'dues') {
+            const memberId = String(getVal(['member id', 'memberid', 'id', 'member_id'])).trim();
+            const memberName = String(getVal(['member name', 'name', 'member', 'membername'])).trim();
+            const phone = String(getVal(['phone', 'mobile', 'contact', 'phone number', 'phonenumber'])).trim();
+            const rawMonth = String(getVal(['due month', 'month', 'period', 'duemonth'])).trim();
+            const amount = Number(getVal(['due amount', 'amount', 'fee', 'dueamount'])) || 1000;
+            const lateFine = Number(getVal(['late fine', 'latefine', 'fine'])) || 0;
+            const notes = String(getVal(['notes', 'note', 'description', 'remarks', 'reason'])).trim() || 'পূর্বের বকেয়া চাঁদা';
+
+            return {
+              memberId,
+              memberName: memberName || 'Member',
+              phone,
+              month: rawMonth,
+              amount,
+              lateFine,
               notes
             };
           }

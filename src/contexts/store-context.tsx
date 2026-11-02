@@ -29,6 +29,7 @@ interface StoreContextProps {
   deleteDueDemand: (id: string) => Promise<void>;
   waiveFine: (memberId: string, month: string, reason?: string) => Promise<boolean>;
   removeFineWaiver: (memberId: string, month: string) => Promise<boolean>;
+  importPreviousDues: (dues: { memberId?: string; memberName?: string; phone?: string; month: string; amount?: number; lateFine?: number; notes?: string }[]) => Promise<number>;
   
   // Member actions
   addMember: (member: Omit<Member, 'id'>) => Member;
@@ -936,6 +937,143 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return true;
   };
 
+  const importPreviousDues = async (
+    rawDues: { memberId?: string; memberName?: string; phone?: string; month: string; amount?: number; lateFine?: number; notes?: string }[]
+  ): Promise<number> => {
+    if (!rawDues || rawDues.length === 0) return 0;
+
+    let updatedDemands = [...dueDemands];
+    let updatedCollections = [...collections];
+    let importedCount = 0;
+
+    const cleanPhone = (p?: string) => (p || '').replace(/[^0-9]/g, '');
+
+    interface IdentifiedDue {
+      member: Member;
+      month: string;
+      amount: number;
+      lateFine: number;
+      notes: string;
+    }
+    const identifiedList: IdentifiedDue[] = [];
+
+    for (const row of rawDues) {
+      const rowId = (row.memberId || '').trim();
+      const rowPhone = cleanPhone(row.phone);
+      const rowName = (row.memberName || '').trim().toLowerCase();
+
+      const matchedMember = members.find(m => {
+        if (rowId && (m.id.toLowerCase() === rowId.toLowerCase() || m.id.toLowerCase() === `m-${rowId.toLowerCase()}`)) return true;
+        if (rowPhone && rowPhone.length >= 8 && cleanPhone(m.phone).includes(rowPhone.slice(-8))) return true;
+        if (rowName && m.name.toLowerCase() === rowName) return true;
+        return false;
+      });
+
+      if (!matchedMember) {
+        console.warn('Could not match member for previous due row:', row);
+        continue;
+      }
+
+      let rawMonth = (row.month || '').trim();
+      let formattedMonth = rawMonth;
+      if (/^\d{4}-\d{2}$/.test(rawMonth)) {
+        formattedMonth = rawMonth;
+      } else if (/^\d{4}\/\d{2}$/.test(rawMonth)) {
+        formattedMonth = rawMonth.replace('/', '-');
+      } else if (/^\d{4}\.\d{2}$/.test(rawMonth)) {
+        formattedMonth = rawMonth.replace('.', '-');
+      } else {
+        const d = new Date(rawMonth);
+        if (!isNaN(d.getTime())) {
+          formattedMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        }
+      }
+
+      if (!/^\d{4}-\d{2}$/.test(formattedMonth)) {
+        console.warn('Invalid month format for row:', row);
+        continue;
+      }
+
+      const amount = Number(row.amount) || matchedMember.monthlyFee || 1000;
+      const lateFine = Number(row.lateFine) || 0;
+      const notes = (row.notes || '').trim() || 'পূর্বের বকেয়া চাঁদা (Previous Due Import)';
+
+      identifiedList.push({
+        member: matchedMember,
+        month: formattedMonth,
+        amount,
+        lateFine,
+        notes
+      });
+    }
+
+    if (identifiedList.length === 0) {
+      throw new Error('কোনো সদস্যের সাথে এক্সেল ডাটা মেলানো যায়নি। Member ID, Phone অথবা Name সঠিকভাবে দিন।');
+    }
+
+    const monthsSet = Array.from(new Set(identifiedList.map(item => item.month)));
+
+    for (const mStr of monthsSet) {
+      let existingDemand = updatedDemands.find(d => d.month === mStr);
+      if (!existingDemand) {
+        existingDemand = {
+          id: `dd-${Date.now()}-${mStr}`,
+          month: mStr,
+          title: `Monthly Subscription Fee - ${mStr}`,
+          dueDate: `${mStr}-10`,
+          amountType: 'member_fee',
+          lateFine: 50,
+          applicableTo: 'all',
+          createdAt: new Date().toISOString().split('T')[0],
+          createdBy: 'Excel Due Import'
+        };
+        updatedDemands = [existingDemand, ...updatedDemands];
+      }
+
+      const dueItemsForMonth = identifiedList.filter(item => item.month === mStr);
+      const dueMemberIds = new Set(dueItemsForMonth.map(item => item.member.id));
+
+      const otherMembers = members.filter(m => m.status === 'active' && !dueMemberIds.has(m.id));
+      for (const otherM of otherMembers) {
+        const alreadyHasRecord = updatedCollections.some(c => c.memberId === otherM.id && c.month === mStr);
+        if (!alreadyHasRecord) {
+          const baselineColl: Collection = {
+            id: `c-prev-paid-${Date.now()}-${otherM.id}-${mStr}`,
+            memberId: otherM.id,
+            memberName: otherM.name,
+            amount: otherM.monthlyFee || 1000,
+            month: mStr,
+            date: `${mStr}-05`,
+            paymentType: 'cash',
+            lateFine: 0,
+            receiptNo: `REC-PREV-${mStr.replace('-', '')}-${otherM.id.replace(/[^0-9]/g, '').slice(-4) || '1000'}`,
+            status: 'paid',
+            collectedBy: 'Previously Settled',
+            notes: 'সফটওয়্যার চালুর পূর্বের পরিশোধিত চাঁদা (Opening Record)'
+          };
+          updatedCollections = [baselineColl, ...updatedCollections];
+        }
+      }
+
+      for (const dueItem of dueItemsForMonth) {
+        updatedCollections = updatedCollections.filter(
+          c => !(c.memberId === dueItem.member.id && c.month === mStr && c.status === 'paid')
+        );
+        importedCount++;
+      }
+    }
+
+    setDueDemands(updatedDemands);
+    setCollections(updatedCollections);
+
+    await syncToDbAndLocal('due_demands', updatedDemands, 'create', updatedDemands);
+    await syncToDbAndLocal('collections', updatedCollections, 'create', updatedCollections);
+
+    addAuditLog(`Imported ${importedCount} Previous Dues records across ${monthsSet.length} months via Excel`, 'super_admin', 'Admin');
+
+    return importedCount;
+  };
+
   // ---------------- INVESTMENTS ACTIONS ----------------
   const addInvestment = (invData: Omit<Investment, 'id' | 'status' | 'interestReceived'>) => {
     const newInv: Investment = {
@@ -1669,6 +1807,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         deleteDueDemand,
         waiveFine,
         removeFineWaiver,
+        importPreviousDues,
         broadcastAnnouncement,
         addMember,
         importMembers,

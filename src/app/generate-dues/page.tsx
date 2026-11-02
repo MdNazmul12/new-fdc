@@ -21,15 +21,20 @@ import {
   Loader2, 
   ExternalLink,
   ShieldCheck,
-  Tag
+  Tag,
+  FileSpreadsheet,
+  Download
 } from 'lucide-react';
 import Link from 'next/link';
+import ExcelImportModal, { downloadDuesTemplate } from '../../components/excel-import-modal';
 
 export default function GenerateDuesPage() {
-  const { members, collections, dueDemands, addDueDemand, deleteDueDemand } = useStore();
+  const { members, collections, dueDemands, addDueDemand, deleteDueDemand, importPreviousDues } = useStore();
   const { user } = useAuth();
 
   const canManageDues = user?.role === 'super_admin' || user?.role === 'treasurer' || user?.role === 'president';
+
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   // Generate Due Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -222,6 +227,30 @@ export default function GenerateDuesPage() {
               <CalendarClock className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
               <span>View Due List</span>
             </Link>
+
+            {canManageDues && (
+              <button
+                type="button"
+                onClick={() => setImportModalOpen(true)}
+                className="flex items-center space-x-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
+                title="সদস্যদের পূর্বের বকেয়া এক্সেল ফাইলের মাধ্যমে ইম্পোর্ট করুন"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Import Previous Dues</span>
+              </button>
+            )}
+
+            {canManageDues && (
+              <button
+                type="button"
+                onClick={downloadDuesTemplate}
+                className="flex items-center space-x-1.5 px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                title="নমুনা এক্সেল টেমপ্লেট ডাউনলোড করুন"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>টেমপ্লেট (.xlsx)</span>
+              </button>
+            )}
 
             {canManageDues && (
               <button
@@ -549,6 +578,18 @@ export default function GenerateDuesPage() {
           onCancel={() => {
             setDeleteConfirmOpen(false);
             setDemandToDelete(null);
+          }}
+        />
+
+        {/* ---------------- EXCEL IMPORT MODAL: PREVIOUS DUES ---------------- */}
+        <ExcelImportModal
+          isOpen={importModalOpen}
+          type="dues"
+          title="সদস্যদের পূর্বের বকেয়া তালিকা ইম্পোর্ট (Excel / CSV)"
+          onClose={() => setImportModalOpen(false)}
+          onImportSuccess={async (rows) => {
+            const count = await importPreviousDues(rows);
+            showFeedback(`সফলভাবে ${count}টি পূর্বের বকেয়া রেকর্ড সিস্টেমে যুক্ত করা হয়েছে!`);
           }}
         />
 

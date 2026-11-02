@@ -30,14 +30,28 @@ import {
   Trash2,
   Tag,
   Send,
-  Mail
+  Mail,
+  FileSpreadsheet
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import PaymentSubmitModal from '../../components/payment-submit-modal';
+import ExcelImportModal, { downloadDuesTemplate } from '../../components/excel-import-modal';
 import { PageSizeSelector, DataTablePagination, usePagination } from '../../components/pagination';
 
 export default function DuesPage() {
-  const { stats, members, collections, addCollection, dueDemands, addDueDemand, deleteDueDemand, fineWaivers, waiveFine, removeFineWaiver } = useStore();
+  const { 
+    stats, 
+    members, 
+    collections, 
+    addCollection, 
+    dueDemands, 
+    addDueDemand, 
+    deleteDueDemand, 
+    fineWaivers, 
+    waiveFine, 
+    removeFineWaiver,
+    importPreviousDues
+  } = useStore();
   const { user, hasPermission } = useAuth();
 
   const canManageDues = user?.role === 'super_admin' || user?.role === 'treasurer' || user?.role === 'president';
@@ -60,6 +74,7 @@ export default function DuesPage() {
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'due' | 'paid' | 'pending'>('all');
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   // Member self-payment modal state
   const [payModalOpen, setPayModalOpen] = useState(false);
@@ -544,6 +559,30 @@ export default function DuesPage() {
               >
                 <Plus className="w-4 h-4" />
                 <span>Add / Generate Due</span>
+              </button>
+            )}
+
+            {canManageDues && (
+              <button
+                type="button"
+                onClick={() => setImportModalOpen(true)}
+                className="flex items-center space-x-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition-all cursor-pointer"
+                title="সদস্যদের পূর্বের বকেয়া এক্সেল ফাইলের মাধ্যমে ইম্পোর্ট করুন"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Import Previous Dues</span>
+              </button>
+            )}
+
+            {canManageDues && (
+              <button
+                type="button"
+                onClick={downloadDuesTemplate}
+                className="flex items-center space-x-1.5 px-3 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm"
+                title="বকেয়া এন্ট্রি করার জন্য নমুনা এক্সেল টেমপ্লেট ডাউনলোড করুন"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>বকেয়া টেমপ্লেট (.xlsx)</span>
               </button>
             )}
 
@@ -1406,6 +1445,19 @@ export default function DuesPage() {
             }))}
           />
         )}
+
+        {/* Previous Dues Import Modal */}
+        <ExcelImportModal
+          isOpen={importModalOpen}
+          type="dues"
+          title="সদস্যদের পূর্বের বকেয়া তালিকা ইম্পোর্ট (Excel / CSV)"
+          onClose={() => setImportModalOpen(false)}
+          onImportSuccess={async (rows) => {
+            const count = await importPreviousDues(rows);
+            setReminderResult(`✅ সফলভাবে ${count}টি পূর্বের বকেয়া রেকর্ড সিস্টেমে যুক্ত করা হয়েছে!`);
+            setTimeout(() => setReminderResult(null), 6000);
+          }}
+        />
 
       </div>
     </DashboardLayout>
