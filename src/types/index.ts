@@ -191,3 +191,26 @@ export interface OtpToken {
   createdAt: string;
 }
 
+// ==================== TRASH / RECYCLE BIN (TWO-TIER DELETION) ====================
+export type TrashEntityType = 
+  | 'member' 
+  | 'collection' 
+  | 'investment' 
+  | 'expense' 
+  | 'loan' 
+  | 'due_demand' 
+  | 'document';
+
+export interface TrashItem {
+  id: string;
+  originalId: string;
+  entityType: TrashEntityType;
+  title: string;
+  subtitle?: string;
+  amount?: number;
+  data: any;
+  deletedAt: string;
+  deletedBy: string;
+  reason?: string;
+}
+

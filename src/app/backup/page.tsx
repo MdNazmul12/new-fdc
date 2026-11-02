@@ -20,7 +20,13 @@ import {
   Clock,
   Check,
   X,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Trash2,
+  RotateCcw,
+  Search,
+  Filter,
+  ShieldCheck,
+  AlertOctagon
 } from 'lucide-react';
 
 interface BackupSummary {
@@ -49,10 +55,24 @@ export default function BackupPage() {
     dueDemands,
     users,
     notifications,
-    documents
+    documents,
+    trash,
+    restoreFromTrash,
+    permanentDeleteFromTrash,
+    emptyTrash
   } = useStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Active Tab
+  const [activeTab, setActiveTab] = useState<'backup' | 'trash'>('backup');
+
+  // States for Trash / Recycle Bin
+  const [trashFilter, setTrashFilter] = useState<string>('all');
+  const [trashSearch, setTrashSearch] = useState<string>('');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showEmptyConfirm, setShowEmptyConfirm] = useState(false);
+  const [trashMessage, setTrashMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   // States for Export
   const [exporting, setExporting] = useState(false);
@@ -85,10 +105,73 @@ export default function BackupPage() {
     due_demands: dueDemands.length,
     users: users.length,
     notifications: notifications.length,
-    documents: documents.length
+    documents: documents.length,
+    trash: trash.length
   };
 
   const totalLiveRecords = Object.values(collectionCounts).reduce((a, b) => a + b, 0);
+
+  // Trash & Recycle Bin Handlers
+  const filteredTrash = trash.filter(item => {
+    const matchesFilter = trashFilter === 'all' || item.entityType === trashFilter;
+    const matchesSearch =
+      !trashSearch.trim() ||
+      item.title.toLowerCase().includes(trashSearch.toLowerCase()) ||
+      (item.subtitle && item.subtitle.toLowerCase().includes(trashSearch.toLowerCase()));
+    return matchesFilter && matchesSearch;
+  });
+
+  const handleRestore = async (trashId: string) => {
+    setActionLoading(trashId);
+    setTrashMessage(null);
+    try {
+      const ok = await restoreFromTrash(trashId);
+      if (ok) {
+        setTrashMessage({ text: '✅ সফলভাবে তথ্য পূর্বাবস্থায় ফিরিয়ে আনা হয়েছে (Restored)!', type: 'success' });
+      } else {
+        setTrashMessage({ text: '⚠️ তথ্য পুনরুদ্ধার করতে ব্যর্থ হয়েছে।', type: 'error' });
+      }
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handlePermanentDelete = async (trashId: string, title: string) => {
+    if (!window.confirm(`⚠️ চূড়ান্ত সতর্কতা!\n\n"${title}" কি ডাটাবেস থেকে চিরতরে মুছে ফেলতে চান?\nস্থায়ীভাবে ডিলিট করার পর এই তথ্য আর কখনোই ফিরে পাওয়া যাবে না।`)) {
+      return;
+    }
+    setActionLoading(trashId);
+    setTrashMessage(null);
+    try {
+      const ok = await permanentDeleteFromTrash(trashId);
+      if (ok) {
+        setTrashMessage({ text: `🗑️ "${title}" ডাটাবেস থেকে স্থায়ীভাবে মুছে ফেলা হয়েছে।`, type: 'success' });
+      } else {
+        setTrashMessage({ text: '⚠️ স্থায়ীভাবে ডিলিট করতে ব্যর্থ হয়েছে।', type: 'error' });
+      }
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleEmptyTrash = async () => {
+    if (!window.confirm('⚠️ চূড়ান্ত সতর্কতা!\n\nআপনি কি রিসাইকেল বিনের সকল ডাটা চিরতরে মুছে ফেলতে চান?\nএই অ্যাকশন রিভার্স করা যাবে না।')) {
+      return;
+    }
+    setActionLoading('empty-trash');
+    setTrashMessage(null);
+    try {
+      const ok = await emptyTrash();
+      if (ok) {
+        setTrashMessage({ text: '🧹 রিসাইকেল বিন সম্পূর্ণ খালি করা হয়েছে এবং ডাটাবেস থেকে স্থায়ীভাবে মুছে ফেলা হয়েছে।', type: 'success' });
+        setShowEmptyConfirm(false);
+      } else {
+        setTrashMessage({ text: '⚠️ রিসাইকেল বিন খালি করতে সমস্যা হয়েছে।', type: 'error' });
+      }
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   // ─── 1. FULL BACKUP EXPORT ──────────────────────────────────────────
   const handleDownloadFullBackup = async () => {
@@ -348,7 +431,41 @@ export default function BackupPage() {
           </div>
         )}
 
-        {/* Two-Column Grid: Backup (Left) & Restore (Right) */}
+        {/* Navigation Tabs */}
+        <div className="flex border-b border-[var(--border)] gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('backup')}
+            className={`px-4 py-3 text-xs font-bold rounded-t-2xl transition-all flex items-center space-x-2 cursor-pointer ${
+              activeTab === 'backup'
+                ? 'border-b-2 border-indigo-500 text-indigo-400 bg-indigo-500/10'
+                : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+            }`}
+          >
+            <Database className="w-4 h-4" />
+            <span>Database Backup & Restore</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('trash')}
+            className={`px-4 py-3 text-xs font-bold rounded-t-2xl transition-all flex items-center space-x-2 cursor-pointer ${
+              activeTab === 'trash'
+                ? 'border-b-2 border-rose-500 text-rose-400 bg-rose-500/10'
+                : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+            }`}
+          >
+            <Trash2 className="w-4 h-4" />
+            <span>🗑️ Recycle Bin / রিসাইকেল বিন</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+              trash.length > 0 ? 'bg-rose-500 text-white' : 'bg-zinc-800 text-zinc-400'
+            }`}>
+              {trash.length}
+            </span>
+          </button>
+        </div>
+
+        {/* Tab 1: Backup & Restore */}
+        {activeTab === 'backup' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           
           {/* ==================== SECTION 1: EXPORT BACKUP ==================== */}
@@ -620,6 +737,196 @@ export default function BackupPage() {
           </div>
 
         </div>
+        )}
+
+        {/* Tab 2: Recycle Bin / Trash */}
+        {activeTab === 'trash' && (
+          <div className="space-y-6">
+            {/* Trash Info Banner */}
+            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start space-x-3 text-xs">
+              <ShieldCheck className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-bold text-amber-300">
+                  নিরাপদ দুই স্তরের ডিলিট ব্যবস্থা (Two-Tier Deletion Protection)
+                </p>
+                <p className="text-[var(--muted-foreground)] leading-relaxed">
+                  সদস্য, কালেকশন, খরচ, লোন বা অন্যান্য রেকর্ড মুছে ফেললে তা প্রথমে এই রিসাইকেল বিনে সাময়িকভাবে সুরক্ষিত থাকে। আপনি প্রয়োজনে যেকোনো তথ্য এক ক্লিকে <strong>Restore (পুনরুদ্ধার)</strong> করতে পারবেন। আর যদি নিশ্চিত হন যে তথ্যটি কখনোই লাগবে না, তবে <strong>Permanent Delete (স্থায়ী ডিলিট)</strong> করলে তা ডাটাবেস থেকে চিরতরে মুছে যাবে।
+                </p>
+              </div>
+            </div>
+
+            {/* Trash Notification Alert */}
+            {trashMessage && (
+              <div className={`p-4 rounded-2xl text-xs flex items-center justify-between animate-fade-in ${
+                trashMessage.type === 'success'
+                  ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300'
+                  : 'bg-rose-500/10 border border-rose-500/20 text-rose-300'
+              }`}>
+                <div className="flex items-center space-x-2">
+                  {trashMessage.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> : <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />}
+                  <span>{trashMessage.text}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTrashMessage(null)}
+                  className="p-1 hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Filter and Search Bar */}
+            <div className="glass-panel p-4 rounded-2xl border border-[var(--border)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+              {/* Type Filter Buttons */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {[
+                  { key: 'all', label: `সব (${trash.length})` },
+                  { key: 'member', label: `সদস্য (${trash.filter(t => t.entityType === 'member').length})` },
+                  { key: 'collection', label: `কালেকশন (${trash.filter(t => t.entityType === 'collection').length})` },
+                  { key: 'expense', label: `খরচ (${trash.filter(t => t.entityType === 'expense').length})` },
+                  { key: 'investment', label: `বিনিয়োগ (${trash.filter(t => t.entityType === 'investment').length})` },
+                  { key: 'loan', label: `লোন (${trash.filter(t => t.entityType === 'loan').length})` },
+                  { key: 'due_demand', label: `বকেয়া (${trash.filter(t => t.entityType === 'due_demand').length})` },
+                  { key: 'document', label: `ডকুমেন্ট (${trash.filter(t => t.entityType === 'document').length})` },
+                ].map((f) => (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => setTrashFilter(f.key)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      trashFilter === f.key
+                        ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
+                        : 'bg-[var(--secondary)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search & Empty Trash Button */}
+              <div className="flex items-center space-x-2">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" />
+                  <input
+                    type="text"
+                    placeholder="খুঁজুন..."
+                    value={trashSearch}
+                    onChange={(e) => setTrashSearch(e.target.value)}
+                    className="pl-8 pr-3 py-1.5 text-xs bg-[var(--background)] border border-[var(--border)] rounded-xl text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:border-rose-500 w-44"
+                  />
+                </div>
+
+                {trash.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleEmptyTrash}
+                    disabled={actionLoading === 'empty-trash'}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition-all cursor-pointer inline-flex items-center space-x-1.5 shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{actionLoading === 'empty-trash' ? 'খালি হচ্ছে...' : 'রিসাইকেল বিন খালি করুন'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Trash Items List */}
+            {filteredTrash.length === 0 ? (
+              <div className="glass-panel p-12 rounded-3xl border border-[var(--border)] text-center space-y-3">
+                <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-400 mx-auto flex items-center justify-center">
+                  <CheckCircle2 className="w-7 h-7" />
+                </div>
+                <h4 className="text-base font-bold text-[var(--foreground)]">রিসাইকেল বিন সম্পূর্ণ খালি</h4>
+                <p className="text-xs text-[var(--muted-foreground)] max-w-sm mx-auto">
+                  {trashSearch || trashFilter !== 'all'
+                    ? 'ফিল্টারের সাথে মিলে এমন কোনো ডিলিট হওয়া রেকর্ড পাওয়া যায়নি।'
+                    : 'বর্তমানে কোনো ডিলিট হওয়া তথ্য নেই। যখন কোনো রেকর্ড ডিলিট করা হবে, তা এখানে সাময়িকভাবে সংরক্ষিত থাকবে।'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredTrash.map((item) => {
+                  const typeColors: Record<string, { bg: string; text: string; label: string }> = {
+                    member: { bg: 'bg-blue-500/10 border-blue-500/20', text: 'text-blue-400', label: '👤 সদস্য' },
+                    collection: { bg: 'bg-emerald-500/10 border-emerald-500/20', text: 'text-emerald-400', label: '💵 কালেকশন' },
+                    expense: { bg: 'bg-rose-500/10 border-rose-500/20', text: 'text-rose-400', label: '💸 খরচ' },
+                    investment: { bg: 'bg-purple-500/10 border-purple-500/20', text: 'text-purple-400', label: '📈 বিনিয়োগ' },
+                    loan: { bg: 'bg-amber-500/10 border-amber-500/20', text: 'text-amber-400', label: '🤝 লোন' },
+                    due_demand: { bg: 'bg-orange-500/10 border-orange-500/20', text: 'text-orange-400', label: '📑 বকেয়া' },
+                    document: { bg: 'bg-cyan-500/10 border-cyan-500/20', text: 'text-cyan-400', label: '📄 ডকুমেন্ট' },
+                  };
+                  const badge = typeColors[item.entityType] || { bg: 'bg-zinc-500/10 border-zinc-500/20', text: 'text-zinc-400', label: item.entityType };
+                  const isProcessing = actionLoading === item.id;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="glass-panel p-4 rounded-2xl border border-[var(--border)] hover:border-zinc-700/60 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                    >
+                      {/* Left Details */}
+                      <div className="flex items-start space-x-3 min-w-0">
+                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border shrink-0 ${badge.bg} ${badge.text}`}>
+                          {badge.label}
+                        </span>
+                        <div className="min-w-0 space-y-0.5">
+                          <p className="text-sm font-bold text-[var(--foreground)] truncate">
+                            {item.title}
+                          </p>
+                          {item.subtitle && (
+                            <p className="text-xs text-[var(--muted-foreground)] truncate">
+                              {item.subtitle}
+                            </p>
+                          )}
+                          <p className="text-[10px] text-[var(--muted-foreground)]/70 flex items-center space-x-2 pt-0.5">
+                            <Clock className="w-3 h-3 inline" />
+                            <span>ডিলিটের তারিখ: {new Date(item.deletedAt).toLocaleString('bn-BD')}</span>
+                            {item.deletedBy && <span>• ডিলিট করেছেন: {item.deletedBy}</span>}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Right Amount & Actions */}
+                      <div className="flex items-center space-x-3 shrink-0 self-end md:self-center">
+                        {item.amount !== undefined && (
+                          <div className="text-right mr-2">
+                            <span className="text-[10px] text-[var(--muted-foreground)] block">পরিমাণ</span>
+                            <span className="text-sm font-black text-[var(--foreground)]">
+                              ৳{item.amount.toLocaleString()}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Restore Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleRestore(item.id)}
+                          disabled={isProcessing}
+                          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 transition-all cursor-pointer inline-flex items-center space-x-1.5 disabled:opacity-50"
+                        >
+                          <RotateCcw className={`w-3.5 h-3.5 ${isProcessing ? 'animate-spin' : ''}`} />
+                          <span>পুনরুদ্ধার (Restore)</span>
+                        </button>
+
+                        {/* Permanent Delete Button */}
+                        <button
+                          type="button"
+                          onClick={() => handlePermanentDelete(item.id, item.title)}
+                          disabled={isProcessing}
+                          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition-all cursor-pointer inline-flex items-center space-x-1.5 disabled:opacity-50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>স্থায়ী ডিলিট</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
     </DashboardLayout>

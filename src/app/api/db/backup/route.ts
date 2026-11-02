@@ -11,11 +11,14 @@ const COLLECTIONS_TO_BACKUP = [
   'transactions',
   'loans',
   'due_demands',
+  'fine_waivers',
   'users',
   'notifications',
   'auditLogs',
   'documents',
-  'permissions'
+  'permissions',
+  'push_subscriptions',
+  'trash'
 ];
 
 // GET: Export entire database snapshot

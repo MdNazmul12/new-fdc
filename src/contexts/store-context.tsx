@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Member, Collection, Investment, Expense, Transaction, AuditLog, SystemNotification, DocumentFile, UserRole, User, DueDemand, Loan, LoanRepayment, LoanStatus, FineWaiver } from '../types';
+import { Member, Collection, Investment, Expense, Transaction, AuditLog, SystemNotification, DocumentFile, UserRole, User, DueDemand, Loan, LoanRepayment, LoanStatus, FineWaiver, TrashItem, TrashEntityType } from '../types';
 
 interface StoreContextProps {
   members: Member[];
@@ -16,17 +16,23 @@ interface StoreContextProps {
   dueDemands: DueDemand[];
   loans: Loan[];
   fineWaivers: FineWaiver[];
+  trash: TrashItem[];
+
+  // Trash & Two-Tier Deletion
+  restoreFromTrash: (trashId: string) => Promise<boolean>;
+  permanentDeleteFromTrash: (trashId: string) => Promise<boolean>;
+  emptyTrash: () => Promise<boolean>;
 
   // Loan actions
   addLoan: (loanData: Omit<Loan, 'id' | 'loanNo' | 'totalPayable' | 'totalRepaid' | 'status' | 'repayments' | 'createdAt'>) => Promise<Loan>;
   recordLoanRepayment: (loanId: string, repayment: Omit<LoanRepayment, 'id'>) => Promise<boolean>;
   updateLoanStatus: (loanId: string, status: LoanStatus, notes?: string) => Promise<boolean>;
-  deleteLoan: (loanId: string) => Promise<boolean>;
+  deleteLoan: (loanId: string, permanent?: boolean) => Promise<boolean>;
   sendLoanReminder: (loanId: string) => Promise<boolean>;
   
   // Due actions
   addDueDemand: (demand: Omit<DueDemand, 'id' | 'createdAt'>) => Promise<DueDemand>;
-  deleteDueDemand: (id: string) => Promise<void>;
+  deleteDueDemand: (id: string, permanent?: boolean) => Promise<void>;
   waiveFine: (memberId: string, month: string, reason?: string) => Promise<boolean>;
   removeFineWaiver: (memberId: string, month: string) => Promise<boolean>;
   importPreviousDues: (dues: { memberId?: string; memberName?: string; phone?: string; month: string; amount?: number; lateFine?: number; notes?: string }[]) => Promise<number>;
@@ -36,14 +42,14 @@ interface StoreContextProps {
   importMembers: (members: Omit<Member, 'id'>[]) => Promise<Member[]>;
   updateMember: (id: string, member: Partial<Member>) => void;
   updateMemberPhoto: (id: string, photoUrl: string) => void;
-  deleteMember: (id: string) => void;
+  deleteMember: (id: string, permanent?: boolean) => void;
   
   // Collection actions
   addCollection: (collection: Omit<Collection, 'id' | 'receiptNo' | 'date' | 'status'> & { date?: string; status?: 'paid' | 'pending'; transactionRef?: string; notes?: string; isPartial?: boolean; isAdvance?: boolean; expectedAmount?: number; remainingDue?: number }) => Collection;
   approveCollection: (id: string, approvedBy?: string) => Promise<boolean>;
   rejectCollection: (id: string, reason?: string) => Promise<boolean>;
   importCollections: (collections: Omit<Collection, 'id' | 'receiptNo' | 'date'>[]) => Promise<Collection[]>;
-  deleteCollection: (id: string) => void;
+  deleteCollection: (id: string, permanent?: boolean) => void;
   
   // Investment actions
   addInvestment: (investment: Omit<Investment, 'id' | 'status' | 'interestReceived'>) => Investment;
@@ -53,7 +59,7 @@ interface StoreContextProps {
   
   // Expense actions
   addExpense: (expense: Omit<Expense, 'id' | 'date'>) => Expense;
-  deleteExpense: (id: string) => void;
+  deleteExpense: (id: string, permanent?: boolean) => void;
   
   // Fund Transfer
   transferFund: (amount: number, from: 'cash' | 'bank', to: 'cash' | 'bank', description: string, performedBy: string) => void;
@@ -67,7 +73,7 @@ interface StoreContextProps {
   
   // Document actions
   addDocument: (doc: Omit<DocumentFile, 'id' | 'uploadDate'>) => DocumentFile;
-  deleteDocument: (id: string) => void;
+  deleteDocument: (id: string, permanent?: boolean) => void;
   
   // User operations
   addUser: (user: Omit<User, 'id'>) => User;
@@ -75,7 +81,7 @@ interface StoreContextProps {
   resetUserPassword: (id: string, newPassword?: string) => void;
   updateUser: (id: string, updatedFields: Partial<User>) => void;
   deleteUser: (id: string) => void;
-  deleteInvestment: (id: string) => void;
+  deleteInvestment: (id: string, permanent?: boolean) => void;
   deleteTransaction: (id: string) => void;
   clearAllTransactions: () => Promise<void>;
   
@@ -260,12 +266,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [dueDemands, setDueDemands] = useState<DueDemand[]>(initialDueDemands);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [fineWaivers, setFineWaivers] = useState<FineWaiver[]>([]);
+  const [trash, setTrash] = useState<TrashItem[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   // Initialize from MongoDB (with LocalStorage fallback)
   useEffect(() => {
     const initDb = async () => {
-      const collectionsToFetch = ['members', 'collections', 'investments', 'expenses', 'transactions', 'auditLogs', 'notifications', 'documents', 'users', 'permissions', 'due_demands', 'loans', 'fine_waivers'];
+      // Proactively ensure all collections exist in MongoDB
+      fetch('/api/mongodb').catch(() => {});
+
+      const collectionsToFetch = ['members', 'collections', 'investments', 'expenses', 'transactions', 'auditLogs', 'notifications', 'documents', 'users', 'permissions', 'due_demands', 'loans', 'fine_waivers', 'trash'];
 
       try {
         const dbStates: Record<string, any[]> = {};
@@ -334,6 +344,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setDocuments(dbStates['documents'] || []);
         setLoans(dbStates['loans'] || []);
         setFineWaivers(dbStates['fine_waivers'] || []);
+        setTrash(dbStates['trash'] || []);
 
         const loadedDueDemands = dbStates['due_demands'] || [];
         setDueDemands(loadedDueDemands.length > 0 ? loadedDueDemands : initialDueDemands);
@@ -367,6 +378,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setDueDemands(loadLocal('due_demands', initialDueDemands));
         setLoans(loadLocal('loans', []));
         setFineWaivers(loadLocal('fine_waivers', []));
+        setTrash(loadLocal('trash', []));
       } finally {
         setLoaded(true);
       }
@@ -653,12 +665,33 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const deleteMember = (id: string) => {
-    const memberName = members.find(m => m.id === id)?.name || id;
+  const deleteMember = (id: string, permanent: boolean = false) => {
+    const member = members.find(m => m.id === id);
+    if (!member) return;
     const updated = members.filter(m => m.id !== id);
     setMembers(updated);
-    syncToDbAndLocal('members', updated, 'delete', { id });
-    addAuditLog(`Deleted Member Profile: ${memberName}`, 'super_admin', 'System Log');
+
+    if (permanent) {
+      syncToDbAndLocal('members', updated, 'delete', { id });
+      addAuditLog(`Permanently Deleted Member Profile: ${member.name}`, 'super_admin', 'System Log');
+    } else {
+      syncToDbAndLocal('members', updated, 'delete', { id });
+      const trashItem: TrashItem = {
+        id: `trash-${Date.now()}-${id}`,
+        originalId: id,
+        entityType: 'member',
+        title: member.name,
+        subtitle: `${member.id} • ${member.phone}`,
+        amount: member.monthlyFee,
+        data: member,
+        deletedAt: new Date().toISOString(),
+        deletedBy: 'Admin'
+      };
+      const updatedTrash = [trashItem, ...trash];
+      setTrash(updatedTrash);
+      syncToDbAndLocal('trash', updatedTrash, 'create', trashItem);
+      addAuditLog(`Moved Member Profile to Trash: ${member.name}`, 'super_admin', 'System Log');
+    }
   };
 
   // ---------------- COLLECTIONS ACTIONS ----------------
@@ -840,24 +873,43 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return newCollections;
   };
 
-  const deleteCollection = (id: string) => {
+  const deleteCollection = (id: string, permanent: boolean = false) => {
     const col = collections.find(c => c.id === id);
     if (!col) return;
     const updated = collections.filter(c => c.id !== id);
     setCollections(updated);
-    syncToDbAndLocal('collections', updated, 'delete', { id });
 
     // Record Reversal Transaction
     recordTransaction(
       'debit',
       col.paymentType === 'cash' ? 'cash' : 'bank',
-      col.amount + col.lateFine,
+      col.amount + (col.lateFine || 0),
       'Other',
       id,
       `REVERSAL: Deleted collection ID ${id} for ${col.memberName}`
     );
 
-    addAuditLog(`Reversed Collection Receipt: ${col.receiptNo}`, 'treasurer', 'System Log');
+    if (permanent) {
+      syncToDbAndLocal('collections', updated, 'delete', { id });
+      addAuditLog(`Permanently Deleted Collection Receipt: ${col.receiptNo}`, 'treasurer', 'System Log');
+    } else {
+      syncToDbAndLocal('collections', updated, 'delete', { id });
+      const trashItem: TrashItem = {
+        id: `trash-${Date.now()}-${id}`,
+        originalId: id,
+        entityType: 'collection',
+        title: `Receipt ${col.receiptNo} (${col.memberName})`,
+        subtitle: `${col.month} • ${col.paymentType.toUpperCase()}`,
+        amount: col.amount + (col.lateFine || 0),
+        data: col,
+        deletedAt: new Date().toISOString(),
+        deletedBy: 'Treasurer'
+      };
+      const updatedTrash = [trashItem, ...trash];
+      setTrash(updatedTrash);
+      syncToDbAndLocal('trash', updatedTrash, 'create', trashItem);
+      addAuditLog(`Moved Collection to Trash: ${col.receiptNo}`, 'treasurer', 'System Log');
+    }
   };
 
   // ---------------- DUE DEMANDS ACTIONS ----------------
@@ -884,13 +936,32 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return newDemand;
   };
 
-  const deleteDueDemand = async (id: string): Promise<void> => {
+  const deleteDueDemand = async (id: string, permanent: boolean = false): Promise<void> => {
     const demandToDelete = dueDemands.find(d => d.id === id);
+    if (!demandToDelete) return;
     const updated = dueDemands.filter(d => d.id !== id);
     setDueDemands(updated);
-    await syncToDbAndLocal('due_demands', updated, 'delete', { id });
-    if (demandToDelete) {
-      addAuditLog(`Deleted Due Demand for ${demandToDelete.month}`, 'super_admin', 'System Log');
+
+    if (permanent) {
+      await syncToDbAndLocal('due_demands', updated, 'delete', { id });
+      addAuditLog(`Permanently Deleted Due Demand for ${demandToDelete.month}`, 'super_admin', 'System Log');
+    } else {
+      await syncToDbAndLocal('due_demands', updated, 'delete', { id });
+      const trashItem: TrashItem = {
+        id: `trash-${Date.now()}-${id}`,
+        originalId: id,
+        entityType: 'due_demand',
+        title: `Due Demand: ${demandToDelete.month}`,
+        subtitle: demandToDelete.title,
+        amount: demandToDelete.fixedAmount,
+        data: demandToDelete,
+        deletedAt: new Date().toISOString(),
+        deletedBy: 'Admin'
+      };
+      const updatedTrash = [trashItem, ...trash];
+      setTrash(updatedTrash);
+      await syncToDbAndLocal('trash', updatedTrash, 'create', trashItem);
+      addAuditLog(`Moved Due Demand to Trash: ${demandToDelete.month}`, 'super_admin', 'System Log');
     }
   };
 
@@ -1234,12 +1305,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return newExp;
   };
 
-  const deleteExpense = (id: string) => {
+  const deleteExpense = (id: string, permanent: boolean = false) => {
     const exp = expenses.find(e => e.id === id);
     if (!exp) return;
     const updated = expenses.filter(e => e.id !== id);
     setExpenses(updated);
-    syncToDbAndLocal('expenses', updated, 'delete', { id });
 
     // Reverse Transaction
     recordTransaction(
@@ -1251,7 +1321,27 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       `REVERSAL: Deleted expense ID ${id} for ${exp.category}`
     );
 
-    addAuditLog(`Deleted Expense Log: ${exp.category} - ${exp.amount} TK`, 'treasurer', 'System Log');
+    if (permanent) {
+      syncToDbAndLocal('expenses', updated, 'delete', { id });
+      addAuditLog(`Permanently Deleted Expense: ${exp.category} - ${exp.amount} TK`, 'treasurer', 'System Log');
+    } else {
+      syncToDbAndLocal('expenses', updated, 'delete', { id });
+      const trashItem: TrashItem = {
+        id: `trash-${Date.now()}-${id}`,
+        originalId: id,
+        entityType: 'expense',
+        title: `${exp.category} — ${exp.description}`,
+        subtitle: `${exp.date} • Cash`,
+        amount: exp.amount,
+        data: exp,
+        deletedAt: new Date().toISOString(),
+        deletedBy: 'Treasurer'
+      };
+      const updatedTrash = [trashItem, ...trash];
+      setTrash(updatedTrash);
+      syncToDbAndLocal('trash', updatedTrash, 'create', trashItem);
+      addAuditLog(`Moved Expense to Trash: ${exp.category} - ${exp.amount} TK`, 'treasurer', 'System Log');
+    }
   };
 
   // ---------------- FUND TRANSFERS ----------------
@@ -1420,13 +1510,31 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return newDoc;
   };
 
-  const deleteDocument = (id: string) => {
+  const deleteDocument = (id: string, permanent: boolean = false) => {
     const doc = documents.find(d => d.id === id);
+    if (!doc) return;
     const updated = documents.filter(d => d.id !== id);
     setDocuments(updated);
-    syncToDbAndLocal('documents', updated, 'delete', { id });
-    if (doc) {
-      addAuditLog(`Deleted Document: ${doc.name}`, 'treasurer', 'System Log');
+
+    if (permanent) {
+      syncToDbAndLocal('documents', updated, 'delete', { id });
+      addAuditLog(`Permanently Deleted Document: ${doc.name}`, 'super_admin', 'Admin');
+    } else {
+      syncToDbAndLocal('documents', updated, 'delete', { id });
+      const trashItem: TrashItem = {
+        id: `trash-${Date.now()}-${id}`,
+        originalId: id,
+        entityType: 'document',
+        title: doc.name,
+        subtitle: `${doc.size} • ${doc.category}`,
+        data: doc,
+        deletedAt: new Date().toISOString(),
+        deletedBy: 'Admin'
+      };
+      const updatedTrash = [trashItem, ...trash];
+      setTrash(updatedTrash);
+      syncToDbAndLocal('trash', updatedTrash, 'create', trashItem);
+      addAuditLog(`Moved Document to Trash: ${doc.name}`, 'treasurer', 'System Log');
     }
   };
 
@@ -1509,12 +1617,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     addAuditLog(`Deleted System User: ${matched.email}`, 'super_admin', 'System Log');
   };
 
-  const deleteInvestment = (id: string) => {
+  const deleteInvestment = (id: string, permanent: boolean = false) => {
     const inv = investments.find(i => i.id === id);
     if (!inv) return;
     const updated = investments.filter(i => i.id !== id);
     setInvestments(updated);
-    syncToDbAndLocal('investments', updated, 'delete', { id });
     
     // Reverse investment ledger deposit entry by crediting Bank
     recordTransaction(
@@ -1525,7 +1632,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       id,
       `REVERSAL: Deleted investment portfolio ID ${id} with ${inv.provider}`
     );
-    addAuditLog(`Deleted Investment Portfolio: ${inv.type} (${inv.provider})`, 'treasurer', 'System Log');
+
+    if (permanent) {
+      syncToDbAndLocal('investments', updated, 'delete', { id });
+      addAuditLog(`Permanently Deleted Investment Portfolio: ${inv.type} (${inv.provider})`, 'treasurer', 'System Log');
+    } else {
+      syncToDbAndLocal('investments', updated, 'delete', { id });
+      const trashItem: TrashItem = {
+        id: `trash-${Date.now()}-${id}`,
+        originalId: id,
+        entityType: 'investment',
+        title: `${inv.type} — ${inv.provider}`,
+        subtitle: `Rate: ${inv.interestRate}% • Start: ${inv.startDate}`,
+        amount: inv.principalAmount,
+        data: inv,
+        deletedAt: new Date().toISOString(),
+        deletedBy: 'Treasurer'
+      };
+      const updatedTrash = [trashItem, ...trash];
+      setTrash(updatedTrash);
+      syncToDbAndLocal('trash', updatedTrash, 'create', trashItem);
+      addAuditLog(`Moved Investment to Trash: ${inv.type} (${inv.provider})`, 'treasurer', 'System Log');
+    }
   };
 
   const deleteTransaction = (id: string) => {
@@ -1675,16 +1803,182 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return true;
   };
 
-  const deleteLoan = async (loanId: string): Promise<boolean> => {
+  const deleteLoan = async (loanId: string, permanent: boolean = false): Promise<boolean> => {
     const loan = loans.find(l => l.id === loanId);
     if (!loan) return false;
 
     const updated = loans.filter(l => l.id !== loanId);
     setLoans(updated);
-    syncToDbAndLocal('loans', updated, 'delete', { id: loanId });
 
-    addAuditLog(`Deleted Loan Record: ${loan.loanNo} (${loan.memberName})`, 'super_admin', 'System Log');
+    if (permanent) {
+      syncToDbAndLocal('loans', updated, 'delete', { id: loanId });
+      addAuditLog(`Permanently Deleted Loan Record: ${loan.loanNo} (${loan.memberName})`, 'super_admin', 'Admin');
+    } else {
+      syncToDbAndLocal('loans', updated, 'delete', { id: loanId });
+      const trashItem: TrashItem = {
+        id: `trash-${Date.now()}-${loanId}`,
+        originalId: loanId,
+        entityType: 'loan',
+        title: `Loan ${loan.loanNo} — ${loan.memberName}`,
+        subtitle: `Amount: Tk ${loan.principalAmount} • Due: ${loan.dueDate}`,
+        amount: loan.principalAmount,
+        data: loan,
+        deletedAt: new Date().toISOString(),
+        deletedBy: 'Admin'
+      };
+      const updatedTrash = [trashItem, ...trash];
+      setTrash(updatedTrash);
+      syncToDbAndLocal('trash', updatedTrash, 'create', trashItem);
+      addAuditLog(`Moved Loan to Trash: ${loan.loanNo} (${loan.memberName})`, 'super_admin', 'Admin');
+    }
     return true;
+  };
+
+  // ---------------- TRASH & RECYCLE BIN OPERATIONS ----------------
+  const restoreFromTrash = async (trashId: string): Promise<boolean> => {
+    const item = trash.find(t => t.id === trashId);
+    if (!item) return false;
+
+    try {
+      switch (item.entityType) {
+        case 'member': {
+          const m = item.data as Member;
+          const updated = [...members, m];
+          setMembers(updated);
+          syncToDbAndLocal('members', updated, 'create', m);
+          break;
+        }
+        case 'collection': {
+          const c = item.data as Collection;
+          const updated = [...collections, c];
+          setCollections(updated);
+          syncToDbAndLocal('collections', updated, 'create', c);
+          recordTransaction(
+            'credit',
+            c.paymentType === 'cash' ? 'cash' : 'bank',
+            c.amount + (c.lateFine || 0),
+            'Collection',
+            c.id,
+            `RESTORE: Collection from ${c.memberName}`
+          );
+          break;
+        }
+        case 'expense': {
+          const e = item.data as Expense;
+          const updated = [...expenses, e];
+          setExpenses(updated);
+          syncToDbAndLocal('expenses', updated, 'create', e);
+          recordTransaction(
+            'debit',
+            'cash',
+            e.amount,
+            'Expense',
+            e.id,
+            `RESTORE: Expense for ${e.category}`
+          );
+          break;
+        }
+        case 'investment': {
+          const inv = item.data as Investment;
+          const updated = [...investments, inv];
+          setInvestments(updated);
+          syncToDbAndLocal('investments', updated, 'create', inv);
+          break;
+        }
+        case 'loan': {
+          const l = item.data as Loan;
+          const updated = [...loans, l];
+          setLoans(updated);
+          syncToDbAndLocal('loans', updated, 'create', l);
+          break;
+        }
+        case 'due_demand': {
+          const d = item.data as DueDemand;
+          const updated = [...dueDemands, d];
+          setDueDemands(updated);
+          syncToDbAndLocal('due_demands', updated, 'create', d);
+          break;
+        }
+        case 'document': {
+          const doc = item.data as DocumentFile;
+          const updated = [...documents, doc];
+          setDocuments(updated);
+          syncToDbAndLocal('documents', updated, 'create', doc);
+          break;
+        }
+      }
+
+      // Remove from trash
+      const updatedTrash = trash.filter(t => t.id !== trashId);
+      setTrash(updatedTrash);
+      syncToDbAndLocal('trash', updatedTrash, 'delete', { id: trashId });
+      addAuditLog(`Restored from Trash: ${item.title} (${item.entityType})`, 'super_admin', 'Admin');
+      return true;
+    } catch (err) {
+      console.error('Error restoring from trash:', err);
+      return false;
+    }
+  };
+
+  const permanentDeleteFromTrash = async (trashId: string): Promise<boolean> => {
+    const item = trash.find(t => t.id === trashId);
+    if (!item) return false;
+
+    try {
+      // 1. Remove from local trash state & db
+      const updatedTrash = trash.filter(t => t.id !== trashId);
+      setTrash(updatedTrash);
+      syncToDbAndLocal('trash', updatedTrash, 'delete', { id: trashId });
+
+      // 2. Hard delete original item from its database collection to ensure no trace remains
+      const collectionName =
+        item.entityType === 'member' ? 'members' :
+        item.entityType === 'collection' ? 'collections' :
+        item.entityType === 'expense' ? 'expenses' :
+        item.entityType === 'investment' ? 'investments' :
+        item.entityType === 'loan' ? 'loans' :
+        item.entityType === 'due_demand' ? 'due_demands' : 'documents';
+
+      fetch(`/api/db/${collectionName}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filter: { id: item.originalId } })
+      }).catch(e => console.warn('Permanent hard delete API error:', e));
+
+      addAuditLog(`Permanently Erased from Database: ${item.title} (${item.entityType})`, 'super_admin', 'Admin');
+      return true;
+    } catch (err) {
+      console.error('Error in permanentDeleteFromTrash:', err);
+      return false;
+    }
+  };
+
+  const emptyTrash = async (): Promise<boolean> => {
+    try {
+      for (const item of trash) {
+        const collectionName =
+          item.entityType === 'member' ? 'members' :
+          item.entityType === 'collection' ? 'collections' :
+          item.entityType === 'expense' ? 'expenses' :
+          item.entityType === 'investment' ? 'investments' :
+          item.entityType === 'loan' ? 'loans' :
+          item.entityType === 'due_demand' ? 'due_demands' : 'documents';
+
+        fetch(`/api/db/${collectionName}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filter: { id: item.originalId } })
+        }).catch(() => {});
+      }
+
+      setTrash([]);
+      syncToDbAndLocal('trash', [], 'delete', { filter: {} });
+      addAuditLog('Emptied Recycle Bin (All items permanently deleted from DB)', 'super_admin', 'Admin');
+      return true;
+    } catch (err) {
+      console.error('Error emptying trash:', err);
+      return false;
+    }
   };
 
   const sendLoanReminder = async (loanId: string): Promise<boolean> => {
@@ -1798,6 +2092,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         dueDemands,
         loans,
         fineWaivers,
+        trash,
+        restoreFromTrash,
+        permanentDeleteFromTrash,
+        emptyTrash,
         addLoan,
         recordLoanRepayment,
         updateLoanStatus,
