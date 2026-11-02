@@ -69,6 +69,8 @@ export default function MemberProfilePage() {
   // Find matching member profile based on user details — most specific first
   const memberProfile = React.useMemo(() => {
     if (!user) return null;
+    // System roles do NOT have member profiles — only 'member' role users do
+    if (['super_admin', 'president', 'treasurer', 'collector', 'auditor'].includes(user.role)) return null;
     // 1. Exact memberId link (set during login)
     if (user.memberId) {
       const found = members.find(m => m.id === user.memberId);
@@ -96,20 +98,8 @@ export default function MemberProfilePage() {
         if (byPhone) return byPhone;
       }
     }
-    // 6. Synthesize profile directly from logged-in user so the right name ALWAYS shows
-    return {
-      id: user.memberId || user.id.replace('u-', 'm-') || `m-${user.id}`,
-      name: user.name,
-      email: user.email,
-      phone: user.phone || '',
-      joinDate: new Date().toISOString().split('T')[0],
-      status: 'active' as const,
-      monthlyFee: 1000,
-      nomineeName: '',
-      nomineeRelation: '',
-      nomineePhone: '',
-      photoUrl: user.avatar
-    };
+    // No real member record found — return null (system roles already guarded above)
+    return null;
   }, [user, members]);
   
   // States for print dialog

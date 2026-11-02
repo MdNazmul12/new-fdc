@@ -77,6 +77,8 @@ export default function Dashboard() {
   // Find linked member record for regular member role
   const myMember = useMemo(() => {
     if (!user) return null;
+    // System roles do NOT have member profiles — only 'member' role users do
+    if (['super_admin', 'president', 'treasurer', 'collector', 'auditor'].includes(user.role)) return null;
     // 1. Exact memberId link (stored at login)
     if (user.memberId) {
       const found = members.find(m => m.id === user.memberId);
@@ -104,19 +106,8 @@ export default function Dashboard() {
         if (byPhone) return byPhone;
       }
     }
-    // 6. Synthesize from logged-in user so member dashboard always has the current user's profile
-    return {
-      id: user.memberId || user.id.replace('u-', 'm-') || `m-${user.id}`,
-      name: user.name,
-      email: user.email,
-      phone: user.phone || '',
-      status: 'active' as const,
-      joinDate: new Date().toISOString().split('T')[0],
-      monthlyFee: 1000,
-      nomineeName: '',
-      nomineeRelation: '',
-      nomineePhone: ''
-    };
+    // No real member record found — return null (system roles already guarded above)
+    return null;
   }, [members, user]);
 
   // Member-specific collections (All, Paid, Pending)

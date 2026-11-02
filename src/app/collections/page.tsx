@@ -101,6 +101,8 @@ export default function CollectionsPage() {
   // Resolve logged-in member for member role — most specific first
   const myMember = React.useMemo(() => {
     if (!user) return null;
+    // System roles do NOT have member profiles — only 'member' role users do
+    if (['super_admin', 'president', 'treasurer', 'collector', 'auditor'].includes(user.role)) return null;
     if (user.memberId) {
       const found = members.find(m => m.id === user.memberId);
       if (found) return found;
@@ -123,18 +125,8 @@ export default function CollectionsPage() {
         if (byPhone) return byPhone;
       }
     }
-    return {
-      id: user.memberId || user.id.replace('u-', 'm-') || `m-${user.id}`,
-      name: user.name,
-      email: user.email,
-      phone: user.phone || '',
-      status: 'active' as const,
-      joinDate: new Date().toISOString().split('T')[0],
-      monthlyFee: 1000,
-      nomineeName: '',
-      nomineeRelation: '',
-      nomineePhone: ''
-    };
+    // No real member record found — return null (system roles already guarded above)
+    return null;
   }, [members, user]);
 
   React.useEffect(() => {
