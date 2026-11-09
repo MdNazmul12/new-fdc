@@ -34,7 +34,7 @@ export interface Collection {
   amount: number;
   month: string; // Format: "YYYY-MM"
   date: string; // Format: "YYYY-MM-DD"
-  paymentType: 'cash' | 'bank' | 'bkash' | 'nagad';
+  paymentType: 'cash' | 'bank' | 'bkash' | 'nagad' | 'rocket';
   lateFine: number;
   receiptNo: string;
   status: 'paid' | 'due' | 'pending' | 'rejected';

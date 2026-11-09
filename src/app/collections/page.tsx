@@ -55,7 +55,7 @@ export default function CollectionsPage() {
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [targetMonth, setTargetMonth] = useState('2026-07');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
-  const [paymentType, setPaymentType] = useState<'cash' | 'bank' | 'bkash' | 'nagad'>('cash');
+  const [paymentType, setPaymentType] = useState<'cash' | 'bank' | 'bkash' | 'nagad' | 'rocket'>('cash');
   const [amount, setAmount] = useState(1000);
   const [lateFine, setLateFine] = useState(0);
   const [autoFineEnabled, setAutoFineEnabled] = useState(true);
@@ -810,6 +810,7 @@ export default function CollectionsPage() {
                     {[
                       { key: 'bkash', label: 'bKash' },
                       { key: 'nagad', label: 'Nagad' },
+                      { key: 'rocket', label: 'Rocket (DBBL)' },
                       { key: 'bank', label: 'Bank' },
                       { key: 'cash', label: 'Cash' }
                     ].map((item) => (
@@ -1083,6 +1084,7 @@ export default function CollectionsPage() {
                   <option value="bank">Bank Book</option>
                   <option value="bkash">bKash</option>
                   <option value="nagad">Nagad</option>
+                  <option value="rocket">Rocket (DBBL)</option>
                 </select>
 
               </div>
