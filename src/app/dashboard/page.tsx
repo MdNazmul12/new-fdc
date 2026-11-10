@@ -371,6 +371,56 @@ export default function Dashboard() {
     return list.slice(0, 4);
   }, [role, myUnpaidDuesList, myTotalDueWithFines, myPendingCollections, myMember, user, loans, notifications, collections, stats.dueCollection]);
 
+  // All Active Members with Outstanding Dues (for Admin Dashboard Overview)
+  const membersWithDues = useMemo(() => {
+    if (!['super_admin', 'president', 'treasurer', 'collector', 'auditor'].includes(role)) {
+      return [];
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const activeList = members.filter(m => m.status === 'active');
+
+    return activeList.map(member => {
+      const unpaidMonths: { month: string; baseFee: number; fine: number; total: number; isOverdue: boolean }[] = [];
+
+      dueDemands.forEach(demand => {
+        const isPaid = collections.some(
+          c => (c.memberId === member.id || (member.name && c.memberName?.toLowerCase() === member.name.toLowerCase())) &&
+               c.month === demand.month &&
+               c.status === 'paid'
+        );
+        const isPending = collections.some(
+          c => (c.memberId === member.id || (member.name && c.memberName?.toLowerCase() === member.name.toLowerCase())) &&
+               c.month === demand.month &&
+               c.status === 'pending'
+        );
+
+        if (!isPaid && !isPending) {
+          const baseFee = demand.amountType === 'fixed'
+            ? (demand.fixedAmount || 1000)
+            : (member.monthlyFee || 1000);
+          const isOverdue = today > demand.dueDate;
+          const fine = isOverdue ? (demand.lateFine || 50) : 0;
+          unpaidMonths.push({
+            month: demand.month,
+            baseFee,
+            fine,
+            total: baseFee + fine,
+            isOverdue
+          });
+        }
+      });
+
+      const totalDue = unpaidMonths.reduce((sum, item) => sum + item.total, 0);
+
+      return {
+        member,
+        unpaidMonths,
+        unpaidCount: unpaidMonths.length,
+        totalDue
+      };
+    }).filter(item => item.unpaidCount > 0).sort((a, b) => b.totalDue - a.totalDue);
+  }, [members, dueDemands, collections, role]);
+
   const getRoleBadge = (r: string) => {
     switch (r) {
       case 'super_admin':
@@ -1149,6 +1199,112 @@ export default function Dashboard() {
                 <p className="text-[10px] text-[var(--muted-foreground)]/70 mt-1">{stats.activeMembers} Active Profiles registered</p>
               </div>
 
+            </div>
+
+            {/* ========================================================================= */}
+            {/* ALL MEMBERS OUTSTANDING DUES OVERVIEW (ADMIN DASHBOARD) */}
+            {/* ========================================================================= */}
+            <div className="glass-panel p-5 rounded-2xl border border-amber-500/20">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-[var(--border)] gap-2">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-400" />
+                    <h3 className="text-sm font-bold text-[var(--foreground)]">All Members Outstanding Dues (সকল সদস্যের বকেয়া বিবরণী)</h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                      {membersWithDues.length} Members Pending
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5">
+                    বর্তমানে মোট ৳{stats.dueCollection.toLocaleString()} চাঁদা বকেয়া রয়েছে। নিচে বকেয়াযুক্ত সদস্যদের তালিকা দেখুন।
+                  </p>
+                </div>
+                <Link 
+                  href="/dues" 
+                  className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-1"
+                >
+                  <span>Manage All in Due Directory</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+
+              {membersWithDues.length === 0 ? (
+                <div className="py-6 text-center text-xs text-emerald-400 flex items-center justify-center space-x-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>All active member subscription dues are cleared! No pending dues.</span>
+                </div>
+              ) : (
+                <div className="overflow-x-auto mt-4">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
+                        <th className="pb-2.5 font-semibold w-10 text-center">SL</th>
+                        <th className="pb-2.5 font-semibold">Member</th>
+                        <th className="pb-2.5 font-semibold">Monthly Fee</th>
+                        <th className="pb-2.5 font-semibold text-center">Unpaid Months</th>
+                        <th className="pb-2.5 font-semibold">Which Months Due</th>
+                        <th className="pb-2.5 font-semibold text-right">Total Due</th>
+                        <th className="pb-2.5 font-semibold text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {membersWithDues.slice(0, 8).map((item, idx) => (
+                        <tr key={item.member.id} className="hover:bg-[var(--secondary)]/40 transition-colors">
+                          <td className="py-2.5 text-center font-mono text-[11px] text-[var(--muted-foreground)] font-bold">
+                            {idx + 1}
+                          </td>
+                          <td className="py-2.5">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-7 h-7 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                                {item.member.name.charAt(0)}
+                              </div>
+                              <div>
+                                <p className="font-bold text-white text-xs">{item.member.name}</p>
+                                <p className="text-[10px] text-[var(--muted-foreground)]/70">{item.member.id} • {item.member.phone}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-2.5 font-medium text-[var(--foreground)]/80">
+                            {(item.member.monthlyFee || 1000).toLocaleString()} TK
+                          </td>
+                          <td className="py-2.5 text-center">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                              {item.unpaidCount} Month{item.unpaidCount > 1 ? 's' : ''}
+                            </span>
+                          </td>
+                          <td className="py-2.5">
+                            <div className="flex items-center flex-wrap gap-1 max-w-xs">
+                              {item.unpaidMonths.map(u => (
+                                <span key={u.month} className="px-1.5 py-0.5 rounded bg-[var(--secondary)] border border-[var(--border)] font-mono text-[10px] text-amber-300">
+                                  {u.month}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="py-2.5 text-right font-black text-amber-400 text-xs">
+                            {item.totalDue.toLocaleString()} TK
+                          </td>
+                          <td className="py-2.5 text-right">
+                            <Link
+                              href="/dues"
+                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition-all inline-flex items-center space-x-1 shadow-sm"
+                            >
+                              <span>Collect / View</span>
+                              <ChevronRight className="w-3 h-3" />
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {membersWithDues.length > 8 && (
+                    <div className="pt-3 text-center border-t border-[var(--border)] mt-2">
+                      <Link href="/dues" className="text-xs text-indigo-400 hover:underline font-semibold">
+                        View all {membersWithDues.length} members with dues in Due Directory →
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* ---------------- CHARTS SECTION ---------------- */}
