@@ -129,21 +129,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initSessionAndPermissions = async () => {
       if (typeof window === 'undefined') return;
 
-      // 1. Load User Session and sync with MongoDB
+      // Helper to merge loaded permissions with DEFAULT_PERMISSIONS so new modules are never lost
+      const mergeWithDefaults = (loaded: any) => {
+        const merged: any = {};
+        (Object.keys(DEFAULT_PERMISSIONS) as UserRole[]).forEach((role) => {
+          const defaultRolePerms = DEFAULT_PERMISSIONS[role] || {};
+          const loadedRolePerms = loaded?.[role] || {};
+          merged[role] = { ...defaultRolePerms, ...loadedRolePerms };
+          // Ensure every module from default is present with at least default actions
+          Object.keys(defaultRolePerms).forEach((mod) => {
+            if (!merged[role][mod] || merged[role][mod].length === 0) {
+              merged[role][mod] = defaultRolePerms[mod];
+            }
+          });
+        });
+        return merged;
+      };
+
+      // 1. Instant Zero-Lag Session Hydration from LocalStorage
       const storedUser = localStorage.getItem('fdc_current_user');
+      const storedPerms = localStorage.getItem('fdc_permissions');
+
       if (storedUser) {
         try {
           const parsedUser: User = JSON.parse(storedUser);
-          setUser(parsedUser); // Temporary optimistic set
+          setUser(parsedUser);
+        } catch (e) {}
+      }
 
-          // Refetch from MongoDB to check active status and updated roles in real-time
+      if (storedPerms) {
+        try {
+          const parsed = JSON.parse(storedPerms);
+          if (parsed) {
+            setPermissions(mergeWithDefaults(parsed));
+          }
+        } catch (e) {}
+      }
+
+      // Release blocking spinner immediately so the UI renders instantly in 0ms!
+      setLoading(false);
+
+      if (storedUser) {
+        try {
+          const parsedUser: User = JSON.parse(storedUser);
+
+          // Background sync with MongoDB in non-blocking manner
           const syncUser = async () => {
             try {
-              // Fetch users list
               const usersRes = await fetch('/api/db/users');
               const usersList: User[] = usersRes.ok ? await usersRes.json() : [];
 
-              // Try to find by id (users table) OR by email (member login stores id = member id)
               let freshUser = usersList.find(u => u.id === parsedUser.id) ||
                               usersList.find(u => u.email?.toLowerCase() === parsedUser.email?.toLowerCase());
 
@@ -155,7 +190,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   return;
                 }
 
-                // For member-role users: ensure memberId is attached accurately (matching ID or Name first, never dummy phone)
                 if (freshUser.role === 'member') {
                   try {
                     const membersRes = await fetch('/api/db/members');
@@ -176,55 +210,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                 setUser(freshUser);
                 localStorage.setItem('fdc_current_user', JSON.stringify(freshUser));
-              } else if (parsedUser.role === 'member') {
-                // parsedUser not found in users table — it's a member-only session
-                // Try to attach memberId from members table
-                try {
-                  const membersRes = await fetch('/api/db/members');
-                  const membersList: any[] = membersRes.ok ? await membersRes.json() : [];
-                  const memberRecord = membersList.find(
-                    (m: any) =>
-                      (parsedUser.memberId && m.id === parsedUser.memberId) ||
-                      (parsedUser.id && (m.id === parsedUser.id || m.id === parsedUser.id.replace('u-', 'm-'))) ||
-                      (parsedUser.name && m.name?.trim().toLowerCase() === parsedUser.name.trim().toLowerCase()) ||
-                      (parsedUser.email && m.email?.trim().toLowerCase() === parsedUser.email.trim().toLowerCase()) ||
-                      (isRealPhone(parsedUser.phone) && m.phone === parsedUser.phone)
-                  );
-                  if (memberRecord) {
-                    const updatedUser = { ...parsedUser, memberId: memberRecord.id, name: parsedUser.name || memberRecord.name };
-                    setUser(updatedUser);
-                    localStorage.setItem('fdc_current_user', JSON.stringify(updatedUser));
-                  }
-                } catch (e) {}
               }
             } catch (err) {
-              console.warn('Could not sync user details with MongoDB on mount:', err);
+              console.warn('Background user sync note:', err);
             }
           };
           syncUser();
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e) {}
       }
 
-      // Helper to merge loaded permissions with DEFAULT_PERMISSIONS so new modules are never lost
-      const mergeWithDefaults = (loaded: any) => {
-        const merged: any = {};
-        (Object.keys(DEFAULT_PERMISSIONS) as UserRole[]).forEach((role) => {
-          const defaultRolePerms = DEFAULT_PERMISSIONS[role] || {};
-          const loadedRolePerms = loaded?.[role] || {};
-          merged[role] = { ...defaultRolePerms, ...loadedRolePerms };
-          // Ensure every module from default is present with at least default actions
-          Object.keys(defaultRolePerms).forEach((mod) => {
-            if (!merged[role][mod] || merged[role][mod].length === 0) {
-              merged[role][mod] = defaultRolePerms[mod];
-            }
-          });
-        });
-        return merged;
-      };
-
-      // 2. Load permissions from MongoDB
+      // 2. Background non-blocking sync for permissions
       try {
         const res = await fetch('/api/db/permissions');
         if (res.ok) {
@@ -237,30 +232,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const merged = mergeWithDefaults(loadedPerms);
             setPermissions(merged);
             localStorage.setItem('fdc_permissions', JSON.stringify(merged));
-            setLoading(false);
-            return;
           }
         }
       } catch (e) {
-        console.warn('Failed to fetch permissions from MongoDB. Using local storage fallback.', e);
+        console.warn('Background permissions sync note:', e);
       }
-
-      // LocalStorage Fallback for permissions
-      const storedPerms = localStorage.getItem('fdc_permissions');
-      if (storedPerms) {
-        try {
-          const parsed = JSON.parse(storedPerms);
-          const merged = mergeWithDefaults(parsed);
-          setPermissions(merged);
-          localStorage.setItem('fdc_permissions', JSON.stringify(merged));
-        } catch (e) {
-          setPermissions(DEFAULT_PERMISSIONS);
-        }
-      } else {
-        setPermissions(DEFAULT_PERMISSIONS);
-        localStorage.setItem('fdc_permissions', JSON.stringify(DEFAULT_PERMISSIONS));
-      }
-      setLoading(false);
     };
 
     initSessionAndPermissions();

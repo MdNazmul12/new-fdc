@@ -382,7 +382,8 @@ export default function AdvancePaymentPage() {
 
   const handleApprove = async (col: Collection) => {
     try {
-      await approveCollection(col.id, user?.name || 'Admin');
+      const approverIdentity = user ? `${user.name} (${user.id || user.role})` : 'Admin';
+      await approveCollection(col.id, approverIdentity);
       setSuccessMsg(`${col.memberName}-এর ${col.month} মাসের অগ্রিম চাঁদা সফলভাবে অনুমোদিত হয়েছে!`);
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (e) {

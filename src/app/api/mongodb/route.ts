@@ -22,7 +22,12 @@ export const REQUIRED_COLLECTIONS = [
   'trash'
 ];
 
-async function ensureCollectionsExist() {
+let collectionsEnsured = false;
+
+async function ensureCollectionsExist(force = false) {
+  if (collectionsEnsured && !force) {
+    return { status: 'already_initialized', collections: REQUIRED_COLLECTIONS, created: [] };
+  }
   const client = await clientPromise;
   const db = client.db();
   
@@ -42,6 +47,8 @@ async function ensureCollectionsExist() {
       }
     }
   }
+
+  collectionsEnsured = true;
 
   return {
     database: db.databaseName,

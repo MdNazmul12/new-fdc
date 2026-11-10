@@ -240,13 +240,31 @@ export default function PrintableReceipt({ collection }: { collection: Collectio
 
           {/* Authorized Officer */}
           <div className="space-y-1">
-            <div className="border-b border-dashed border-zinc-400 w-4/5 mx-auto h-8 flex items-center justify-center">
-              <div className="border border-emerald-600 text-emerald-800 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest rotate-[-3deg]">
-                APPROVED & SEALED
-              </div>
+            <div className="border-b border-dashed border-zinc-400 w-4/5 mx-auto min-h-8 flex flex-col items-center justify-center pb-1">
+              {collection.approvedBy ? (
+                <>
+                  <div className="border border-emerald-600 text-emerald-800 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-50 mb-0.5">
+                    ✓ APPROVED & VERIFIED
+                  </div>
+                  <span className="text-[10px] font-black text-emerald-950 font-mono tracking-tight leading-tight">
+                    {collection.approvedBy}
+                  </span>
+                </>
+              ) : collection.status === 'paid' ? (
+                <div className="border border-emerald-600 text-emerald-800 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest rotate-[-2deg]">
+                  APPROVED & SEALED
+                </div>
+              ) : (
+                <span className="text-[9px] text-amber-600 font-bold italic">Pending Review</span>
+              )}
             </div>
-            <p className="font-semibold text-zinc-800">Authorized Signature</p>
-            <p className="text-[8px] text-zinc-400">কোষাধ্যক্ষ / সভাপতি</p>
+            <p className="font-bold text-zinc-900 text-[10px] leading-tight">
+              {collection.approvedBy ? `Approved By: ${collection.approvedBy}` : 'Authorized Signature'}
+            </p>
+            <p className="text-[8px] text-zinc-500">অনুমোদনকারী কর্মকর্তা (কোষাধ্যক্ষ / সভাপতি)</p>
+            {collection.approvedAt && (
+              <p className="text-[7.5px] text-zinc-400 font-mono">Date: {collection.approvedAt.slice(0, 10)}</p>
+            )}
           </div>
 
         </div>

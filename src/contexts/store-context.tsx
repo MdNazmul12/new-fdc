@@ -269,46 +269,100 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [trash, setTrash] = useState<TrashItem[]>([]);
   const [loaded, setLoaded] = useState(false);
 
-  // Initialize from MongoDB (with LocalStorage fallback)
+  // High-Performance Initialize from MongoDB (with instant LocalStorage hydration)
   useEffect(() => {
-    const initDb = async () => {
-      // Proactively ensure all collections exist in MongoDB
-      fetch('/api/mongodb').catch(() => {});
+    // 1. Instant 0ms Hydration from LocalStorage on initial client mount
+    if (typeof window !== 'undefined') {
+      try {
+        const readLocal = <T,>(key: string): T | null => {
+          const val = localStorage.getItem(`fdc_${key}`);
+          if (!val) return null;
+          try { return JSON.parse(val) as T; } catch (e) { return null; }
+        };
 
+        const cachedMembers = readLocal<Member[]>('members');
+        if (cachedMembers && cachedMembers.length > 0) setMembers(cachedMembers);
+
+        const cachedUsers = readLocal<User[]>('users');
+        if (cachedUsers && cachedUsers.length > 0) setUsers(cachedUsers);
+
+        const cachedCols = readLocal<Collection[]>('collections');
+        if (cachedCols) setCollections(cachedCols);
+
+        const cachedDemands = readLocal<DueDemand[]>('due_demands');
+        if (cachedDemands && cachedDemands.length > 0) setDueDemands(cachedDemands);
+
+        const cachedLoans = readLocal<Loan[]>('loans');
+        if (cachedLoans) setLoans(cachedLoans);
+
+        const cachedExp = readLocal<Expense[]>('expenses');
+        if (cachedExp) setExpenses(cachedExp);
+
+        const cachedInv = readLocal<Investment[]>('investments');
+        if (cachedInv) setInvestments(cachedInv);
+
+        const cachedTx = readLocal<Transaction[]>('transactions');
+        if (cachedTx) setTransactions(cachedTx);
+
+        const cachedNotifs = readLocal<SystemNotification[]>('notifications');
+        if (cachedNotifs) setNotifications(cachedNotifs);
+
+        const cachedTrash = readLocal<TrashItem[]>('trash');
+        if (cachedTrash) setTrash(cachedTrash);
+
+        const cachedWaivers = readLocal<FineWaiver[]>('fine_waivers');
+        if (cachedWaivers) setFineWaivers(cachedWaivers);
+      } catch (e) {
+        console.warn('Local cache hydration note:', e);
+      }
+    }
+
+    const initDb = async () => {
       const collectionsToFetch = ['members', 'collections', 'investments', 'expenses', 'transactions', 'auditLogs', 'notifications', 'documents', 'users', 'permissions', 'due_demands', 'loans', 'fine_waivers', 'trash'];
 
       try {
-        const dbStates: Record<string, any[]> = {};
-        
-        // Fetch all collections in parallel, safely handling each collection independently
-        const fetches = collectionsToFetch.map(async (name) => {
-          try {
-            const res = await fetch(`/api/db/${name}`);
-            if (res.ok) {
-              const data = await res.json();
-              return { name, data: Array.isArray(data) ? data : [] };
-            }
-          } catch (e) {
-            console.warn(`Could not load ${name} from API:`, e);
-          }
-          
-          // Fallback to local storage if API call fails
-          if (typeof window !== 'undefined') {
-            const stored = localStorage.getItem(`fdc_${name}`);
-            if (stored) {
-              try {
-                const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed)) return { name, data: parsed };
-              } catch (e) {}
+        let dbStates: Record<string, any[]> = {};
+
+        // Ultra-Fast Unified Bootstrap Request (1 single HTTP round-trip instead of 14 separate requests)
+        try {
+          const bootRes = await fetch('/api/db/bootstrap');
+          if (bootRes.ok) {
+            const bootData = await bootRes.json();
+            if (bootData && typeof bootData === 'object' && Object.keys(bootData).length > 0) {
+              dbStates = bootData;
             }
           }
-          return { name, data: [] };
-        });
+        } catch (e) {
+          console.warn('Bootstrap fetch fallback to parallel calls:', e);
+        }
 
-        const results = await Promise.all(fetches);
+        // Fallback to parallel fetches only if bootstrap did not return all data
+        if (Object.keys(dbStates).length === 0) {
+          const fetches = collectionsToFetch.map(async (name) => {
+            try {
+              const res = await fetch(`/api/db/${name}`);
+              if (res.ok) {
+                const data = await res.json();
+                return { name, data: Array.isArray(data) ? data : [] };
+              }
+            } catch (e) {}
 
-        for (const { name, data } of results) {
-          dbStates[name] = data;
+            if (typeof window !== 'undefined') {
+              const stored = localStorage.getItem(`fdc_${name}`);
+              if (stored) {
+                try {
+                  const parsed = JSON.parse(stored);
+                  if (Array.isArray(parsed)) return { name, data: parsed };
+                } catch (e) {}
+              }
+            }
+            return { name, data: [] };
+          });
+
+          const results = await Promise.all(fetches);
+          for (const { name, data } of results) {
+            dbStates[name] = data;
+          }
         }
 
         let loadedMembers = dbStates['members'] || [];

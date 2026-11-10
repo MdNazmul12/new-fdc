@@ -431,7 +431,8 @@ export default function CollectionsPage() {
   const handleConfirmApprove = async () => {
     if (!pendingApprovalCol) return;
     setApproving(true);
-    const success = await approveCollection(pendingApprovalCol.id, user?.name || 'Admin');
+    const approverIdentity = user ? `${user.name} (${user.id || user.role})` : 'Admin';
+    const success = await approveCollection(pendingApprovalCol.id, approverIdentity);
     setApproving(false);
     setApprovalModalOpen(false);
     if (success !== false) {
@@ -439,7 +440,7 @@ export default function CollectionsPage() {
       const updatedCol = {
         ...pendingApprovalCol,
         status: 'paid' as const,
-        approvedBy: user?.name || 'Admin',
+        approvedBy: approverIdentity,
       };
       setApprovedCollection(updatedCol);
       setApprovalSuccessOpen(true);
