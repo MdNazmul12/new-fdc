@@ -50,7 +50,7 @@ import {
 } from 'recharts';
 
 export default function Dashboard() {
-  const { stats, transactions, investments, notifications, members, collections, dueDemands } = useStore();
+  const { stats, transactions, investments, notifications, members, collections, dueDemands, loans } = useStore();
   const { user, hasPermission } = useAuth();
   const [mounted, setMounted] = useState(false);
 
@@ -249,7 +249,127 @@ export default function Dashboard() {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5);
 
-  const activeAlerts = notifications.filter(n => !n.read).slice(0, 3);
+  // User-Role Aware Active Alerts & Pending Reminders:
+  // - Regular Member: ONLY sees their own personal reminders & actions
+  // - Admin / Management: sees overall foundation reminders across all members
+  const activeAlerts = useMemo(() => {
+    const list: { id: string; title: string; message: string; link?: string }[] = [];
+
+    if (role === 'member') {
+      // 1. Personal Unpaid Monthly Dues
+      const unpaidDues = myUnpaidDuesList.filter(d => !d.isPending);
+      if (unpaidDues.length > 0) {
+        const earliest = unpaidDues[unpaidDues.length - 1];
+        list.push({
+          id: `member-due-${earliest.demand.month}`,
+          title: `বকেয়া চাঁদা (${earliest.demand.month})`,
+          message: `আপনার ${unpaidDues.length > 1 ? `${unpaidDues.length} টি মাসের মোট` : ''} ৳${myTotalDueWithFines.toLocaleString()} চাঁদা বকেয়া রয়েছে। নির্ধারিত সময়ের মধ্যে পরিশোধ করুন।`,
+          link: '/dashboard'
+        });
+      }
+
+      // 2. Personal Pending Approval Collections
+      if (myPendingCollections.length > 0) {
+        list.push({
+          id: 'member-pending-col',
+          title: 'পেমেন্ট অনুমোদনের অপেক্ষায়',
+          message: `আপনার জমা দেওয়া ${myPendingCollections.length} টি পেমেন্ট (৳${myPendingCollections.reduce((s, c) => s + c.amount, 0).toLocaleString()}) এডমিনের অনুমোদনের জন্য অপেক্ষমান রয়েছে।`,
+          link: '/dashboard'
+        });
+      }
+
+      // 3. Personal Loans due soon (if applicable)
+      const myLoans = loans ? loans.filter(l => 
+        (myMember && l.memberId === myMember.id) ||
+        (user?.memberId && l.memberId === user.memberId) ||
+        (user?.id && (l.memberId === user.id || l.memberId === user.id.replace('u-', 'm-')))
+      ) : [];
+      const myActiveLoans = myLoans.filter(l => l.status === 'active' || l.status === 'overdue');
+      if (myActiveLoans.length > 0) {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        myActiveLoans.forEach(l => {
+          if (l.dueDate && l.dueDate <= todayStr) {
+            list.push({
+              id: `member-loan-overdue-${l.id}`,
+              title: `লোন কিস্তি তাগিদ (${l.loanNo})`,
+              message: `আপনার লোন নং ${l.loanNo}-এর কিস্তি পরিশোধের সময় উত্তীর্ণ হয়েছে (শেষ তারিখ: ${l.dueDate})।`,
+              link: '/loans'
+            });
+          }
+        });
+      }
+
+      // 4. Targeted or Broadcast Notifications for this Member
+      const memberNotifs = notifications.filter(n => {
+        if (n.read) return false;
+        if (n.userId === 'all') return true;
+        if (n.userId && (
+          n.userId === user?.id || 
+          n.userId === user?.id.replace('u-', 'm-') || 
+          (user?.memberId && n.userId === user.memberId) ||
+          (myMember && n.userId === myMember.id)
+        )) return true;
+        return false;
+      });
+
+      memberNotifs.slice(0, 3).forEach(n => {
+        if (!list.some(item => item.id === n.id)) {
+          list.push({ id: n.id, title: n.title, message: n.message, link: n.link });
+        }
+      });
+
+    } else {
+      // ADMIN / MANAGEMENT VIEW (Overall Foundation Reminders across all members)
+      // 1. Overall Pending Payment Submissions awaiting Admin Review
+      const pendingCount = collections.filter(c => c.status === 'pending').length;
+      if (pendingCount > 0) {
+        const pendingTotal = collections.filter(c => c.status === 'pending').reduce((s, c) => s + c.amount, 0);
+        list.push({
+          id: 'admin-pending-collections',
+          title: `পেমেন্ট অনুমোদন প্রয়োজন (${pendingCount} টি)`,
+          message: `মোট ${pendingCount} জন সদস্যের জমা দেওয়া ৳${pendingTotal.toLocaleString()} চাঁদা/অগ্রিম ভেরিফিকেশন ও অনুমোদনের অপেক্ষায় রয়েছে।`,
+          link: '/collections'
+        });
+      }
+
+      // 2. Overall Due Demands Summary
+      if (stats.dueCollection > 0) {
+        list.push({
+          id: 'admin-overall-dues',
+          title: 'সার্বিক বকেয়া চাঁদা তাগিদ',
+          message: `বর্তমানে সকল সদস্য মিলিয়ে মোট ৳${stats.dueCollection.toLocaleString()} চাঁদা বকেয়া রয়েছে।`,
+          link: '/dues'
+        });
+      }
+
+      // 3. Overdue Loans across all members
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const overdueLoans = loans ? loans.filter(l => (l.status === 'active' || l.status === 'overdue') && l.dueDate && l.dueDate < todayStr) : [];
+      if (overdueLoans.length > 0) {
+        list.push({
+          id: 'admin-overdue-loans',
+          title: `মেয়াদোত্তীর্ণ লোন কিস্তি (${overdueLoans.length} টি)`,
+          message: `${overdueLoans.length} জন সদস্যের লোনের কিস্তির সময়সীমা অতিক্রম করেছে। কিস্তি আদায়ের ব্যবস্থা নিন।`,
+          link: '/loans'
+        });
+      }
+
+      // 4. Admin-directed and Broadcast unread notifications
+      const adminNotifs = notifications.filter(n => {
+        if (n.read) return false;
+        if (!n.userId || n.userId === 'all' || n.userId === 'admin' || n.userId === user?.id) return true;
+        return false;
+      });
+
+      adminNotifs.slice(0, 3).forEach(n => {
+        if (!list.some(item => item.id === n.id)) {
+          list.push({ id: n.id, title: n.title, message: n.message, link: n.link });
+        }
+      });
+    }
+
+    return list.slice(0, 4);
+  }, [role, myUnpaidDuesList, myTotalDueWithFines, myPendingCollections, myMember, user, loans, notifications, collections, stats.dueCollection]);
 
   const getRoleBadge = (r: string) => {
     switch (r) {
@@ -356,15 +476,29 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Live warnings / notifications bar */}
+        {/* Live warnings / notifications bar (User-Role Sensitive) */}
         {activeAlerts.length > 0 && (
-          <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-4 rounded-2xl flex items-start space-x-3">
-            <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0 animate-pulse" />
-            <div>
-              <p className="text-xs font-bold">Action Required: Pending Reminders</p>
-              <ul className="list-disc list-inside text-[11px] text-[var(--muted-foreground)] mt-1 space-y-1">
+          <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-4 rounded-2xl flex items-start space-x-3 shadow-sm">
+            <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0 animate-pulse text-amber-400" />
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs font-bold text-amber-400">
+                  {role === 'member' ? 'Action Required: Your Personal Reminders (জরুরি তাগিদ)' : 'Action Required: Foundation Pending Reminders (সার্বিক বকেয়া ও তাগিদ)'}
+                </p>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                  {activeAlerts.length} Action{activeAlerts.length > 1 ? 's' : ''}
+                </span>
+              </div>
+              <ul className="list-disc list-inside text-[11px] text-[var(--muted-foreground)] space-y-1.5 mt-1">
                 {activeAlerts.map(alert => (
-                  <li key={alert.id}>{alert.title}: {alert.message}</li>
+                  <li key={alert.id} className="leading-relaxed">
+                    <strong className="text-[var(--foreground)]">{alert.title}:</strong> {alert.message}
+                    {alert.link && (
+                      <Link href={alert.link} className="ml-1.5 text-indigo-400 hover:underline font-semibold text-[10px]">
+                        বিস্তারিত দেখুন →
+                      </Link>
+                    )}
+                  </li>
                 ))}
               </ul>
             </div>
