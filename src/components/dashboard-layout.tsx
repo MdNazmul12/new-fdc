@@ -38,7 +38,8 @@ import {
   Smartphone,
   Download,
   Share2,
-  Megaphone
+  Megaphone,
+  Coins
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -100,6 +101,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     },
     { name: 'Collections', path: '/collections', icon: DollarSign, permission: { module: 'collections', action: 'view' as const } },
     { name: 'Due List', path: '/dues', icon: CalendarClock, permission: { module: 'collections', action: 'view' as const } },
+    { name: 'Advance Payment', path: '/advance-payment', icon: Coins, permission: { module: 'advance_payment', action: 'view' as const } },
     { name: 'Generate Dues', path: '/generate-dues', icon: PlusCircle, permission: { module: 'collections', action: 'create' as const } },
     { name: 'Investments', path: '/investments', icon: TrendingUp, permission: { module: 'investments', action: 'view' as const } },
     { name: 'Expenses', path: '/expenses', icon: CreditCard, permission: { module: 'expenses', action: 'view' as const } },

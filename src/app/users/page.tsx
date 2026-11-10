@@ -285,6 +285,7 @@ export default function UsersPage() {
     { key: 'dashboard', name: 'Dashboard Module' },
     { key: 'members', name: 'Member Management' },
     { key: 'collections', name: 'Collection Management' },
+    { key: 'advance_payment', name: 'Advance Payment (অগ্রিম চাঁদা)' },
     { key: 'investments', name: 'Investment Management' },
     { key: 'expenses', name: 'Expense Management' },
     { key: 'loans', name: 'Loan Management' },
