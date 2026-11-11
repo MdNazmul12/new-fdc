@@ -214,3 +214,15 @@ export interface TrashItem {
   reason?: string;
 }
 
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderRole: string;
+  senderMemberId?: string;
+  senderAvatar?: string;
+  message: string;
+  createdAt: string; // ISO string
+  reactions?: Record<string, string[]>; // emoji -> array of user names
+}
+

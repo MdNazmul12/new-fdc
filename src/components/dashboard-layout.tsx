@@ -39,7 +39,8 @@ import {
   Download,
   Share2,
   Megaphone,
-  Coins
+  Coins,
+  MessageSquare
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -102,6 +103,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Collections', path: '/collections', icon: DollarSign, permission: { module: 'collections', action: 'view' as const } },
     { name: 'Due List', path: '/dues', icon: CalendarClock, permission: { module: 'collections', action: 'view' as const } },
     { name: 'Advance Payment', path: '/advance-payment', icon: Coins, permission: { module: 'advance_payment', action: 'view' as const } },
+    { name: 'Community Chat', path: '/chat', icon: MessageSquare, permission: { module: 'chat', action: 'view' as const } },
     { name: 'Generate Dues', path: '/generate-dues', icon: PlusCircle, permission: { module: 'collections', action: 'create' as const } },
     { name: 'Investments', path: '/investments', icon: TrendingUp, permission: { module: 'investments', action: 'view' as const } },
     { name: 'Expenses', path: '/expenses', icon: CreditCard, permission: { module: 'expenses', action: 'view' as const } },
@@ -446,6 +448,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <span className="hidden sm:inline">ঘোষণা</span>
               </button>
             )}
+
+            {/* COMMUNITY CHAT SHORTCUT */}
+            <Link
+              href="/chat"
+              className={`p-2 rounded-lg text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors relative ${
+                pathname === '/chat' ? 'text-indigo-400 bg-indigo-500/10' : ''
+              }`}
+              title="Community Chat (কমিউনিটি চ্যাট)"
+            >
+              <MessageSquare className="w-4 h-4" />
+            </Link>
 
             {/* Notification Dropdown - Single Bell Icon */}
             <div className="relative">

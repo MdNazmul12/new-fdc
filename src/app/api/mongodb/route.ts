@@ -19,7 +19,8 @@ export const REQUIRED_COLLECTIONS = [
   'auditLogs',
   'push_subscriptions',
   'backups',
-  'trash'
+  'trash',
+  'chat_messages'
 ];
 
 let collectionsEnsured = false;

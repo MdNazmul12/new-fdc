@@ -32,7 +32,8 @@ const DEFAULT_PERMISSIONS: Record<UserRole, Record<string, string[]>> = {
     users: ['view', 'create', 'update', 'delete'],
     audit: ['view'],
     documents: ['view', 'create', 'delete'],
-    backup: ['view', 'create', 'update', 'delete', 'export']
+    backup: ['view', 'create', 'update', 'delete', 'export'],
+    chat: ['view', 'create', 'delete']
   },
   president: {
     dashboard: ['view'],
@@ -47,7 +48,8 @@ const DEFAULT_PERMISSIONS: Record<UserRole, Record<string, string[]>> = {
     users: ['view'],
     audit: ['view'],
     documents: ['view'],
-    backup: ['view', 'export']
+    backup: ['view', 'export'],
+    chat: ['view', 'create', 'delete']
   },
   treasurer: {
     dashboard: ['view'],
@@ -62,7 +64,8 @@ const DEFAULT_PERMISSIONS: Record<UserRole, Record<string, string[]>> = {
     users: [],
     audit: [],
     documents: ['view', 'create', 'delete'],
-    backup: ['view', 'export']
+    backup: ['view', 'export'],
+    chat: ['view', 'create']
   },
   collector: {
     dashboard: ['view'],
@@ -76,7 +79,8 @@ const DEFAULT_PERMISSIONS: Record<UserRole, Record<string, string[]>> = {
     reports: [],
     users: [],
     audit: [],
-    documents: ['view', 'create']
+    documents: ['view', 'create'],
+    chat: ['view', 'create']
   },
   auditor: {
     dashboard: ['view'],
@@ -91,7 +95,8 @@ const DEFAULT_PERMISSIONS: Record<UserRole, Record<string, string[]>> = {
     users: [],
     audit: ['view'],
     documents: ['view'],
-    backup: ['view']
+    backup: ['view'],
+    chat: ['view', 'create']
   },
   member: {
     dashboard: ['view'],
@@ -105,7 +110,8 @@ const DEFAULT_PERMISSIONS: Record<UserRole, Record<string, string[]>> = {
     reports: [],
     users: [],
     audit: [],
-    documents: []
+    documents: [],
+    chat: ['view', 'create']
   }
 };
 
