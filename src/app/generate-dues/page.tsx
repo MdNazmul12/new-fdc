@@ -17,13 +17,21 @@ import {
   Clock, 
   X, 
   Loader2, 
-  FileSpreadsheet,
-  Download,
-  Layers,
-  ShieldAlert
+  FileSpreadsheet, 
+  Download, 
+  Layers, 
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Check
 } from 'lucide-react';
 import Link from 'next/link';
 import ExcelImportModal, { downloadDuesTemplate } from '../../components/excel-import-modal';
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 export default function GenerateDuesPage() {
   const { members, collections, dueDemands, addDueDemand, deleteDueDemand, importPreviousDues } = useStore();
@@ -33,7 +41,7 @@ export default function GenerateDuesPage() {
 
   const [importModalOpen, setImportModalOpen] = useState(false);
 
-  // â”€â”€â”€â”€â”€ Single Generate Modal state â”€â”€â”€â”€â”€
+  // ───── Single Month Generate Modal state ─────
   const [modalOpen, setModalOpen] = useState(false);
   const [targetMonth, setTargetMonth] = useState<string>(() => {
     const d = new Date();
@@ -43,35 +51,35 @@ export default function GenerateDuesPage() {
   const [amountType, setAmountType] = useState<'member_fee' | 'fixed'>('member_fee');
   const [fixedAmount, setFixedAmount] = useState<number>(1000);
   const [cutoffDay, setCutoffDay] = useState<number>(10);
-  const [lateFine, setLateFine] = useState<number>(50);
+  const [lateFine, setLateFine] = useState<number>(0);
   const [loading, setLoading] = useState(false);
 
-  // â”€â”€â”€â”€â”€ Bulk Generate Modal state â”€â”€â”€â”€â”€
+  // ───── Bulk Generate Modal state ─────
+  const currentYear = new Date().getFullYear();
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
-  const [bulkStartMonth, setBulkStartMonth] = useState<string>(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  const [selectedMonths, setSelectedMonths] = useState<string[]>(() => {
+    // Default to all 12 months of current year
+    return Array.from({ length: 12 }, (_, i) => `${currentYear}-${String(i + 1).padStart(2, '0')}`);
   });
-  const [bulkMonthCount, setBulkMonthCount] = useState<number>(12);
-  const [bulkCustomCount, setBulkCustomCount] = useState<number>(3);
-  const [bulkCountMode, setBulkCountMode] = useState<'1' | '3' | '6' | '12' | 'custom'>('12');
+  const [rangeStart, setRangeStart] = useState<string>(`${currentYear}-01`);
+  const [rangeEnd, setRangeEnd] = useState<string>(`${currentYear}-12`);
   const [bulkAmountType, setBulkAmountType] = useState<'member_fee' | 'fixed'>('member_fee');
   const [bulkFixedAmount, setBulkFixedAmount] = useState<number>(1000);
   const [bulkCutoffDay, setBulkCutoffDay] = useState<number>(10);
-  const [bulkLateFine, setBulkLateFine] = useState<number>(50);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<string>('');
 
-  // â”€â”€â”€â”€â”€ Delete Confirmation state â”€â”€â”€â”€â”€
+  // ───── Delete Single Modal state ─────
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [demandToDelete, setDemandToDelete] = useState<DueDemand | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // â”€â”€â”€â”€â”€ Delete All Dues state â”€â”€â”€â”€â”€
+  // ───── Delete All Dues state ─────
   const [deleteAllConfirmOpen, setDeleteAllConfirmOpen] = useState(false);
   const [deleteAllLoading, setDeleteAllLoading] = useState(false);
 
-  // â”€â”€â”€â”€â”€ Feedback banner state â”€â”€â”€â”€â”€
+  // ───── Feedback banner state ─────
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const showFeedback = (msg: string) => {
@@ -87,21 +95,51 @@ export default function GenerateDuesPage() {
     return members.filter(m => m.status === 'active');
   }, [members]);
 
-  // Compute effective bulk count
-  const effectiveBulkCount = bulkCountMode === 'custom' ? bulkCustomCount : Number(bulkCountMode);
+  // Toggle single month in bulk selection
+  const toggleMonth = (mStr: string) => {
+    setSelectedMonths(prev => 
+      prev.includes(mStr) ? prev.filter(m => m !== mStr) : [...prev, mStr].sort()
+    );
+  };
 
-  // Preview months for bulk generate
-  const bulkPreviewMonths = useMemo(() => {
-    const months: string[] = [];
-    const [sy, sm] = bulkStartMonth.split('-').map(Number);
-    for (let i = 0; i < effectiveBulkCount; i++) {
-      const d = new Date(sy, sm - 1 + i, 1);
-      months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  // Select all 12 months of selected year
+  const selectFullYear = (year: number) => {
+    const months = Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`);
+    setSelectedMonths(prev => {
+      const otherYears = prev.filter(m => !m.startsWith(`${year}-`));
+      return [...otherYears, ...months].sort();
+    });
+  };
+
+  // Clear months of selected year
+  const clearYear = (year: number) => {
+    setSelectedMonths(prev => prev.filter(m => !m.startsWith(`${year}-`)));
+  };
+
+  // Apply Range from rangeStart to rangeEnd
+  const handleApplyRange = () => {
+    if (!rangeStart || !rangeEnd) return;
+    if (rangeStart > rangeEnd) {
+      alert('Start Month must be before or equal to End Month');
+      return;
     }
-    return months;
-  }, [bulkStartMonth, effectiveBulkCount]);
+    const [sy, sm] = rangeStart.split('-').map(Number);
+    const [ey, em] = rangeEnd.split('-').map(Number);
+    const months: string[] = [];
+    let curY = sy;
+    let curM = sm;
+    while (curY < ey || (curY === ey && curM <= em)) {
+      months.push(`${curY}-${String(curM).padStart(2, '0')}`);
+      curM++;
+      if (curM > 12) {
+        curM = 1;
+        curY++;
+      }
+    }
+    setSelectedMonths(months);
+  };
 
-  // â”€â”€â”€â”€â”€ Single Generate â”€â”€â”€â”€â”€
+  // ───── Single Generate ─────
   const handleGenerateDemand = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!targetMonth) {
@@ -124,7 +162,7 @@ export default function GenerateDuesPage() {
         dueDate,
         amountType,
         fixedAmount: amountType === 'fixed' ? Number(fixedAmount) : undefined,
-        lateFine: Number(lateFine),
+        lateFine: 0,
         applicableTo: 'all',
         createdBy: user?.name || 'Administrator'
       });
@@ -139,18 +177,27 @@ export default function GenerateDuesPage() {
     }
   };
 
-  // â”€â”€â”€â”€â”€ Bulk Generate â”€â”€â”€â”€â”€
+  // ───── Bulk Generate ─────
   const handleBulkGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (selectedMonths.length === 0) {
+      alert('Please select at least one month from the calendar');
+      return;
+    }
+
     setBulkLoading(true);
     let generated = 0;
     let skipped = 0;
     try {
-      for (let i = 0; i < bulkPreviewMonths.length; i++) {
-        const month = bulkPreviewMonths[i];
-        setBulkProgress(`Generating ${month}... (${i + 1}/${bulkPreviewMonths.length})`);
+      const sortedMonths = [...selectedMonths].sort();
+      for (let i = 0; i < sortedMonths.length; i++) {
+        const month = sortedMonths[i];
+        setBulkProgress(`Generating ${month}... (${i + 1}/${sortedMonths.length})`);
         const existing = dueDemands.find(d => d.month === month);
-        if (existing) { skipped++; continue; }
+        if (existing) { 
+          skipped++; 
+          continue; 
+        }
         const dueDate = `${month}-${String(bulkCutoffDay).padStart(2, '0')}`;
         await addDueDemand({
           month,
@@ -158,7 +205,7 @@ export default function GenerateDuesPage() {
           dueDate,
           amountType: bulkAmountType,
           fixedAmount: bulkAmountType === 'fixed' ? Number(bulkFixedAmount) : undefined,
-          lateFine: Number(bulkLateFine),
+          lateFine: 0,
           applicableTo: 'all',
           createdBy: user?.name || 'Administrator'
         });
@@ -166,17 +213,17 @@ export default function GenerateDuesPage() {
       }
       setBulkModalOpen(false);
       setBulkProgress('');
-      showFeedback(`âœ… ${generated} à¦®à¦¾à¦¸à§‡à¦° due generate à¦¹à¦¯à¦¼à§‡à¦›à§‡${skipped > 0 ? `, ${skipped} à¦®à¦¾à¦¸ à¦†à¦—à§‡ à¦¥à§‡à¦•à§‡à¦‡ à¦›à¦¿à¦² (skip à¦•à¦°à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡)` : ''}à¥¤`);
+      showFeedback(`Success: ${generated} month(s) generated${skipped > 0 ? `, ${skipped} already existed (skipped)` : ''}!`);
     } catch (err) {
       console.error(err);
-      alert('à¦•à¦¿à¦›à§ à¦®à¦¾à¦¸ generate à¦•à¦°à¦¤à§‡ à¦¸à¦®à¦¸à§à¦¯à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡à¥¤');
+      alert('Failed to generate some months.');
     } finally {
       setBulkLoading(false);
       setBulkProgress('');
     }
   };
 
-  // â”€â”€â”€â”€â”€ Single Delete â”€â”€â”€â”€â”€
+  // ───── Single Delete ─────
   const handlePromptDelete = (demand: DueDemand) => {
     setDemandToDelete(demand);
     setDeleteConfirmOpen(true);
@@ -198,7 +245,7 @@ export default function GenerateDuesPage() {
     }
   };
 
-  // â”€â”€â”€â”€â”€ Delete All â”€â”€â”€â”€â”€
+  // ───── Delete All ─────
   const handleDeleteAll = async () => {
     setDeleteAllLoading(true);
     try {
@@ -206,10 +253,10 @@ export default function GenerateDuesPage() {
         await deleteDueDemand(demand.id);
       }
       setDeleteAllConfirmOpen(false);
-      showFeedback(`à¦¸à¦•à¦² ${dueDemands.length} à¦Ÿà¦¿ due demand à¦®à§à¦›à§‡ à¦«à§‡à¦²à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡à¥¤`);
+      showFeedback(`All ${dueDemands.length} due demands deleted successfully.`);
     } catch (err) {
       console.error(err);
-      alert('à¦•à¦¿à¦›à§ due demand à¦®à§à¦›à¦¤à§‡ à¦¸à¦®à¦¸à§à¦¯à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡à¥¤');
+      alert('Failed to delete all due demands.');
     } finally {
       setDeleteAllLoading(false);
     }
@@ -300,7 +347,7 @@ export default function GenerateDuesPage() {
               </span>
             </div>
             <p className="text-xs text-[var(--muted-foreground)] mt-1">
-              Manually schedule monthly subscription demands. Active demands apply to all active member profiles.
+              Schedule subscription dues for members. Generate for 1 year or custom months directly from calendar.
             </p>
           </div>
 
@@ -318,10 +365,10 @@ export default function GenerateDuesPage() {
                 type="button"
                 onClick={() => setImportModalOpen(true)}
                 className="flex items-center space-x-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
-                title="à¦¸à¦¦à¦¸à§à¦¯à¦¦à§‡à¦° à¦ªà§‚à¦°à§à¦¬à§‡à¦° à¦¬à¦•à§‡à¦¯à¦¼à¦¾ à¦à¦•à§à¦¸à§‡à¦² à¦«à¦¾à¦‡à¦²à§‡à¦° à¦®à¦¾à¦§à§à¦¯à¦®à§‡ à¦‡à¦®à§à¦ªà§‹à¦°à§à¦Ÿ à¦•à¦°à§à¦¨"
+                title="Import dues from Excel file"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5" />
-                <span>Import Previous Dues</span>
+                <span>Import Dues</span>
               </button>
             )}
 
@@ -341,7 +388,7 @@ export default function GenerateDuesPage() {
                 type="button"
                 onClick={() => setDeleteAllConfirmOpen(true)}
                 className="flex items-center space-x-1.5 px-3 py-2 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 border border-rose-500/30 text-xs font-bold rounded-xl transition-all cursor-pointer"
-                title="à¦¸à¦•à¦² due demand à¦®à§à¦›à§‡ à¦«à§‡à¦²à§à¦¨"
+                title="Delete all due demands"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Delete All Dues</span>
@@ -352,10 +399,10 @@ export default function GenerateDuesPage() {
               <button
                 type="button"
                 onClick={() => setBulkModalOpen(true)}
-                className="flex items-center space-x-1.5 px-3 py-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-violet-600/20 transition-all cursor-pointer"
+                className="flex items-center space-x-1.5 px-3.5 py-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-violet-600/20 transition-all cursor-pointer"
               >
                 <Layers className="w-3.5 h-3.5" />
-                <span>Bulk Generate</span>
+                <span>Bulk Calendar Generate</span>
               </button>
             )}
 
@@ -376,7 +423,7 @@ export default function GenerateDuesPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="glass-card p-4 rounded-2xl relative overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[var(--muted-foreground)]">Total Demands Created</span>
+              <span className="text-xs font-semibold text-[var(--muted-foreground)]">Total Demands</span>
               <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg"><CalendarClock className="w-4 h-4" /></div>
             </div>
             <p className="text-lg lg:text-2xl font-black text-white mt-3">{dueDemands.length} Months</p>
@@ -385,7 +432,7 @@ export default function GenerateDuesPage() {
 
           <div className="glass-card p-4 rounded-2xl relative overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[var(--muted-foreground)]">Total Demanded Value</span>
+              <span className="text-xs font-semibold text-[var(--muted-foreground)]">Total Demanded</span>
               <div className="p-2 bg-[var(--accent)] text-[var(--foreground)]/80 rounded-lg"><DollarSign className="w-4 h-4" /></div>
             </div>
             <p className="text-lg lg:text-2xl font-black text-white mt-3">{formatCurrency(overallDemanded)}</p>
@@ -394,22 +441,22 @@ export default function GenerateDuesPage() {
 
           <div className="glass-card p-4 rounded-2xl relative overflow-hidden border border-emerald-500/20">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[var(--muted-foreground)]">Total Collected So Far</span>
+              <span className="text-xs font-semibold text-[var(--muted-foreground)]">Total Collected</span>
               <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg"><CheckCircle2 className="w-4 h-4" /></div>
             </div>
             <p className="text-lg lg:text-2xl font-black text-emerald-400 mt-3">{formatCurrency(overallCollected)}</p>
             <p className="text-[10px] text-[var(--muted-foreground)]/70 mt-1">
-              {overallDemanded > 0 ? `${Math.round((overallCollected / overallDemanded) * 100)}% overall recovery rate` : '0%'}
+              {overallDemanded > 0 ? `${Math.round((overallCollected / overallDemanded) * 100)}% recovery rate` : '0%'}
             </p>
           </div>
 
           <div className="glass-card p-4 rounded-2xl relative overflow-hidden border border-amber-500/20">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[var(--muted-foreground)]">Total Outstanding Dues</span>
+              <span className="text-xs font-semibold text-[var(--muted-foreground)]">Outstanding Dues</span>
               <div className="p-2 bg-amber-500/10 text-amber-400 rounded-lg"><AlertTriangle className="w-4 h-4" /></div>
             </div>
             <p className="text-lg lg:text-2xl font-black text-amber-400 mt-3">{formatCurrency(overallPending)}</p>
-            <p className="text-[10px] text-[var(--muted-foreground)]/70 mt-1">Unpaid member accounts</p>
+            <p className="text-[10px] text-[var(--muted-foreground)]/70 mt-1">Unpaid member dues</p>
           </div>
         </div>
 
@@ -418,7 +465,7 @@ export default function GenerateDuesPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-[var(--border)] gap-2">
             <div>
               <h3 className="text-sm font-bold text-[var(--foreground)]">Scheduled Monthly Demands</h3>
-              <p className="text-[11px] text-[var(--muted-foreground)]">Every row represents an official monthly due applicable to active members</p>
+              <p className="text-[11px] text-[var(--muted-foreground)]">Every row represents an official monthly due for active members</p>
             </div>
 
             {canManageDues && (
@@ -427,7 +474,7 @@ export default function GenerateDuesPage() {
                 onClick={handleQuickNextMonth}
                 className="px-3 py-1.5 rounded-xl bg-[var(--secondary)] border border-[var(--border)] hover:bg-[var(--accent)] text-indigo-400 text-xs font-semibold transition-all inline-flex items-center space-x-1 cursor-pointer"
               >
-                <span>+ Quick Generate Next Month</span>
+                <span>+ Quick Next Month</span>
               </button>
             )}
           </div>
@@ -442,7 +489,6 @@ export default function GenerateDuesPage() {
                     <th className="pb-3 font-semibold">Demand Title</th>
                     <th className="pb-3 font-semibold">Fee Structure</th>
                     <th className="pb-3 font-semibold">Cutoff Date</th>
-                    <th className="pb-3 font-semibold">Late Fine</th>
                     <th className="pb-3 font-semibold text-center">Paid / Due Members</th>
                     <th className="pb-3 font-semibold text-right">Collected / Total</th>
                     <th className="pb-3 font-semibold text-right">Actions</th>
@@ -467,7 +513,6 @@ export default function GenerateDuesPage() {
                           <span>{item.demand.dueDate}</span>
                         </div>
                       </td>
-                      <td className="py-3 text-[var(--muted-foreground)] text-[11px]">{item.demand.lateFine} TK</td>
                       <td className="py-3 text-center">
                         <div className="inline-flex items-center space-x-1 text-[11px]">
                           <span className="font-bold text-emerald-400">{item.paidCount} Paid</span>
@@ -513,24 +558,24 @@ export default function GenerateDuesPage() {
             <div className="py-12 text-center text-[var(--muted-foreground)]/70 text-xs">
               <CalendarClock className="w-10 h-10 mx-auto mb-3 text-zinc-600 opacity-60" />
               <p className="font-semibold text-[var(--foreground)]/80">No Monthly Due Demands Created Yet</p>
-              <p className="mt-1">Click &quot;Bulk Generate&quot; to generate multiple months at once, or &quot;+ Single Month&quot; for one month.</p>
+              <p className="mt-1">Click &quot;Bulk Calendar Generate&quot; to pick 1 year or custom months from the calendar.</p>
             </div>
           )}
         </div>
 
-        {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ MODAL: BULK GENERATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ──────────────── MODAL: BULK CALENDAR GENERATE ──────────────── */}
         {bulkModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-            <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-3xl w-full max-w-lg p-6 relative shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+            <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-3xl w-full max-w-xl p-6 relative shadow-2xl max-h-[92vh] overflow-y-auto">
               
               <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
                 <div className="flex items-center space-x-2.5">
-                  <div className="p-2 rounded-xl bg-violet-600/15 text-violet-400">
-                    <Layers className="w-5 h-5" />
+                  <div className="p-2.5 rounded-xl bg-violet-600/15 text-violet-400">
+                    <Calendar className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-white">Bulk Generate Due Demands</h3>
-                    <p className="text-[11px] text-[var(--muted-foreground)]">à¦à¦•à¦¸à¦¾à¦¥à§‡ à¦à¦•à¦¾à¦§à¦¿à¦• à¦®à¦¾à¦¸à§‡à¦° due generate à¦•à¦°à§à¦¨</p>
+                    <h3 className="text-base font-bold text-white">Bulk Generate Dues (Calendar Picker)</h3>
+                    <p className="text-[11px] text-[var(--muted-foreground)]">Select 1 year or custom months from the visual calendar</p>
                   </div>
                 </div>
                 <button
@@ -542,84 +587,173 @@ export default function GenerateDuesPage() {
                 </button>
               </div>
 
-              <form onSubmit={handleBulkGenerate} className="space-y-4 mt-5 text-xs">
+              <form onSubmit={handleBulkGenerate} className="space-y-5 mt-5 text-xs">
 
-                {/* Start Month */}
-                <div>
-                  <label className="block text-[var(--foreground)]/80 font-semibold mb-1">à¦¶à§à¦°à§à¦° à¦®à¦¾à¦¸ (Start Month) *</label>
-                  <input
-                    type="month"
-                    required
-                    value={bulkStartMonth}
-                    onChange={(e) => setBulkStartMonth(e.target.value)}
-                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[var(--card-foreground)] focus:outline-none focus:border-violet-500 font-mono"
-                  />
-                </div>
-
-                {/* Month Count Selector */}
-                <div>
-                  <label className="block text-[var(--foreground)]/80 font-semibold mb-2">à¦•à¦¤à§‹ à¦®à¦¾à¦¸ Generate à¦•à¦°à¦¬à§‡à¦¨?</label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {(['1', '3', '6', '12', 'custom'] as const).map(opt => (
+                {/* 1. Year Navigator & Quick Actions */}
+                <div className="bg-[var(--background)] p-3.5 rounded-2xl border border-[var(--border)] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
                       <button
-                        key={opt}
                         type="button"
-                        onClick={() => setBulkCountMode(opt)}
-                        className={`py-2 rounded-xl border font-bold text-xs transition-all cursor-pointer ${
-                          bulkCountMode === opt
-                            ? 'bg-violet-600/20 border-violet-500 text-violet-300'
-                            : 'bg-[var(--background)] border-[var(--border)] text-[var(--muted-foreground)] hover:border-violet-500/50'
-                        }`}
+                        onClick={() => setSelectedYear(y => y - 1)}
+                        className="p-1.5 rounded-lg bg-[var(--secondary)] hover:bg-[var(--accent)] text-[var(--foreground)] transition-all"
+                        title="Previous Year"
                       >
-                        {opt === 'custom' ? 'Custom' : `${opt}M`}
+                        <ChevronLeft className="w-4 h-4" />
                       </button>
-                    ))}
+                      <span className="font-mono text-base font-black text-white px-2">
+                        {selectedYear}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedYear(y => y + 1)}
+                        className="p-1.5 rounded-lg bg-[var(--secondary)] hover:bg-[var(--accent)] text-[var(--foreground)] transition-all"
+                        title="Next Year"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Quick Selection Buttons */}
+                    <div className="flex items-center space-x-1.5">
+                      <button
+                        type="button"
+                        onClick={() => selectFullYear(selectedYear)}
+                        className="px-2.5 py-1 rounded-lg bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 font-bold border border-violet-500/30 text-[11px] transition-all cursor-pointer"
+                      >
+                        + Select Full Year ({selectedYear})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => clearYear(selectedYear)}
+                        className="px-2 py-1 rounded-lg bg-[var(--accent)] hover:bg-zinc-700 text-[var(--muted-foreground)] text-[11px] transition-all cursor-pointer"
+                      >
+                        Clear {selectedYear}
+                      </button>
+                    </div>
                   </div>
 
-                  {bulkCountMode === 'custom' && (
-                    <div className="mt-2">
-                      <input
-                        type="number"
-                        min={1}
-                        max={60}
-                        value={bulkCustomCount}
-                        onChange={(e) => setBulkCustomCount(Number(e.target.value))}
-                        placeholder="à¦•à¦¤à§‹ à¦®à¦¾à¦¸? (1-60)"
-                        className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[var(--card-foreground)] focus:outline-none focus:border-violet-500"
-                      />
-                    </div>
-                  )}
-                </div>
+                  {/* 2. 12-Month Interactive Calendar Grid */}
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1">
+                    {MONTH_NAMES.map((name, idx) => {
+                      const mStr = `${selectedYear}-${String(idx + 1).padStart(2, '0')}`;
+                      const isSelected = selectedMonths.includes(mStr);
+                      const alreadyExists = dueDemands.some(d => d.month === mStr);
 
-                {/* Preview */}
-                <div className="p-3 bg-violet-500/5 border border-violet-500/20 rounded-xl">
-                  <p className="text-violet-300 font-semibold mb-1.5">ðŸ“… Preview â€” à¦¯à§‡ à¦®à¦¾à¦¸à¦—à§à¦²à§‹ à¦¤à§ˆà¦°à¦¿ à¦¹à¦¬à§‡:</p>
-                  <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
-                    {bulkPreviewMonths.map(m => {
-                      const alreadyExists = dueDemands.some(d => d.month === m);
                       return (
-                        <span
-                          key={m}
-                          className={`px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold ${
-                            alreadyExists
-                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                              : 'bg-violet-500/10 text-violet-300 border border-violet-500/30'
+                        <button
+                          key={mStr}
+                          type="button"
+                          onClick={() => toggleMonth(mStr)}
+                          className={`p-2.5 rounded-xl border text-left transition-all relative flex flex-col justify-between cursor-pointer ${
+                            isSelected
+                              ? 'bg-violet-600/25 border-violet-500 text-white shadow-md shadow-violet-600/10'
+                              : 'bg-[var(--secondary)] border-[var(--border)] text-[var(--muted-foreground)] hover:border-violet-500/40 hover:text-white'
                           }`}
-                          title={alreadyExists ? 'Already exists â€” will be skipped' : 'Will be generated'}
                         >
-                          {m}{alreadyExists ? ' âš ï¸' : ''}
-                        </span>
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-xs">{name.slice(0, 3)}</span>
+                            {isSelected && (
+                              <span className="w-4 h-4 rounded-full bg-violet-600 text-white flex items-center justify-center">
+                                <Check className="w-2.5 h-2.5" />
+                              </span>
+                            )}
+                          </div>
+                          <span className="font-mono text-[10px] mt-1 opacity-70">{mStr}</span>
+                          {alreadyExists && (
+                            <span className="text-[9px] text-amber-400 font-semibold mt-1">
+                              • Exists
+                            </span>
+                          )}
+                        </button>
                       );
                     })}
                   </div>
-                  <p className="text-[10px] text-[var(--muted-foreground)]/60 mt-2">
-                    âš ï¸ à¦šà¦¿à¦¹à§à¦¨à¦¿à¦¤ à¦®à¦¾à¦¸à¦—à§à¦²à§‹ à¦†à¦—à§‡ à¦¥à§‡à¦•à§‡à¦‡ à¦†à¦›à§‡ â€” à¦¸à§‡à¦—à§à¦²à§‹ skip à¦•à¦°à¦¾ à¦¹à¦¬à§‡à¥¤
-                  </p>
                 </div>
 
-                {/* Fee Type */}
+                {/* 3. Optional: Date Range Picker (From -> To) */}
+                <div className="bg-[var(--background)] p-3 rounded-2xl border border-[var(--border)] space-y-2">
+                  <span className="text-[11px] font-semibold text-[var(--muted-foreground)] block">
+                    Or select by Month Range (From - To):
+                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="month"
+                      value={rangeStart}
+                      onChange={(e) => setRangeStart(e.target.value)}
+                      className="bg-[var(--secondary)] border border-[var(--border)] rounded-xl px-2.5 py-1.5 text-xs text-[var(--card-foreground)] font-mono focus:outline-none focus:border-violet-500"
+                    />
+                    <span className="text-[var(--muted-foreground)] text-xs">to</span>
+                    <input
+                      type="month"
+                      value={rangeEnd}
+                      onChange={(e) => setRangeEnd(e.target.value)}
+                      className="bg-[var(--secondary)] border border-[var(--border)] rounded-xl px-2.5 py-1.5 text-xs text-[var(--card-foreground)] font-mono focus:outline-none focus:border-violet-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyRange}
+                      className="px-3 py-1.5 bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 border border-violet-500/30 font-bold rounded-xl text-xs transition-all cursor-pointer"
+                    >
+                      Apply Range
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4. Live Selection Summary */}
+                <div className="p-3 bg-violet-500/10 border border-violet-500/20 rounded-2xl">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-violet-300 text-xs">
+                      Selected: {selectedMonths.length} Months
+                    </span>
+                    {selectedMonths.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedMonths([])}
+                        className="text-[10px] text-rose-400 hover:underline cursor-pointer"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
+                  {selectedMonths.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                      {[...selectedMonths].sort().map(m => {
+                        const exists = dueDemands.some(d => d.month === m);
+                        return (
+                          <span
+                            key={m}
+                            className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold ${
+                              exists 
+                                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30' 
+                                : 'bg-violet-500/20 text-violet-200 border border-violet-500/40'
+                            }`}
+                          >
+                            <span>{m}</span>
+                            {exists && <span title="Already exists (will be skipped)">⚠️</span>}
+                            <button
+                              type="button"
+                              onClick={() => toggleMonth(m)}
+                              className="hover:text-rose-400 ml-1"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-[var(--muted-foreground)]">
+                      No months selected yet. Click the calendar buttons above or click &quot;Select Full Year&quot;.
+                    </p>
+                  )}
+                </div>
+
+                {/* 5. Fee Structure */}
                 <div>
-                  <label className="block text-[var(--foreground)]/80 font-semibold mb-1.5">Fee Calculation Structure</label>
+                  <label className="block text-[var(--foreground)]/80 font-semibold mb-1.5">
+                    Fee Structure
+                  </label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
@@ -631,7 +765,7 @@ export default function GenerateDuesPage() {
                       }`}
                     >
                       <div className="font-bold text-xs">Member Profile Fee</div>
-                      <div className="text-[10px] mt-0.5 opacity-80">à¦ªà§à¦°à¦¤à§à¦¯à§‡à¦• à¦¸à¦¦à¦¸à§à¦¯à§‡à¦° à¦¨à¦¿à¦œà¦¸à§à¦¬ à¦®à¦¾à¦¸à¦¿à¦• à¦«à¦¿</div>
+                      <div className="text-[10px] mt-0.5 opacity-80">Use each member&apos;s registered monthly fee (Default)</div>
                     </button>
                     <button
                       type="button"
@@ -642,15 +776,17 @@ export default function GenerateDuesPage() {
                           : 'bg-[var(--background)] border-[var(--border)] text-[var(--muted-foreground)]'
                       }`}
                     >
-                      <div className="font-bold text-xs">Fixed Flat Fee</div>
-                      <div className="text-[10px] mt-0.5 opacity-80">à¦¸à¦¬à¦¾à¦° à¦œà¦¨à§à¦¯ à¦à¦•à¦‡ à¦ªà¦°à¦¿à¦®à¦¾à¦£</div>
+                      <div className="font-bold text-xs">Fixed Amount</div>
+                      <div className="text-[10px] mt-0.5 opacity-80">Uniform fee for all members</div>
                     </button>
                   </div>
                 </div>
 
                 {bulkAmountType === 'fixed' && (
                   <div>
-                    <label className="block text-[var(--foreground)]/80 font-semibold mb-1">Fixed Amount (BDT) *</label>
+                    <label className="block text-[var(--foreground)]/80 font-semibold mb-1">
+                      Fixed Amount per Month (BDT) *
+                    </label>
                     <input
                       type="number"
                       required
@@ -663,9 +799,12 @@ export default function GenerateDuesPage() {
                   </div>
                 )}
 
+                {/* 6. Due Day of Month (No Auto Late Fine) */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[var(--foreground)]/80 font-semibold mb-1">Due Cutoff Day</label>
+                    <label className="block text-[var(--foreground)]/80 font-semibold mb-1">
+                      Due Day of Month
+                    </label>
                     <input
                       type="number"
                       min={1}
@@ -675,20 +814,16 @@ export default function GenerateDuesPage() {
                       onChange={(e) => setBulkCutoffDay(Number(e.target.value))}
                       className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[var(--card-foreground)] focus:outline-none focus:border-violet-500"
                     />
-                    <span className="text-[10px] text-[var(--muted-foreground)]/70 mt-1 block">à¦ªà§à¦°à¦¤à¦¿ à¦®à¦¾à¦¸à§‡à¦° à¦•à¦¤à¦¤à¦® à¦¦à¦¿à¦¨?</span>
+                    <span className="text-[10px] text-[var(--muted-foreground)]/70 mt-1 block">Default: 10th of each month</span>
                   </div>
                   <div>
-                    <label className="block text-[var(--foreground)]/80 font-semibold mb-1">Late Fine (BDT)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={10}
-                      required
-                      value={bulkLateFine}
-                      onChange={(e) => setBulkLateFine(Number(e.target.value))}
-                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[var(--card-foreground)] focus:outline-none focus:border-violet-500"
-                    />
-                    <span className="text-[10px] text-[var(--muted-foreground)]/70 mt-1 block">à¦¬à¦¿à¦²à¦®à§à¦¬ à¦œà¦°à¦¿à¦®à¦¾à¦¨à¦¾</span>
+                    <label className="block text-[var(--foreground)]/80 font-semibold mb-1">
+                      Late Fine
+                    </label>
+                    <div className="w-full bg-[var(--background)]/60 border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[var(--muted-foreground)] font-medium">
+                      0 TK (No Auto Fine)
+                    </div>
+                    <span className="text-[10px] text-emerald-400 mt-1 block">Fine is only added manually at collection</span>
                   </div>
                 </div>
 
@@ -710,14 +845,14 @@ export default function GenerateDuesPage() {
                   </button>
                   <button
                     type="submit"
-                    disabled={bulkLoading || bulkPreviewMonths.length === 0}
-                    className="px-4 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white rounded-xl font-bold shadow-lg shadow-violet-600/20 transition-all inline-flex items-center space-x-1.5 cursor-pointer"
+                    disabled={bulkLoading || selectedMonths.length === 0}
+                    className="px-5 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white rounded-xl font-bold shadow-lg shadow-violet-600/20 transition-all inline-flex items-center space-x-1.5 cursor-pointer"
                   >
                     {bulkLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                     <span>
                       {bulkLoading
                         ? 'Generating...'
-                        : `Generate ${bulkPreviewMonths.filter(m => !dueDemands.some(d => d.month === m)).length} Months`}
+                        : `Generate ${selectedMonths.filter(m => !dueDemands.some(d => d.month === m)).length} Month(s)`}
                     </span>
                   </button>
                 </div>
@@ -726,7 +861,7 @@ export default function GenerateDuesPage() {
           </div>
         )}
 
-        {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ MODAL: SINGLE GENERATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ──────────────── MODAL: SINGLE MONTH GENERATE ──────────────── */}
         {modalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
             <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-3xl w-full max-w-lg p-6 relative shadow-2xl">
@@ -737,8 +872,8 @@ export default function GenerateDuesPage() {
                     <CalendarClock className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-white">Generate Monthly Due Demand</h3>
-                    <p className="text-[11px] text-[var(--muted-foreground)]">This demand will be applicable to all active members</p>
+                    <h3 className="text-base font-bold text-white">Generate Single Month Due</h3>
+                    <p className="text-[11px] text-[var(--muted-foreground)]">Create due demand for a specific month</p>
                   </div>
                 </div>
                 <button
@@ -772,13 +907,13 @@ export default function GenerateDuesPage() {
                     required
                     value={demandTitle}
                     onChange={(e) => setDemandTitle(e.target.value)}
-                    placeholder="e.g. Monthly Member Subscription - Sep 2026"
+                    placeholder="e.g. Monthly Member Subscription"
                     className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[var(--card-foreground)] focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[var(--foreground)]/80 font-semibold mb-1.5">Fee Calculation Structure</label>
+                  <label className="block text-[var(--foreground)]/80 font-semibold mb-1.5">Fee Structure</label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
@@ -786,11 +921,11 @@ export default function GenerateDuesPage() {
                       className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                         amountType === 'member_fee' 
                           ? 'bg-indigo-600/15 border-indigo-500 text-indigo-300' 
-                          : 'bg-[var(--background)] border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--border)]'
+                          : 'bg-[var(--background)] border-[var(--border)] text-[var(--muted-foreground)]'
                       }`}
                     >
                       <div className="font-bold text-xs">Member Profile Fee</div>
-                      <div className="text-[10px] mt-0.5 opacity-80">Use each member&apos;s individually registered monthly fee</div>
+                      <div className="text-[10px] mt-0.5 opacity-80">Each member&apos;s registered monthly fee</div>
                     </button>
 
                     <button
@@ -799,11 +934,11 @@ export default function GenerateDuesPage() {
                       className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                         amountType === 'fixed' 
                           ? 'bg-indigo-600/15 border-indigo-500 text-indigo-300' 
-                          : 'bg-[var(--background)] border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--border)]'
+                          : 'bg-[var(--background)] border-[var(--border)] text-[var(--muted-foreground)]'
                       }`}
                     >
                       <div className="font-bold text-xs">Fixed Flat Fee</div>
-                      <div className="text-[10px] mt-0.5 opacity-80">Charge one uniform fee for all members</div>
+                      <div className="text-[10px] mt-0.5 opacity-80">Same amount for all members</div>
                     </button>
                   </div>
                 </div>
@@ -825,7 +960,7 @@ export default function GenerateDuesPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[var(--foreground)]/80 font-semibold mb-1">Due Cutoff Day of Month</label>
+                    <label className="block text-[var(--foreground)]/80 font-semibold mb-1">Due Day of Month</label>
                     <input
                       type="number"
                       min={1}
@@ -839,23 +974,16 @@ export default function GenerateDuesPage() {
                   </div>
 
                   <div>
-                    <label className="block text-[var(--foreground)]/80 font-semibold mb-1">Late Fine (BDT)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={10}
-                      required
-                      value={lateFine}
-                      onChange={(e) => setLateFine(Number(e.target.value))}
-                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[var(--card-foreground)] focus:outline-none focus:border-indigo-500"
-                    />
-                    <span className="text-[10px] text-[var(--muted-foreground)]/70 mt-1 block">Auto-applies after cutoff day</span>
+                    <label className="block text-[var(--foreground)]/80 font-semibold mb-1">Late Fine</label>
+                    <div className="w-full bg-[var(--background)]/60 border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[var(--muted-foreground)] font-medium">
+                      0 TK (No Auto Fine)
+                    </div>
+                    <span className="text-[10px] text-emerald-400 mt-1 block">Collector adds fine manually if applicable</span>
                   </div>
                 </div>
 
                 <div className="p-3 bg-[var(--background)] rounded-xl border border-[var(--border)] text-[11px] text-[var(--muted-foreground)]">
-                  Total Eligible Active Members: <strong className="text-[var(--card-foreground)]">{activeMembers.length} Profiles</strong>.
-                  Dues will be visible immediately on each member&apos;s personal dashboard.
+                  Active Eligible Members: <strong className="text-[var(--card-foreground)]">{activeMembers.length} Profiles</strong>.
                 </div>
 
                 <div className="flex items-center justify-end space-x-2 pt-3 border-t border-[var(--border)]">
@@ -872,7 +1000,7 @@ export default function GenerateDuesPage() {
                     className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-600/20 transition-all inline-flex items-center space-x-1.5 cursor-pointer"
                   >
                     {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    <span>Generate Demand For All Members</span>
+                    <span>Generate Demand</span>
                   </button>
                 </div>
               </form>
@@ -881,7 +1009,7 @@ export default function GenerateDuesPage() {
           </div>
         )}
 
-        {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ CONFIRM MODAL: DELETE SINGLE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ──────────────── CONFIRM MODAL: DELETE SINGLE ──────────────── */}
         <ConfirmModal
           isOpen={deleteConfirmOpen}
           title={`Delete Due Demand (${demandToDelete?.month})`}
@@ -896,11 +1024,11 @@ export default function GenerateDuesPage() {
           }}
         />
 
-        {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ CONFIRM MODAL: DELETE ALL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ──────────────── CONFIRM MODAL: DELETE ALL ──────────────── */}
         <ConfirmModal
           isOpen={deleteAllConfirmOpen}
-          title="à¦¸à¦•à¦² Due Demand à¦®à§à¦›à§‡ à¦«à§‡à¦²à§à¦¨?"
-          message={`à¦†à¦ªà¦¨à¦¿ à¦•à¦¿ à¦¨à¦¿à¦¶à§à¦šà¦¿à¦¤? à¦à¦Ÿà¦¿ à¦¸à¦®à¦¸à§à¦¤ ${dueDemands.length} à¦®à¦¾à¦¸à§‡à¦° due demand à¦¸à§à¦¥à¦¾à¦¯à¦¼à§€à¦­à¦¾à¦¬à§‡ à¦®à§à¦›à§‡ à¦«à§‡à¦²à¦¬à§‡à¥¤ à¦à¦‡ à¦•à¦¾à¦œà¦Ÿà¦¿ à¦ªà§‚à¦°à§à¦¬à¦¾à¦¬à¦¸à§à¦¥à¦¾à¦¯à¦¼ à¦«à§‡à¦°à¦¾à¦¨à§‹ à¦¯à¦¾à¦¬à§‡ à¦¨à¦¾à¥¤`}
+          title="Delete All Due Demands?"
+          message={`Are you sure you want to delete all ${dueDemands.length} due demands? This action cannot be undone.`}
           confirmText={`Delete All ${dueDemands.length} Demands`}
           variant="danger"
           loading={deleteAllLoading}
@@ -908,15 +1036,15 @@ export default function GenerateDuesPage() {
           onCancel={() => setDeleteAllConfirmOpen(false)}
         />
 
-        {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ EXCEL IMPORT MODAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ──────────────── EXCEL IMPORT MODAL ──────────────── */}
         <ExcelImportModal
           isOpen={importModalOpen}
           type="dues"
-          title="à¦¸à¦¦à¦¸à§à¦¯à¦¦à§‡à¦° à¦ªà§‚à¦°à§à¦¬à§‡à¦° à¦¬à¦•à§‡à¦¯à¦¼à¦¾ à¦¤à¦¾à¦²à¦¿à¦•à¦¾ à¦‡à¦®à§à¦ªà§‹à¦°à§à¦Ÿ (Excel / CSV)"
+          title="Import Previous Dues (Excel / CSV)"
           onClose={() => setImportModalOpen(false)}
           onImportSuccess={async (rows) => {
             const count = await importPreviousDues(rows);
-            showFeedback(`à¦¸à¦«à¦²à¦­à¦¾à¦¬à§‡ ${count}à¦Ÿà¦¿ à¦ªà§‚à¦°à§à¦¬à§‡à¦° à¦¬à¦•à§‡à¦¯à¦¼à¦¾ à¦°à§‡à¦•à¦°à§à¦¡ à¦¸à¦¿à¦¸à§à¦Ÿà§‡à¦®à§‡ à¦¯à§à¦•à§à¦¤ à¦•à¦°à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡!`);
+            showFeedback(`Successfully imported ${count} previous dues records into the system!`);
           }}
         />
 

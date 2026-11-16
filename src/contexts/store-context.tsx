@@ -115,25 +115,8 @@ const initialMembers: Member[] = [
   { id: 'm-8', name: 'Arifur Rahman', email: 'arif@fdc.org', phone: '+8801988990011', status: 'inactive', joinDate: '2025-10-18', nomineeName: 'Sheli Rahman', nomineeRelation: 'Sister', nomineePhone: '+8801988008899', monthlyFee: 1000 },
 ];
 
-const initialCollections: Collection[] = [
-  { id: 'c-1', memberId: 'm-1', memberName: 'Kabir Ahmed', amount: 1000, month: '2026-05', date: '2026-05-05', paymentType: 'cash', lateFine: 0, receiptNo: 'REC-202605-001', status: 'paid', collectedBy: 'Treasurer' },
-  { id: 'c-2', memberId: 'm-2', memberName: 'Tasnim Jahan', amount: 1000, month: '2026-05', date: '2026-05-06', paymentType: 'bank', lateFine: 0, receiptNo: 'REC-202605-002', status: 'paid', collectedBy: 'Treasurer' },
-  { id: 'c-3', memberId: 'm-3', memberName: 'Imran Khan', amount: 1500, month: '2026-05', date: '2026-05-12', paymentType: 'cash', lateFine: 50, receiptNo: 'REC-202605-003', status: 'paid', collectedBy: 'Collector' },
-  { id: 'c-4', memberId: 'm-4', memberName: 'Sajid Islam', amount: 1000, month: '2026-05', date: '2026-05-10', paymentType: 'cash', lateFine: 0, receiptNo: 'REC-202605-004', status: 'paid', collectedBy: 'Collector' },
-  { id: 'c-5', memberId: 'm-5', memberName: 'Farhana Chowdhury', amount: 1200, month: '2026-05', date: '2026-05-09', paymentType: 'bank', lateFine: 0, receiptNo: 'REC-202605-005', status: 'paid', collectedBy: 'Treasurer' },
-  
-  { id: 'c-6', memberId: 'm-1', memberName: 'Kabir Ahmed', amount: 1000, month: '2026-06', date: '2026-06-03', paymentType: 'cash', lateFine: 0, receiptNo: 'REC-202606-001', status: 'paid', collectedBy: 'Collector' },
-  { id: 'c-7', memberId: 'm-2', memberName: 'Tasnim Jahan', amount: 1000, month: '2026-06', date: '2026-06-04', paymentType: 'bank', lateFine: 0, receiptNo: 'REC-202606-002', status: 'paid', collectedBy: 'Treasurer' },
-  { id: 'c-8', memberId: 'm-3', memberName: 'Imran Khan', amount: 1500, month: '2026-06', date: '2026-06-05', paymentType: 'cash', lateFine: 0, receiptNo: 'REC-202606-003', status: 'paid', collectedBy: 'Collector' },
-  { id: 'c-9', memberId: 'm-5', memberName: 'Farhana Chowdhury', amount: 1200, month: '2026-06', date: '2026-06-15', paymentType: 'bank', lateFine: 50, receiptNo: 'REC-202606-004', status: 'paid', collectedBy: 'Treasurer' },
-  { id: 'c-10', memberId: 'm-6', memberName: 'Mustafizur Rahman', amount: 2000, month: '2026-06', date: '2026-06-10', paymentType: 'cash', lateFine: 0, receiptNo: 'REC-202606-005', status: 'paid', collectedBy: 'Collector' },
-
-  { id: 'c-11', memberId: 'm-1', memberName: 'Kabir Ahmed', amount: 1000, month: '2026-07', date: '2026-07-02', paymentType: 'cash', lateFine: 0, receiptNo: 'REC-202607-001', status: 'paid', collectedBy: 'Collector' },
-  { id: 'c-12', memberId: 'm-2', memberName: 'Tasnim Jahan', amount: 1000, month: '2026-07', date: '2026-07-03', paymentType: 'bank', lateFine: 0, receiptNo: 'REC-202607-002', status: 'paid', collectedBy: 'Treasurer' },
-  { id: 'c-13', memberId: 'm-4', memberName: 'Sajid Islam', amount: 1000, month: '2026-07', date: '2026-07-07', paymentType: 'cash', lateFine: 0, receiptNo: 'REC-202607-003', status: 'paid', collectedBy: 'Collector' },
-  { id: 'c-14', memberId: 'm-6', memberName: 'Mustafizur Rahman', amount: 2000, month: '2026-07', date: '2026-07-05', paymentType: 'cash', lateFine: 0, receiptNo: 'REC-202607-004', status: 'paid', collectedBy: 'Collector' },
-  { id: 'c-15', memberId: 'm-7', memberName: 'Nusrat Imrose', amount: 1000, month: '2026-07', date: '2026-07-08', paymentType: 'bank', lateFine: 0, receiptNo: 'REC-202607-005', status: 'paid', collectedBy: 'Treasurer' },
-];
+// No pre-seeded collections — all payments must be recorded manually by admin/collector or member
+const initialCollections: Collection[] = [];
 
 const initialInvestments: Investment[] = [
   { id: 'i-1', type: 'FDR', provider: 'BRAC Bank Ltd', principalAmount: 250000, interestRate: 8.5, startDate: '2025-06-01', maturityDate: '2026-06-01', status: 'closed', interestReceived: 21250, notes: 'FDR Matured & amount deposited back to bank' },
@@ -161,45 +144,22 @@ const initialTransactions: Transaction[] = [
   { id: 't-0b', date: '2026-01-01', type: 'credit', account: 'cash', amount: 50000, category: 'Other', referenceId: 'start', description: 'Cash In Hand Opening Balance', balanceAfter: 50000 },
   { id: 't-1', date: '2026-01-15', type: 'debit', account: 'bank', amount: 500000, category: 'Investment Deposit', referenceId: 'i-2', description: 'FDR Deposit City Bank Ltd', balanceAfter: 500000 },
   { id: 't-2', date: '2026-03-01', type: 'debit', account: 'bank', amount: 300000, category: 'Investment Deposit', referenceId: 'i-4', description: 'Business Loan Rahman Electronics', balanceAfter: 200000 },
-  
-  { id: 't-3', date: '2026-05-05', type: 'credit', account: 'cash', amount: 1000, category: 'Collection', referenceId: 'c-1', description: 'Monthly subscription Kabir Ahmed', balanceAfter: 51000 },
-  { id: 't-4', date: '2026-05-06', type: 'credit', account: 'bank', amount: 1000, category: 'Collection', referenceId: 'c-2', description: 'Monthly subscription Tasnim Jahan', balanceAfter: 201000 },
-  { id: 't-5', date: '2026-05-09', type: 'credit', account: 'bank', amount: 1200, category: 'Collection', referenceId: 'c-5', description: 'Monthly subscription Farhana Chowdhury', balanceAfter: 202200 },
-  { id: 't-6', date: '2026-05-10', type: 'credit', account: 'cash', amount: 1000, category: 'Collection', referenceId: 'c-4', description: 'Monthly subscription Sajid Islam', balanceAfter: 52000 },
-  { id: 't-7', date: '2026-05-12', type: 'credit', account: 'cash', amount: 1550, category: 'Collection', referenceId: 'c-3', description: 'Monthly subscription & fine Imran Khan', balanceAfter: 53550 },
-  
-  { id: 't-8', date: '2026-05-01', type: 'debit', account: 'cash', amount: 15000, category: 'Expense', referenceId: 'e-1', description: 'Office Rent May 2026', balanceAfter: 38550 },
-  { id: 't-9', date: '2026-05-05', type: 'debit', account: 'cash', amount: 12000, category: 'Expense', referenceId: 'e-2', description: 'Salary for Office Assistant', balanceAfter: 26550 },
-  { id: 't-10', date: '2026-05-10', type: 'debit', account: 'cash', amount: 3500, category: 'Expense', referenceId: 'e-3', description: 'Electricity & Internet bills May', balanceAfter: 23050 },
-
-  { id: 't-11', date: '2026-06-01', type: 'credit', account: 'bank', amount: 250000, category: 'Investment Return', referenceId: 'i-1', description: 'Matured FDR Principal BRAC Bank', balanceAfter: 452200 },
-  { id: 't-12', date: '2026-06-01', type: 'credit', account: 'bank', amount: 21250, category: 'Interest Income', referenceId: 'i-1', description: 'Matured FDR Interest BRAC Bank', balanceAfter: 473450 },
-
-  { id: 't-13', date: '2026-06-01', type: 'debit', account: 'cash', amount: 15000, category: 'Expense', referenceId: 'e-4', description: 'Office Rent June 2026', balanceAfter: 8050 },
-  { id: 't-14', date: '2026-06-03', type: 'credit', account: 'cash', amount: 1000, category: 'Collection', referenceId: 'c-6', description: 'Monthly subscription Kabir Ahmed', balanceAfter: 9050 },
-  { id: 't-15', date: '2026-06-04', type: 'credit', account: 'bank', amount: 1000, category: 'Collection', referenceId: 'c-7', description: 'Monthly subscription Tasnim Jahan', balanceAfter: 474450 },
-  { id: 't-16', date: '2026-06-05', type: 'debit', account: 'cash', amount: 12000, category: 'Expense', referenceId: 'e-5', description: 'Salary Office Assistant June', balanceAfter: -2950 },
-  
-  { id: 't-17', date: '2026-06-06', type: 'debit', account: 'bank', amount: 50000, category: 'Transfer', referenceId: 'transfer-1', description: 'Transferred bank funds to cash', balanceAfter: 424450 },
-  { id: 't-18', date: '2026-06-06', type: 'credit', account: 'cash', amount: 50000, category: 'Transfer', referenceId: 'transfer-1', description: 'Transferred bank funds to cash', balanceAfter: 47050 },
-  
-  { id: 't-19', date: '2026-06-05', type: 'credit', account: 'cash', amount: 1500, category: 'Collection', referenceId: 'c-8', description: 'Monthly subscription Imran Khan', balanceAfter: 48550 },
-  { id: 't-20', date: '2026-06-10', type: 'credit', account: 'cash', amount: 2000, category: 'Collection', referenceId: 'c-10', description: 'Monthly subscription Mustafizur Rahman', balanceAfter: 50550 },
-  { id: 't-21', date: '2026-06-12', type: 'debit', account: 'cash', amount: 4100, category: 'Expense', referenceId: 'e-6', description: 'Electricity & Internet bills June', balanceAfter: 46450 },
-  { id: 't-22', date: '2026-06-15', type: 'credit', account: 'bank', amount: 1250, category: 'Collection', referenceId: 'c-9', description: 'Monthly subscription & fine Farhana Chowdhury', balanceAfter: 425700 },
-  { id: 't-23', date: '2026-06-18', type: 'debit', account: 'cash', amount: 2500, category: 'Expense', referenceId: 'e-7', description: 'Office AC Servicing', balanceAfter: 43950 },
-
-  { id: 't-24', date: '2026-05-10', type: 'debit', account: 'bank', amount: 150000, category: 'Investment Deposit', referenceId: 'i-5', description: 'Share Market LankaBangla Securities', balanceAfter: 275700 },
-  { id: 't-25', date: '2026-07-28', type: 'credit', account: 'bank', amount: 5000, category: 'Interest Income', referenceId: 'i-5', description: 'Dividend payout LankaBangla Securities', balanceAfter: 280700 },
-
-  { id: 't-26', date: '2026-07-01', type: 'debit', account: 'cash', amount: 15000, category: 'Expense', referenceId: 'e-8', description: 'Office Rent July 2026', balanceAfter: 28950 },
-  { id: 't-27', date: '2026-07-02', type: 'credit', account: 'cash', amount: 1000, category: 'Collection', referenceId: 'c-11', description: 'Monthly subscription Kabir Ahmed', balanceAfter: 29950 },
-  { id: 't-28', date: '2026-07-03', type: 'credit', account: 'bank', amount: 1000, category: 'Collection', referenceId: 'c-12', description: 'Monthly subscription Tasnim Jahan', balanceAfter: 281700 },
-  { id: 't-29', date: '2026-07-05', type: 'debit', account: 'cash', amount: 12000, category: 'Expense', referenceId: 'e-9', description: 'Salary Office Assistant July', balanceAfter: 17950 },
-  { id: 't-30', date: '2026-07-05', type: 'credit', account: 'cash', amount: 2000, category: 'Collection', referenceId: 'c-14', description: 'Monthly subscription Mustafizur Rahman', balanceAfter: 19950 },
-  { id: 't-31', date: '2026-07-07', type: 'credit', account: 'cash', amount: 1000, category: 'Collection', referenceId: 'c-13', description: 'Monthly subscription Sajid Islam', balanceAfter: 20950 },
-  { id: 't-32', date: '2026-07-08', type: 'credit', account: 'bank', amount: 1000, category: 'Collection', referenceId: 'c-15', description: 'Monthly subscription Nusrat Imrose', balanceAfter: 282700 },
-  { id: 't-33', date: '2026-07-10', type: 'debit', account: 'cash', amount: 3800, category: 'Expense', referenceId: 'e-10', description: 'Electricity & Internet bills July', balanceAfter: 17150 },
+  { id: 't-8', date: '2026-05-01', type: 'debit', account: 'cash', amount: 15000, category: 'Expense', referenceId: 'e-1', description: 'Office Rent May 2026', balanceAfter: 35000 },
+  { id: 't-9', date: '2026-05-05', type: 'debit', account: 'cash', amount: 12000, category: 'Expense', referenceId: 'e-2', description: 'Salary for Office Assistant', balanceAfter: 23000 },
+  { id: 't-10', date: '2026-05-10', type: 'debit', account: 'cash', amount: 3500, category: 'Expense', referenceId: 'e-3', description: 'Electricity & Internet bills May', balanceAfter: 19500 },
+  { id: 't-11', date: '2026-06-01', type: 'credit', account: 'bank', amount: 250000, category: 'Investment Return', referenceId: 'i-1', description: 'Matured FDR Principal BRAC Bank', balanceAfter: 450000 },
+  { id: 't-12', date: '2026-06-01', type: 'credit', account: 'bank', amount: 21250, category: 'Interest Income', referenceId: 'i-1', description: 'Matured FDR Interest BRAC Bank', balanceAfter: 471250 },
+  { id: 't-13', date: '2026-06-01', type: 'debit', account: 'cash', amount: 15000, category: 'Expense', referenceId: 'e-4', description: 'Office Rent June 2026', balanceAfter: 4500 },
+  { id: 't-16', date: '2026-06-05', type: 'debit', account: 'cash', amount: 12000, category: 'Expense', referenceId: 'e-5', description: 'Salary Office Assistant June', balanceAfter: -7500 },
+  { id: 't-17', date: '2026-06-06', type: 'debit', account: 'bank', amount: 50000, category: 'Transfer', referenceId: 'transfer-1', description: 'Transferred bank funds to cash', balanceAfter: 421250 },
+  { id: 't-18', date: '2026-06-06', type: 'credit', account: 'cash', amount: 50000, category: 'Transfer', referenceId: 'transfer-1', description: 'Transferred bank funds to cash', balanceAfter: 42500 },
+  { id: 't-21', date: '2026-06-12', type: 'debit', account: 'cash', amount: 4100, category: 'Expense', referenceId: 'e-6', description: 'Electricity & Internet bills June', balanceAfter: 38400 },
+  { id: 't-23', date: '2026-06-18', type: 'debit', account: 'cash', amount: 2500, category: 'Expense', referenceId: 'e-7', description: 'Office AC Servicing', balanceAfter: 35900 },
+  { id: 't-24', date: '2026-05-10', type: 'debit', account: 'bank', amount: 150000, category: 'Investment Deposit', referenceId: 'i-5', description: 'Share Market LankaBangla Securities', balanceAfter: 271250 },
+  { id: 't-25', date: '2026-07-28', type: 'credit', account: 'bank', amount: 5000, category: 'Interest Income', referenceId: 'i-5', description: 'Dividend payout LankaBangla Securities', balanceAfter: 276250 },
+  { id: 't-26', date: '2026-07-01', type: 'debit', account: 'cash', amount: 15000, category: 'Expense', referenceId: 'e-8', description: 'Office Rent July 2026', balanceAfter: 20900 },
+  { id: 't-29', date: '2026-07-05', type: 'debit', account: 'cash', amount: 12000, category: 'Expense', referenceId: 'e-9', description: 'Salary Office Assistant July', balanceAfter: 8900 },
+  { id: 't-33', date: '2026-07-10', type: 'debit', account: 'cash', amount: 3800, category: 'Expense', referenceId: 'e-10', description: 'Electricity & Internet bills July', balanceAfter: 5100 },
 ];
 
 const initialAuditLogs: AuditLog[] = [
