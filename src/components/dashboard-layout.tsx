@@ -120,8 +120,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   });
 
   const userNotifications = notifications.filter(n => {
-    if (user.role !== 'member') return true;
-    return !n.userId || n.userId === 'all' || n.userId === user.id || n.userId === user.id.replace('u-', 'm-') || (user.memberId && n.userId === user.memberId);
+    if (user.role !== 'member') {
+      // Admin, Collector, President, Treasurer view
+      return !n.userId || n.userId === 'all' || n.userId === 'admin' || n.userId === user.id;
+    }
+    // Strict Member View: NEVER show admin approval reminders or other members' payment notices
+    if (n.userId === 'admin') return false;
+    if (n.link === '/collections') return false;
+    if (n.title?.includes('অনুমোদন করুন') || n.message?.includes('অনুমোদন করুন')) return false;
+    if (n.title?.includes('নতুন পেমেন্ট জমা') && !n.title?.includes('পেমেন্ট সাবমিট হয়েছে')) return false;
+
+    // Must be directly targeted to this member or general society announcement
+    const isDirectlyForMe = (
+      n.userId === user.id || 
+      n.userId === user.id.replace('u-', 'm-') || 
+      (user.memberId && n.userId === user.memberId)
+    );
+    if (isDirectlyForMe) return true;
+    if (n.userId === 'all' && (n.category === 'notice' || n.type === 'info' || n.type === 'warning')) {
+      // General society broadcast or meeting notice
+      return true;
+    }
+    return false;
   });
 
   const unreadNotifications = userNotifications.filter(n => !n.read);

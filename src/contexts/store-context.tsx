@@ -780,13 +780,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Status is 'pending' - Member submitted payment awaiting Admin approval
       addAuditLog(`Member Payment Submitted (Pending Approval): ${newColl.amount} TK for ${newColl.memberName} (${newColl.month})`, 'member', newColl.memberName);
 
-      // Notification to Admins / Collectors
+      // Notification to Admins / Collectors ONLY
       addNotification({
-        userId: 'all',
+        userId: 'admin',
         title: `📝 নতুন পেমেন্ট জমা (${newColl.memberName})`,
         message: `${newColl.memberName} ${newColl.month} মাসের ৳${newColl.amount + (newColl.lateFine || 0)} চাঁদা জমা দিয়েছেন (${newColl.paymentType.toUpperCase()})। রশিদ/ট্রানজ্যাকশন যাচাই করে অনুমোদন করুন।`,
         type: 'warning',
-        link: '/collections'
+        link: '/collections',
+        category: 'payment'
       });
 
       // Notification to Member

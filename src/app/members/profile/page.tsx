@@ -408,9 +408,19 @@ export default function MemberProfilePage() {
   const memberNotifications = React.useMemo(() => {
     if (!memberProfile?.id) return [];
     return notifications.filter(n => {
-      if (!n.userId || n.userId === 'all') return true;
+      // Never show admin tasks or collection verification to regular members
+      if (n.userId === 'admin' || n.link === '/collections') return false;
+      if (n.title?.includes('অনুমোদন করুন') || n.message?.includes('অনুমোদন করুন')) return false;
+      if (n.title?.includes('নতুন পেমেন্ট জমা') && !n.title?.includes('পেমেন্ট সাবমিট হয়েছে')) return false;
+
+      // Direct match
       if (n.userId === memberProfile.id) return true;
-      if (user?.id && n.userId === user.id) return true;
+      if (user?.id && (n.userId === user.id || n.userId === user.id.replace('u-', 'm-'))) return true;
+      if (user?.memberId && n.userId === user.memberId) return true;
+
+      // Broadcast society announcements
+      if (n.userId === 'all' && (n.category === 'notice' || n.type === 'info')) return true;
+
       return false;
     }).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }, [notifications, memberProfile, user]);

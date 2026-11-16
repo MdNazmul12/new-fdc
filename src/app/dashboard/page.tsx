@@ -28,7 +28,11 @@ import {
   Building2,
   Calendar,
   CheckCircle,
-  Clock
+  Clock,
+  Bell,
+  Send,
+  Check,
+  ExternalLink
 } from 'lucide-react';
 import Link from 'next/link';
 import PaymentSubmitModal from '../../components/payment-submit-modal';
@@ -50,9 +54,12 @@ import {
 } from 'recharts';
 
 export default function Dashboard() {
-  const { stats, transactions, investments, notifications, members, collections, dueDemands, loans } = useStore();
+  const { stats, transactions, investments, notifications, members, collections, dueDemands, loans, markNotificationRead, markAllNotificationsRead } = useStore();
   const { user, hasPermission } = useAuth();
   const [mounted, setMounted] = useState(false);
+
+  // Tab state for member notification / message history
+  const [memberNotifTab, setMemberNotifTab] = useState<'all' | 'payment' | 'due' | 'notice'>('all');
 
   // Modal state for viewing money receipt
   const [viewReceipt, setViewReceipt] = useState<Collection | null>(null);
@@ -299,16 +306,26 @@ export default function Dashboard() {
         });
       }
 
-      // 4. Targeted or Broadcast Notifications for this Member
+      // 4. Targeted Urgent Alerts for this Member ONLY (NEVER admin tasks, and NOT paid receipts)
       const memberNotifs = notifications.filter(n => {
         if (n.read) return false;
-        if (n.userId === 'all') return true;
-        if (n.userId && (
-          n.userId === user?.id || 
-          n.userId === user?.id.replace('u-', 'm-') || 
+        // Never show admin tasks to regular members
+        if (n.userId === 'admin' || n.link === '/collections') return false;
+        if (n.title?.includes('অনুমোদন করুন') || n.message?.includes('অনুমোদন করুন')) return false;
+        if (n.title?.includes('নতুন পেমেন্ট জমা') && !n.title?.includes('পেমেন্ট সাবমিট হয়েছে')) return false;
+        
+        // NEVER show success/paid receipt under "Action Required" (no action required, it's already paid!)
+        if (n.type === 'success' || n.title?.includes('জমা গৃহীত') || n.title?.includes('অনুমোদিত')) return false;
+
+        const isDirectlyForMe = (
+          (myMember && n.userId === myMember.id) ||
           (user?.memberId && n.userId === user.memberId) ||
-          (myMember && n.userId === myMember.id)
-        )) return true;
+          (user?.id && (n.userId === user.id || n.userId === user.id.replace('u-', 'm-')))
+        );
+
+        if (isDirectlyForMe) return true;
+        // Broadcast urgent alerts/warnings only
+        if (n.userId === 'all' && (n.type === 'alert' || n.category === 'notice')) return true;
         return false;
       });
 
@@ -370,6 +387,57 @@ export default function Dashboard() {
 
     return list.slice(0, 4);
   }, [role, myUnpaidDuesList, myTotalDueWithFines, myPendingCollections, myMember, user, loans, notifications, collections, stats.dueCollection]);
+
+  // Complete personal notification and message history for this member
+  const myNotificationHistory = useMemo(() => {
+    if (role !== 'member') return [];
+    return notifications.filter(n => {
+      // Never show admin tasks to regular members
+      if (n.userId === 'admin' || n.link === '/collections') return false;
+      if (n.title?.includes('অনুমোদন করুন') || n.message?.includes('অনুমোদন করুন')) return false;
+      if (n.title?.includes('নতুন পেমেন্ট জমা') && !n.title?.includes('পেমেন্ট সাবমিট হয়েছে')) return false;
+
+      // Personal match
+      const isForMe = (
+        (myMember && n.userId === myMember.id) ||
+        (user?.memberId && n.userId === user.memberId) ||
+        (user?.id && (n.userId === user.id || n.userId === user.id.replace('u-', 'm-')))
+      );
+      if (isForMe) return true;
+
+      // General society announcements/notices
+      if (n.userId === 'all' && (n.category === 'notice' || n.type === 'info')) return true;
+
+      return false;
+    }).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  }, [notifications, role, myMember, user]);
+
+  const filteredMemberNotifs = useMemo(() => {
+    if (memberNotifTab === 'all') return myNotificationHistory;
+    if (memberNotifTab === 'payment') {
+      return myNotificationHistory.filter(n => 
+        n.category === 'payment' || 
+        n.title.includes('পেমেন্ট') || 
+        n.title.includes('জমা') || 
+        n.message.includes('রশিদ')
+      );
+    }
+    if (memberNotifTab === 'due') {
+      return myNotificationHistory.filter(n => 
+        n.category === 'due' || 
+        n.title.includes('বকেয়া') || 
+        n.title.includes('চাঁদা ধার্য')
+      );
+    }
+    if (memberNotifTab === 'notice') {
+      return myNotificationHistory.filter(n => 
+        n.category === 'notice' || 
+        n.title.includes('নোটিশ') || 
+        n.title.includes('ঘোষণা')
+      );
+    }
+    return myNotificationHistory;
+  }, [myNotificationHistory, memberNotifTab]);
 
   // All Active Members with Outstanding Dues (for Admin Dashboard Overview)
   const membersWithDues = useMemo(() => {
@@ -934,6 +1002,138 @@ export default function Dashboard() {
                 </div>
               </div>
 
+            </div>
+
+            {/* Section 3: My Notification & Message/SMS History */}
+            <div className="glass-panel p-5 rounded-2xl space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-[var(--border)] gap-2">
+                <div className="flex items-center space-x-2.5">
+                  <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
+                    <Bell className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-[var(--foreground)]">
+                      মেম্বার মেসেজ ও নোটিফিকেশন হিস্টরি (Messages & Notification History)
+                    </h3>
+                    <p className="text-[11px] text-[var(--muted-foreground)]">
+                      আপনার অ্যাকাউন্টে পাঠানো সকল রসিদ, বকেয়া তাগিদ ও সমিতির নোটিশের বিস্তারিত তালিকা
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-1.5">
+                  {(['all', 'payment', 'due', 'notice'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setMemberNotifTab(tab)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                        memberNotifTab === tab
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'bg-[var(--secondary)] hover:bg-[var(--accent)] text-[var(--muted-foreground)]'
+                      }`}
+                    >
+                      {tab === 'all' && 'সব (All)'}
+                      {tab === 'payment' && 'পেমেন্ট রসিদ'}
+                      {tab === 'due' && 'বকেয়া তাগিদ'}
+                      {tab === 'notice' && 'সমিতি নোটিশ'}
+                    </button>
+                  ))}
+                  {filteredMemberNotifs.some(n => !n.read) && (
+                    <button
+                      type="button"
+                      onClick={() => markAllNotificationsRead()}
+                      className="px-2.5 py-1 rounded-lg bg-[var(--accent)] hover:bg-zinc-700 text-indigo-400 text-[11px] font-semibold transition-all cursor-pointer ml-1"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {filteredMemberNotifs.length > 0 ? (
+                <div className="space-y-2.5">
+                  {filteredMemberNotifs.map((n) => {
+                    const isPayment = n.category === 'payment' || n.title.includes('পেমেন্ট') || n.title.includes('জমা');
+                    const isDue = n.category === 'due' || n.title.includes('বকেয়া') || n.title.includes('চাঁদা ধার্য');
+                    const isSuccess = n.type === 'success' || n.title.includes('গৃহীত') || n.title.includes('অনুমোদিত');
+
+                    return (
+                      <div
+                        key={n.id}
+                        className={`p-3.5 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                          !n.read 
+                            ? 'bg-indigo-500/5 border-indigo-500/30' 
+                            : 'bg-[var(--secondary)]/40 border-[var(--border)]'
+                        }`}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className={`p-2 rounded-xl shrink-0 mt-0.5 ${
+                            isSuccess 
+                              ? 'bg-emerald-500/10 text-emerald-400' 
+                              : isDue 
+                                ? 'bg-amber-500/10 text-amber-400' 
+                                : 'bg-indigo-500/10 text-indigo-400'
+                          }`}>
+                            {isSuccess ? <CheckCircle2 className="w-4 h-4" /> : isDue ? <AlertTriangle className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
+                          </div>
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <h4 className="text-xs font-bold text-[var(--foreground)]">{n.title}</h4>
+                              <span className={`px-2 py-0.2 rounded-full text-[9px] font-extrabold uppercase ${
+                                isSuccess 
+                                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' 
+                                  : isDue 
+                                    ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' 
+                                    : 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30'
+                              }`}>
+                                {isSuccess ? 'PAID / SMS' : isDue ? 'UNPAID / DUE' : 'MESSAGE'}
+                              </span>
+                              {!n.read && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-[var(--muted-foreground)] mt-1 leading-relaxed">
+                              {n.message}
+                            </p>
+                            <span className="text-[10px] text-[var(--muted-foreground)]/60 font-mono block mt-1">
+                              {n.date}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2 self-end sm:self-center shrink-0">
+                          {n.link && (
+                            <Link
+                              href={n.link}
+                              onClick={() => markNotificationRead(n.id)}
+                              className="px-2.5 py-1 rounded-lg bg-[var(--accent)] hover:bg-zinc-700 text-indigo-400 text-[11px] font-semibold transition-all inline-flex items-center space-x-1"
+                            >
+                              <span>বিস্তারিত দেখুন</span>
+                              <ChevronRight className="w-3 h-3" />
+                            </Link>
+                          )}
+                          {!n.read && (
+                            <button
+                              type="button"
+                              onClick={() => markNotificationRead(n.id)}
+                              className="p-1 rounded-lg hover:bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-white transition-all text-[10px]"
+                              title="Mark as read"
+                            >
+                              ✓
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-8 text-center text-[var(--muted-foreground)]/70 text-xs">
+                  <Bell className="w-8 h-8 mx-auto mb-2 text-zinc-600 opacity-60" />
+                  <p>এই মুহূর্তে আপনার কোনো নোটিফিকেশন বা মেসেজ রেকর্ড নেই।</p>
+                </div>
+              )}
             </div>
 
           </div>
