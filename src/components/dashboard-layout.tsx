@@ -42,7 +42,11 @@ import {
   Coins,
   MessageSquare,
   Send,
-  RotateCcw
+  RotateCcw,
+  History,
+  Sparkles,
+  UserCheck,
+  FileSpreadsheet
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -106,33 +110,168 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  // Navigation Links definition with permission checks
-  const navigationItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, permission: { module: 'dashboard', action: 'view' as const } },
+  // Navigation Links definition with categorized sections & badges for new features
+  type NavItem = {
+    name: string;
+    path: string;
+    icon: any;
+    permission: { module: string; action: 'view' | 'create' | 'update' | 'delete' | 'approve' | 'export' | 'print' };
+    badge?: string;
+    badgeColor?: string;
+    section?: string;
+  };
+
+  const navigationItems: NavItem[] = [
+    // ── MAIN SECTION ──
+    { 
+      section: 'Main Menu (প্রধান)',
+      name: 'Dashboard', 
+      path: '/dashboard', 
+      icon: LayoutDashboard, 
+      permission: { module: 'dashboard', action: 'view' as const } 
+    },
     { 
       name: user.role === 'member' ? 'My Profile' : 'Members', 
       path: user.role === 'member' ? '/members/profile' : '/members', 
       icon: Users, 
       permission: { module: 'members', action: 'view' as const } 
     },
-    { name: 'Collections', path: '/collections', icon: DollarSign, permission: { module: 'collections', action: 'view' as const } },
-    { name: 'Due List', path: '/dues', icon: CalendarClock, permission: { module: 'collections', action: 'view' as const } },
-    { name: 'Advance Payment', path: '/advance-payment', icon: Coins, permission: { module: 'advance_payment', action: 'view' as const } },
-    { name: 'Community Chat', path: '/chat', icon: MessageSquare, permission: { module: 'chat', action: 'view' as const } },
-    { name: 'Generate Dues', path: '/generate-dues', icon: PlusCircle, permission: { module: 'collections', action: 'create' as const } },
-    { name: 'Investments', path: '/investments', icon: TrendingUp, permission: { module: 'investments', action: 'view' as const } },
-    { name: 'Expenses', path: '/expenses', icon: CreditCard, permission: { module: 'expenses', action: 'view' as const } },
-    { name: 'Loans', path: '/loans', icon: Banknote, permission: { module: 'loans', action: 'view' as const } },
-    { name: 'Accounting', path: '/accounting', icon: BookOpen, permission: { module: 'accounting', action: 'view' as const } },
-    { name: 'Reports', path: '/reports', icon: FileText, permission: { module: 'reports', action: 'view' as const } },
-    { name: 'User Management', path: '/users', icon: UserCog, permission: { module: 'users', action: 'view' as const } },
-    { name: 'Backup & Restore', path: '/backup', icon: Database, permission: { module: 'backup', action: 'view' as const } },
+    { 
+      name: 'Community Chat', 
+      path: '/chat', 
+      icon: MessageSquare, 
+      permission: { module: 'chat', action: 'view' as const },
+      badge: 'NEW',
+      badgeColor: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+    },
+
+    // ── COLLECTIONS & DUES ──
+    { 
+      section: 'Collections & Dues (আদায় ও ডিউ)',
+      name: 'Collections', 
+      path: '/collections', 
+      icon: DollarSign, 
+      permission: { module: 'collections', action: 'view' as const } 
+    },
+    { 
+      name: 'Due List', 
+      path: '/dues', 
+      icon: CalendarClock, 
+      permission: { module: 'collections', action: 'view' as const } 
+    },
+    { 
+      name: 'Advance Payment', 
+      path: '/advance-payment', 
+      icon: Coins, 
+      permission: { module: 'advance_payment', action: 'view' as const },
+      badge: 'NEW',
+      badgeColor: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+    },
+    { 
+      name: 'Generate Dues', 
+      path: '/generate-dues', 
+      icon: PlusCircle, 
+      permission: { module: 'collections', action: 'create' as const },
+      badge: '12M',
+      badgeColor: 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
+    },
+
+    // ── REPORTS (NEW FEATURES) ──
+    { 
+      section: 'Reports & Statements (রিপোর্ট)',
+      name: 'Member Collections', 
+      path: '/reports?type=member_collection', 
+      icon: UserCheck, 
+      permission: { module: 'collections', action: 'view' as const },
+      badge: 'NEW',
+      badgeColor: 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
+    },
+    { 
+      name: 'Member Dues Report', 
+      path: '/reports?type=due', 
+      icon: AlertTriangle, 
+      permission: { module: 'collections', action: 'view' as const },
+      badge: 'NEW',
+      badgeColor: 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+    },
+    { 
+      name: 'All Financial Reports', 
+      path: '/reports', 
+      icon: FileSpreadsheet, 
+      permission: { module: 'reports', action: 'view' as const } 
+    },
+
+    // ── FINANCE & ACCOUNTS ──
+    { 
+      section: 'Finance & Accounts (হিসাব)',
+      name: 'Expenses', 
+      path: '/expenses', 
+      icon: CreditCard, 
+      permission: { module: 'expenses', action: 'view' as const } 
+    },
+    { 
+      name: 'Loans', 
+      path: '/loans', 
+      icon: Banknote, 
+      permission: { module: 'loans', action: 'view' as const } 
+    },
+    { 
+      name: 'Investments', 
+      path: '/investments', 
+      icon: TrendingUp, 
+      permission: { module: 'investments', action: 'view' as const } 
+    },
+    { 
+      name: 'Accounting Ledger', 
+      path: '/accounting', 
+      icon: BookOpen, 
+      permission: { module: 'accounting', action: 'view' as const } 
+    },
+
+    // ── COMMUNICATION & SYSTEM ──
+    { 
+      section: 'Communication & System (সিস্টেম)',
+      name: 'Message History', 
+      path: '/dashboard#message-history', 
+      icon: History, 
+      permission: { module: 'dashboard', action: 'view' as const },
+      badge: 'NEW',
+      badgeColor: 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+    },
+    { 
+      name: 'User Management', 
+      path: '/users', 
+      icon: UserCog, 
+      permission: { module: 'users', action: 'view' as const } 
+    },
+    { 
+      name: 'Backup & Restore', 
+      path: '/backup', 
+      icon: Database, 
+      permission: { module: 'backup', action: 'view' as const } 
+    },
   ];
 
   const filteredNavItems = navigationItems.filter(item => {
     if (user.role === 'super_admin') return true;
     return hasPermission(item.permission.module, item.permission.action);
   });
+
+  const isItemActive = (itemPath: string) => {
+    if (typeof window !== 'undefined') {
+      const currentFull = window.location.pathname + window.location.search;
+      if (itemPath.includes('?')) {
+        return currentFull === itemPath;
+      }
+      if (itemPath.includes('#')) {
+        return window.location.pathname === itemPath.split('#')[0] && window.location.hash === '#' + itemPath.split('#')[1];
+      }
+      if (itemPath === '/reports') {
+        return pathname === '/reports' && !window.location.search.includes('type=');
+      }
+    }
+    return pathname === itemPath || (itemPath !== '/dashboard' && pathname.startsWith(itemPath));
+  };
 
   const userNotifications = notifications.filter(n => {
     if (user.role !== 'member') {
@@ -195,7 +334,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen flex bg-[var(--background)]">
       {/* ---------------- SIDEBAR (DESKTOP) ---------------- */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-[var(--card)] border-r border-[var(--border)] p-4 shrink-0 justify-between">
+      <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-[var(--card)] border-r border-[var(--border)] p-4 shrink-0 justify-between h-screen sticky top-0 overflow-y-auto scrollbar-thin">
         <div>
           {/* Logo */}
           <div className="flex items-center space-x-3 px-2 py-3 mb-4">
@@ -210,21 +349,37 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Navigation Links */}
           <nav className="space-y-1">
-            {filteredNavItems.map((item) => {
-              const isActive = pathname === item.path || (item.path !== '/dashboard' && pathname.startsWith(item.path));
+            {filteredNavItems.map((item, idx) => {
+              const isActive = isItemActive(item.path);
+              const showSection = item.section && (idx === 0 || filteredNavItems[idx - 1]?.section !== item.section);
               return (
-                <Link
-                  key={item.name}
-                  href={item.path}
-                  className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-[var(--primary)]/10 text-[var(--primary)] border-l-2 border-[var(--primary)]' 
-                      : 'text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]'
-                  }`}
-                >
-                  <item.icon className={`w-4 h-4 ${isActive ? 'text-[var(--primary)]' : 'text-[var(--muted-foreground)]'}`} />
-                  <span>{item.name}</span>
-                </Link>
+                <React.Fragment key={item.name}>
+                  {showSection && (
+                    <div className="pt-3 pb-1 px-3">
+                      <span className="text-[10px] font-extrabold text-[var(--muted-foreground)]/80 uppercase tracking-wider">
+                        {item.section}
+                      </span>
+                    </div>
+                  )}
+                  <Link
+                    href={item.path}
+                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 group ${
+                      isActive 
+                        ? 'bg-[var(--primary)]/10 text-[var(--primary)] border-l-2 border-[var(--primary)] font-bold shadow-sm' 
+                        : 'text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <item.icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? 'text-[var(--primary)]' : 'text-[var(--muted-foreground)]'}`} />
+                      <span className="truncate">{item.name}</span>
+                    </div>
+                    {item.badge && (
+                      <span className={`text-[9px] px-1.5 py-0.2 rounded font-black tracking-wider uppercase shrink-0 ${item.badgeColor || 'bg-indigo-500/20 text-indigo-300'}`}>
+                        {item.badge}
+                      </span>
+                    )}
+                  </Link>
+                </React.Fragment>
               );
             })}
           </nav>
@@ -269,7 +424,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* ---------------- MOBILE SIDEBAR (DRAWER) ---------------- */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 flex lg:hidden bg-black/60 backdrop-blur-sm">
-          <div className="w-64 bg-[var(--card)] border-r border-[var(--border)] p-4 flex flex-col justify-between h-full animate-fade-in-up">
+          <div className="w-64 bg-[var(--card)] border-r border-[var(--border)] p-4 flex flex-col justify-between h-full overflow-y-auto animate-fade-in-up">
             <div>
               <div className="flex items-center justify-between px-2 py-4 mb-4">
                 <div className="flex items-center space-x-2.5">
@@ -290,21 +445,37 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
 
               <nav className="space-y-1" onClick={() => setMobileMenuOpen(false)}>
-                {filteredNavItems.map((item) => {
-                  const isActive = pathname === item.path || (item.path !== '/dashboard' && pathname.startsWith(item.path));
+                {filteredNavItems.map((item, idx) => {
+                  const isActive = isItemActive(item.path);
+                  const showSection = item.section && (idx === 0 || filteredNavItems[idx - 1]?.section !== item.section);
                   return (
-                    <Link
-                      key={item.name}
-                      href={item.path}
-                      className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                        isActive 
-                          ? 'bg-[var(--primary)]/10 text-[var(--primary)] border-l-2 border-[var(--primary)]' 
-                          : 'text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]'
-                      }`}
-                    >
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.name}</span>
-                    </Link>
+                    <React.Fragment key={item.name}>
+                      {showSection && (
+                        <div className="pt-3 pb-1 px-3">
+                          <span className="text-[10px] font-extrabold text-[var(--muted-foreground)]/80 uppercase tracking-wider">
+                            {item.section}
+                          </span>
+                        </div>
+                      )}
+                      <Link
+                        href={item.path}
+                        className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                          isActive 
+                            ? 'bg-[var(--primary)]/10 text-[var(--primary)] border-l-2 border-[var(--primary)] font-bold' 
+                            : 'text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-2.5 min-w-0">
+                          <item.icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[var(--primary)]' : 'text-[var(--muted-foreground)]'}`} />
+                          <span className="truncate">{item.name}</span>
+                        </div>
+                        {item.badge && (
+                          <span className={`text-[9px] px-1.5 py-0.2 rounded font-black tracking-wider uppercase shrink-0 ${item.badgeColor || 'bg-indigo-500/20 text-indigo-300'}`}>
+                            {item.badge}
+                          </span>
+                        )}
+                      </Link>
+                    </React.Fragment>
                   );
                 })}
               </nav>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import DashboardLayout from '../../components/dashboard-layout';
 import { useStore } from '../../contexts/store-context';
 import { useAuth } from '../../contexts/auth-context';
@@ -83,6 +83,17 @@ export default function ReportsPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [quickPeriod, setQuickPeriod] = useState<string>('all');
 
+  // Sync URL query param `?type=` on mount and URL change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const typeParam = params.get('type') as ReportType;
+      if (typeParam && ['summary', 'expense', 'collection', 'member_collection', 'investment', 'loan', 'ledger', 'due'].includes(typeParam)) {
+        setReportType(typeParam);
+      }
+    }
+  }, []);
+
   // Export Loading States
   const [exportingPdf, setExportingPdf] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
@@ -129,6 +140,11 @@ export default function ReportsPage() {
     setSelectedStatus('all');
     setSelectedPaymentType('all');
     setSelectedAccount('all');
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('type', newType);
+      window.history.replaceState(null, '', url.toString());
+    }
   };
 
   // ── Dynamic Category List Extraction ─────────────────────────────────────
