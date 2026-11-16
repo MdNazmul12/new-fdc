@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useMemo } from 'react';
 import DashboardLayout from '../../components/dashboard-layout';
@@ -11,19 +11,16 @@ import {
   PlusCircle, 
   Trash2, 
   DollarSign, 
-  Users, 
   CheckCircle2, 
   AlertTriangle, 
   ArrowRight, 
-  Calendar, 
   Clock, 
   X, 
   Loader2, 
-  ExternalLink,
-  ShieldCheck,
-  Tag,
   FileSpreadsheet,
-  Download
+  Download,
+  Layers,
+  ShieldAlert
 } from 'lucide-react';
 import Link from 'next/link';
 import ExcelImportModal, { downloadDuesTemplate } from '../../components/excel-import-modal';
@@ -36,7 +33,7 @@ export default function GenerateDuesPage() {
 
   const [importModalOpen, setImportModalOpen] = useState(false);
 
-  // Generate Due Modal state
+  // â”€â”€â”€â”€â”€ Single Generate Modal state â”€â”€â”€â”€â”€
   const [modalOpen, setModalOpen] = useState(false);
   const [targetMonth, setTargetMonth] = useState<string>(() => {
     const d = new Date();
@@ -49,17 +46,37 @@ export default function GenerateDuesPage() {
   const [lateFine, setLateFine] = useState<number>(50);
   const [loading, setLoading] = useState(false);
 
-  // Delete Confirmation state
+  // â”€â”€â”€â”€â”€ Bulk Generate Modal state â”€â”€â”€â”€â”€
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [bulkStartMonth, setBulkStartMonth] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [bulkMonthCount, setBulkMonthCount] = useState<number>(12);
+  const [bulkCustomCount, setBulkCustomCount] = useState<number>(3);
+  const [bulkCountMode, setBulkCountMode] = useState<'1' | '3' | '6' | '12' | 'custom'>('12');
+  const [bulkAmountType, setBulkAmountType] = useState<'member_fee' | 'fixed'>('member_fee');
+  const [bulkFixedAmount, setBulkFixedAmount] = useState<number>(1000);
+  const [bulkCutoffDay, setBulkCutoffDay] = useState<number>(10);
+  const [bulkLateFine, setBulkLateFine] = useState<number>(50);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<string>('');
+
+  // â”€â”€â”€â”€â”€ Delete Confirmation state â”€â”€â”€â”€â”€
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [demandToDelete, setDemandToDelete] = useState<DueDemand | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Feedback banner state
+  // â”€â”€â”€â”€â”€ Delete All Dues state â”€â”€â”€â”€â”€
+  const [deleteAllConfirmOpen, setDeleteAllConfirmOpen] = useState(false);
+  const [deleteAllLoading, setDeleteAllLoading] = useState(false);
+
+  // â”€â”€â”€â”€â”€ Feedback banner state â”€â”€â”€â”€â”€
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const showFeedback = (msg: string) => {
     setFeedback(msg);
-    setTimeout(() => setFeedback(null), 3500);
+    setTimeout(() => setFeedback(null), 4000);
   };
 
   const formatCurrency = (val: number) => {
@@ -70,7 +87,21 @@ export default function GenerateDuesPage() {
     return members.filter(m => m.status === 'active');
   }, [members]);
 
-  // Handle generation of new due demand
+  // Compute effective bulk count
+  const effectiveBulkCount = bulkCountMode === 'custom' ? bulkCustomCount : Number(bulkCountMode);
+
+  // Preview months for bulk generate
+  const bulkPreviewMonths = useMemo(() => {
+    const months: string[] = [];
+    const [sy, sm] = bulkStartMonth.split('-').map(Number);
+    for (let i = 0; i < effectiveBulkCount; i++) {
+      const d = new Date(sy, sm - 1 + i, 1);
+      months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+    return months;
+  }, [bulkStartMonth, effectiveBulkCount]);
+
+  // â”€â”€â”€â”€â”€ Single Generate â”€â”€â”€â”€â”€
   const handleGenerateDemand = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!targetMonth) {
@@ -108,7 +139,44 @@ export default function GenerateDuesPage() {
     }
   };
 
-  // Prompt deletion
+  // â”€â”€â”€â”€â”€ Bulk Generate â”€â”€â”€â”€â”€
+  const handleBulkGenerate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBulkLoading(true);
+    let generated = 0;
+    let skipped = 0;
+    try {
+      for (let i = 0; i < bulkPreviewMonths.length; i++) {
+        const month = bulkPreviewMonths[i];
+        setBulkProgress(`Generating ${month}... (${i + 1}/${bulkPreviewMonths.length})`);
+        const existing = dueDemands.find(d => d.month === month);
+        if (existing) { skipped++; continue; }
+        const dueDate = `${month}-${String(bulkCutoffDay).padStart(2, '0')}`;
+        await addDueDemand({
+          month,
+          title: `Monthly Subscription Fee - ${month}`,
+          dueDate,
+          amountType: bulkAmountType,
+          fixedAmount: bulkAmountType === 'fixed' ? Number(bulkFixedAmount) : undefined,
+          lateFine: Number(bulkLateFine),
+          applicableTo: 'all',
+          createdBy: user?.name || 'Administrator'
+        });
+        generated++;
+      }
+      setBulkModalOpen(false);
+      setBulkProgress('');
+      showFeedback(`âœ… ${generated} à¦®à¦¾à¦¸à§‡à¦° due generate à¦¹à¦¯à¦¼à§‡à¦›à§‡${skipped > 0 ? `, ${skipped} à¦®à¦¾à¦¸ à¦†à¦—à§‡ à¦¥à§‡à¦•à§‡à¦‡ à¦›à¦¿à¦² (skip à¦•à¦°à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡)` : ''}à¥¤`);
+    } catch (err) {
+      console.error(err);
+      alert('à¦•à¦¿à¦›à§ à¦®à¦¾à¦¸ generate à¦•à¦°à¦¤à§‡ à¦¸à¦®à¦¸à§à¦¯à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡à¥¤');
+    } finally {
+      setBulkLoading(false);
+      setBulkProgress('');
+    }
+  };
+
+  // â”€â”€â”€â”€â”€ Single Delete â”€â”€â”€â”€â”€
   const handlePromptDelete = (demand: DueDemand) => {
     setDemandToDelete(demand);
     setDeleteConfirmOpen(true);
@@ -127,6 +195,23 @@ export default function GenerateDuesPage() {
       alert('Failed to delete demand.');
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  // â”€â”€â”€â”€â”€ Delete All â”€â”€â”€â”€â”€
+  const handleDeleteAll = async () => {
+    setDeleteAllLoading(true);
+    try {
+      for (const demand of dueDemands) {
+        await deleteDueDemand(demand.id);
+      }
+      setDeleteAllConfirmOpen(false);
+      showFeedback(`à¦¸à¦•à¦² ${dueDemands.length} à¦Ÿà¦¿ due demand à¦®à§à¦›à§‡ à¦«à§‡à¦²à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡à¥¤`);
+    } catch (err) {
+      console.error(err);
+      alert('à¦•à¦¿à¦›à§ due demand à¦®à§à¦›à¦¤à§‡ à¦¸à¦®à¦¸à§à¦¯à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡à¥¤');
+    } finally {
+      setDeleteAllLoading(false);
     }
   };
 
@@ -219,7 +304,7 @@ export default function GenerateDuesPage() {
             </p>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Link
               href="/dues"
               className="flex items-center space-x-1.5 px-3 py-2 bg-[var(--secondary)] border border-[var(--border)] hover:bg-[var(--accent)] text-[var(--card-foreground)] text-xs font-semibold rounded-xl transition-all"
@@ -233,7 +318,7 @@ export default function GenerateDuesPage() {
                 type="button"
                 onClick={() => setImportModalOpen(true)}
                 className="flex items-center space-x-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
-                title="সদস্যদের পূর্বের বকেয়া এক্সেল ফাইলের মাধ্যমে ইম্পোর্ট করুন"
+                title="à¦¸à¦¦à¦¸à§à¦¯à¦¦à§‡à¦° à¦ªà§‚à¦°à§à¦¬à§‡à¦° à¦¬à¦•à§‡à¦¯à¦¼à¦¾ à¦à¦•à§à¦¸à§‡à¦² à¦«à¦¾à¦‡à¦²à§‡à¦° à¦®à¦¾à¦§à§à¦¯à¦®à§‡ à¦‡à¦®à§à¦ªà§‹à¦°à§à¦Ÿ à¦•à¦°à§à¦¨"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5" />
                 <span>Import Previous Dues</span>
@@ -245,10 +330,32 @@ export default function GenerateDuesPage() {
                 type="button"
                 onClick={downloadDuesTemplate}
                 className="flex items-center space-x-1.5 px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded-xl transition-all cursor-pointer"
-                title="নমুনা এক্সেল টেমপ্লেট ডাউনলোড করুন"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>টেমপ্লেট (.xlsx)</span>
+                <span>Template (.xlsx)</span>
+              </button>
+            )}
+
+            {canManageDues && dueDemands.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setDeleteAllConfirmOpen(true)}
+                className="flex items-center space-x-1.5 px-3 py-2 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 border border-rose-500/30 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                title="à¦¸à¦•à¦² due demand à¦®à§à¦›à§‡ à¦«à§‡à¦²à§à¦¨"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete All Dues</span>
+              </button>
+            )}
+
+            {canManageDues && (
+              <button
+                type="button"
+                onClick={() => setBulkModalOpen(true)}
+                className="flex items-center space-x-1.5 px-3 py-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-violet-600/20 transition-all cursor-pointer"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Bulk Generate</span>
               </button>
             )}
 
@@ -259,7 +366,7 @@ export default function GenerateDuesPage() {
                 className="flex items-center space-x-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/20 transition-all cursor-pointer"
               >
                 <PlusCircle className="w-3.5 h-3.5" />
-                <span>+ Generate Due Demand</span>
+                <span>+ Single Month</span>
               </button>
             )}
           </div>
@@ -406,12 +513,220 @@ export default function GenerateDuesPage() {
             <div className="py-12 text-center text-[var(--muted-foreground)]/70 text-xs">
               <CalendarClock className="w-10 h-10 mx-auto mb-3 text-zinc-600 opacity-60" />
               <p className="font-semibold text-[var(--foreground)]/80">No Monthly Due Demands Created Yet</p>
-              <p className="mt-1">Click &quot;+ Generate Due Demand&quot; to issue monthly subscription dues for all members.</p>
+              <p className="mt-1">Click &quot;Bulk Generate&quot; to generate multiple months at once, or &quot;+ Single Month&quot; for one month.</p>
             </div>
           )}
         </div>
 
-        {/* ---------------- MODAL: GENERATE DUE DEMAND ---------------- */}
+        {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ MODAL: BULK GENERATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {bulkModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-3xl w-full max-w-lg p-6 relative shadow-2xl max-h-[90vh] overflow-y-auto">
+              
+              <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
+                <div className="flex items-center space-x-2.5">
+                  <div className="p-2 rounded-xl bg-violet-600/15 text-violet-400">
+                    <Layers className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">Bulk Generate Due Demands</h3>
+                    <p className="text-[11px] text-[var(--muted-foreground)]">à¦à¦•à¦¸à¦¾à¦¥à§‡ à¦à¦•à¦¾à¦§à¦¿à¦• à¦®à¦¾à¦¸à§‡à¦° due generate à¦•à¦°à§à¦¨</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setBulkModalOpen(false); setBulkProgress(''); }}
+                  className="p-1.5 rounded-lg bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleBulkGenerate} className="space-y-4 mt-5 text-xs">
+
+                {/* Start Month */}
+                <div>
+                  <label className="block text-[var(--foreground)]/80 font-semibold mb-1">à¦¶à§à¦°à§à¦° à¦®à¦¾à¦¸ (Start Month) *</label>
+                  <input
+                    type="month"
+                    required
+                    value={bulkStartMonth}
+                    onChange={(e) => setBulkStartMonth(e.target.value)}
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[var(--card-foreground)] focus:outline-none focus:border-violet-500 font-mono"
+                  />
+                </div>
+
+                {/* Month Count Selector */}
+                <div>
+                  <label className="block text-[var(--foreground)]/80 font-semibold mb-2">à¦•à¦¤à§‹ à¦®à¦¾à¦¸ Generate à¦•à¦°à¦¬à§‡à¦¨?</label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {(['1', '3', '6', '12', 'custom'] as const).map(opt => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setBulkCountMode(opt)}
+                        className={`py-2 rounded-xl border font-bold text-xs transition-all cursor-pointer ${
+                          bulkCountMode === opt
+                            ? 'bg-violet-600/20 border-violet-500 text-violet-300'
+                            : 'bg-[var(--background)] border-[var(--border)] text-[var(--muted-foreground)] hover:border-violet-500/50'
+                        }`}
+                      >
+                        {opt === 'custom' ? 'Custom' : `${opt}M`}
+                      </button>
+                    ))}
+                  </div>
+
+                  {bulkCountMode === 'custom' && (
+                    <div className="mt-2">
+                      <input
+                        type="number"
+                        min={1}
+                        max={60}
+                        value={bulkCustomCount}
+                        onChange={(e) => setBulkCustomCount(Number(e.target.value))}
+                        placeholder="à¦•à¦¤à§‹ à¦®à¦¾à¦¸? (1-60)"
+                        className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[var(--card-foreground)] focus:outline-none focus:border-violet-500"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Preview */}
+                <div className="p-3 bg-violet-500/5 border border-violet-500/20 rounded-xl">
+                  <p className="text-violet-300 font-semibold mb-1.5">ðŸ“… Preview â€” à¦¯à§‡ à¦®à¦¾à¦¸à¦—à§à¦²à§‹ à¦¤à§ˆà¦°à¦¿ à¦¹à¦¬à§‡:</p>
+                  <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                    {bulkPreviewMonths.map(m => {
+                      const alreadyExists = dueDemands.some(d => d.month === m);
+                      return (
+                        <span
+                          key={m}
+                          className={`px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold ${
+                            alreadyExists
+                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                              : 'bg-violet-500/10 text-violet-300 border border-violet-500/30'
+                          }`}
+                          title={alreadyExists ? 'Already exists â€” will be skipped' : 'Will be generated'}
+                        >
+                          {m}{alreadyExists ? ' âš ï¸' : ''}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-[var(--muted-foreground)]/60 mt-2">
+                    âš ï¸ à¦šà¦¿à¦¹à§à¦¨à¦¿à¦¤ à¦®à¦¾à¦¸à¦—à§à¦²à§‹ à¦†à¦—à§‡ à¦¥à§‡à¦•à§‡à¦‡ à¦†à¦›à§‡ â€” à¦¸à§‡à¦—à§à¦²à§‹ skip à¦•à¦°à¦¾ à¦¹à¦¬à§‡à¥¤
+                  </p>
+                </div>
+
+                {/* Fee Type */}
+                <div>
+                  <label className="block text-[var(--foreground)]/80 font-semibold mb-1.5">Fee Calculation Structure</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setBulkAmountType('member_fee')}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                        bulkAmountType === 'member_fee'
+                          ? 'bg-violet-600/15 border-violet-500 text-violet-300'
+                          : 'bg-[var(--background)] border-[var(--border)] text-[var(--muted-foreground)]'
+                      }`}
+                    >
+                      <div className="font-bold text-xs">Member Profile Fee</div>
+                      <div className="text-[10px] mt-0.5 opacity-80">à¦ªà§à¦°à¦¤à§à¦¯à§‡à¦• à¦¸à¦¦à¦¸à§à¦¯à§‡à¦° à¦¨à¦¿à¦œà¦¸à§à¦¬ à¦®à¦¾à¦¸à¦¿à¦• à¦«à¦¿</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBulkAmountType('fixed')}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                        bulkAmountType === 'fixed'
+                          ? 'bg-violet-600/15 border-violet-500 text-violet-300'
+                          : 'bg-[var(--background)] border-[var(--border)] text-[var(--muted-foreground)]'
+                      }`}
+                    >
+                      <div className="font-bold text-xs">Fixed Flat Fee</div>
+                      <div className="text-[10px] mt-0.5 opacity-80">à¦¸à¦¬à¦¾à¦° à¦œà¦¨à§à¦¯ à¦à¦•à¦‡ à¦ªà¦°à¦¿à¦®à¦¾à¦£</div>
+                    </button>
+                  </div>
+                </div>
+
+                {bulkAmountType === 'fixed' && (
+                  <div>
+                    <label className="block text-[var(--foreground)]/80 font-semibold mb-1">Fixed Amount (BDT) *</label>
+                    <input
+                      type="number"
+                      required
+                      min={100}
+                      step={50}
+                      value={bulkFixedAmount}
+                      onChange={(e) => setBulkFixedAmount(Number(e.target.value))}
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[var(--card-foreground)] focus:outline-none focus:border-violet-500"
+                    />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[var(--foreground)]/80 font-semibold mb-1">Due Cutoff Day</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={31}
+                      required
+                      value={bulkCutoffDay}
+                      onChange={(e) => setBulkCutoffDay(Number(e.target.value))}
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[var(--card-foreground)] focus:outline-none focus:border-violet-500"
+                    />
+                    <span className="text-[10px] text-[var(--muted-foreground)]/70 mt-1 block">à¦ªà§à¦°à¦¤à¦¿ à¦®à¦¾à¦¸à§‡à¦° à¦•à¦¤à¦¤à¦® à¦¦à¦¿à¦¨?</span>
+                  </div>
+                  <div>
+                    <label className="block text-[var(--foreground)]/80 font-semibold mb-1">Late Fine (BDT)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={10}
+                      required
+                      value={bulkLateFine}
+                      onChange={(e) => setBulkLateFine(Number(e.target.value))}
+                      className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[var(--card-foreground)] focus:outline-none focus:border-violet-500"
+                    />
+                    <span className="text-[10px] text-[var(--muted-foreground)]/70 mt-1 block">à¦¬à¦¿à¦²à¦®à§à¦¬ à¦œà¦°à¦¿à¦®à¦¾à¦¨à¦¾</span>
+                  </div>
+                </div>
+
+                {/* Progress */}
+                {bulkProgress && (
+                  <div className="p-3 bg-violet-500/10 border border-violet-500/20 rounded-xl text-violet-300 text-[11px] flex items-center space-x-2">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                    <span>{bulkProgress}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end space-x-2 pt-3 border-t border-[var(--border)]">
+                  <button
+                    type="button"
+                    onClick={() => { setBulkModalOpen(false); setBulkProgress(''); }}
+                    className="px-4 py-2 bg-[var(--accent)] hover:bg-zinc-700 text-[var(--foreground)]/80 rounded-xl font-medium transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={bulkLoading || bulkPreviewMonths.length === 0}
+                    className="px-4 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white rounded-xl font-bold shadow-lg shadow-violet-600/20 transition-all inline-flex items-center space-x-1.5 cursor-pointer"
+                  >
+                    {bulkLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    <span>
+                      {bulkLoading
+                        ? 'Generating...'
+                        : `Generate ${bulkPreviewMonths.filter(m => !dueDemands.some(d => d.month === m)).length} Months`}
+                    </span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ MODAL: SINGLE GENERATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {modalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
             <div className="bg-[var(--secondary)] border border-[var(--border)] rounded-3xl w-full max-w-lg p-6 relative shadow-2xl">
@@ -566,7 +881,7 @@ export default function GenerateDuesPage() {
           </div>
         )}
 
-        {/* ---------------- CONFIRM MODAL: DELETE DEMAND ---------------- */}
+        {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ CONFIRM MODAL: DELETE SINGLE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <ConfirmModal
           isOpen={deleteConfirmOpen}
           title={`Delete Due Demand (${demandToDelete?.month})`}
@@ -581,15 +896,27 @@ export default function GenerateDuesPage() {
           }}
         />
 
-        {/* ---------------- EXCEL IMPORT MODAL: PREVIOUS DUES ---------------- */}
+        {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ CONFIRM MODAL: DELETE ALL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        <ConfirmModal
+          isOpen={deleteAllConfirmOpen}
+          title="à¦¸à¦•à¦² Due Demand à¦®à§à¦›à§‡ à¦«à§‡à¦²à§à¦¨?"
+          message={`à¦†à¦ªà¦¨à¦¿ à¦•à¦¿ à¦¨à¦¿à¦¶à§à¦šà¦¿à¦¤? à¦à¦Ÿà¦¿ à¦¸à¦®à¦¸à§à¦¤ ${dueDemands.length} à¦®à¦¾à¦¸à§‡à¦° due demand à¦¸à§à¦¥à¦¾à¦¯à¦¼à§€à¦­à¦¾à¦¬à§‡ à¦®à§à¦›à§‡ à¦«à§‡à¦²à¦¬à§‡à¥¤ à¦à¦‡ à¦•à¦¾à¦œà¦Ÿà¦¿ à¦ªà§‚à¦°à§à¦¬à¦¾à¦¬à¦¸à§à¦¥à¦¾à¦¯à¦¼ à¦«à§‡à¦°à¦¾à¦¨à§‹ à¦¯à¦¾à¦¬à§‡ à¦¨à¦¾à¥¤`}
+          confirmText={`Delete All ${dueDemands.length} Demands`}
+          variant="danger"
+          loading={deleteAllLoading}
+          onConfirm={handleDeleteAll}
+          onCancel={() => setDeleteAllConfirmOpen(false)}
+        />
+
+        {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ EXCEL IMPORT MODAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <ExcelImportModal
           isOpen={importModalOpen}
           type="dues"
-          title="সদস্যদের পূর্বের বকেয়া তালিকা ইম্পোর্ট (Excel / CSV)"
+          title="à¦¸à¦¦à¦¸à§à¦¯à¦¦à§‡à¦° à¦ªà§‚à¦°à§à¦¬à§‡à¦° à¦¬à¦•à§‡à¦¯à¦¼à¦¾ à¦¤à¦¾à¦²à¦¿à¦•à¦¾ à¦‡à¦®à§à¦ªà§‹à¦°à§à¦Ÿ (Excel / CSV)"
           onClose={() => setImportModalOpen(false)}
           onImportSuccess={async (rows) => {
             const count = await importPreviousDues(rows);
-            showFeedback(`সফলভাবে ${count}টি পূর্বের বকেয়া রেকর্ড সিস্টেমে যুক্ত করা হয়েছে!`);
+            showFeedback(`à¦¸à¦«à¦²à¦­à¦¾à¦¬à§‡ ${count}à¦Ÿà¦¿ à¦ªà§‚à¦°à§à¦¬à§‡à¦° à¦¬à¦•à§‡à¦¯à¦¼à¦¾ à¦°à§‡à¦•à¦°à§à¦¡ à¦¸à¦¿à¦¸à§à¦Ÿà§‡à¦®à§‡ à¦¯à§à¦•à§à¦¤ à¦•à¦°à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡!`);
           }}
         />
 

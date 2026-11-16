@@ -46,12 +46,13 @@ import MemberCard from '../../../components/member-card';
 import { PageSizeSelector, DataTablePagination, usePagination } from '../../../components/pagination';
 
 export default function MemberProfilePage() {
-  const { user } = useAuth();
+  const { user, updateUserSession } = useAuth();
   const { 
     members, 
     collections, 
     updateMember,
     updateMemberPhoto, 
+    updateUserPhoto,
     resetUserPassword,
     updateUser,
     dueDemands, 
@@ -65,6 +66,7 @@ export default function MemberProfilePage() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoSuccess, setPhotoSuccess] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   
   // Find matching member profile based on user details — most specific first
   const memberProfile = React.useMemo(() => {
@@ -101,6 +103,25 @@ export default function MemberProfilePage() {
     // No real member record found — return null (system roles already guarded above)
     return null;
   }, [user, members]);
+
+  const activeProfile: Member = React.useMemo(() => {
+    if (memberProfile) return memberProfile;
+    return {
+      id: user?.memberId || user?.id?.replace('u-', 'm-') || `m-${user?.id || 'profile'}`,
+      name: user?.name || 'User Profile',
+      email: user?.email || '',
+      phone: user?.phone || '',
+      photoUrl: user?.avatar || '',
+      status: 'active',
+      joinDate: new Date().toISOString().split('T')[0],
+      monthlyFee: 0,
+      nomineeName: '',
+      nomineeRelation: '',
+      nomineePhone: ''
+    };
+  }, [memberProfile, user]);
+
+  const currentPhoto = previewPhoto || activeProfile.photoUrl || user?.avatar;
   
   // States for print dialog
   const [selectedReceipt, setSelectedReceipt] = useState<Collection | null>(null);
@@ -247,12 +268,15 @@ export default function MemberProfilePage() {
   };
 
   const handleRemovePhoto = () => {
-    if (!memberProfile?.photoUrl) return;
+    if (!currentPhoto) return;
     if (confirm('Are you sure you want to remove your profile picture? / আপনি কি প্রোফাইল ছবি মুছে ফেলতে চান?')) {
-      updateMemberPhoto(memberProfile.id, '');
-      if (typeof window !== 'undefined' && user) {
-        const updatedUser = { ...user, avatar: '' };
-        localStorage.setItem('fdc_current_user', JSON.stringify(updatedUser));
+      setPreviewPhoto('');
+      if (memberProfile) {
+        updateMemberPhoto(memberProfile.id, '');
+      }
+      if (user) {
+        updateUserPhoto(user.id, '');
+        updateUserSession({ avatar: '' });
       }
     }
   };
@@ -294,15 +318,28 @@ export default function MemberProfilePage() {
         ctx?.drawImage(img, 0, 0, width, height);
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
 
-        // Update photo in MongoDB and state (guard against null memberProfile)
+        // 1. Immediately update local preview so user sees new picture instantly
+        setPreviewPhoto(dataUrl);
+
+        // 2. Update member photo in MongoDB and state
         if (memberProfile) {
           updateMemberPhoto(memberProfile.id, dataUrl);
         }
 
-        // Also update local storage session if currently logged-in user
-        if (typeof window !== 'undefined' && user) {
-          const updatedUser = { ...user, avatar: dataUrl };
-          localStorage.setItem('fdc_current_user', JSON.stringify(updatedUser));
+        // 3. Update user photo in MongoDB and state
+        if (user) {
+          updateUserPhoto(user.id, dataUrl);
+          updateUserSession({ avatar: dataUrl });
+
+          // Direct API sync to MongoDB users collection to ensure persistence
+          fetch('/api/db/users', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filter: { id: user.id },
+              update: { avatar: dataUrl }
+            })
+          }).catch(err => console.warn('User avatar direct sync note:', err));
         }
 
         setPhotoLoading(false);
@@ -522,14 +559,14 @@ export default function MemberProfilePage() {
               />
               
               <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-indigo-500/30 bg-indigo-600/20 text-indigo-400 flex items-center justify-center font-black text-3xl uppercase shadow-xl relative">
-                {memberProfile.photoUrl ? (
+                {currentPhoto ? (
                   <img
-                    src={memberProfile.photoUrl}
-                    alt={memberProfile.name}
+                    src={currentPhoto}
+                    alt={activeProfile.name}
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  memberProfile.name.charAt(0)
+                  activeProfile.name.charAt(0)
                 )}
 
                 {photoLoading && (
@@ -550,8 +587,8 @@ export default function MemberProfilePage() {
                 <Camera className="w-3.5 h-3.5" />
               </button>
 
-              {/* Remove photo button if photoUrl exists */}
-              {memberProfile.photoUrl && (
+              {/* Remove photo button if photo exists */}
+              {currentPhoto && (
                 <button
                   type="button"
                   onClick={handleRemovePhoto}
@@ -572,9 +609,9 @@ export default function MemberProfilePage() {
                 className="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-1 cursor-pointer"
               >
                 <Camera className="w-3 h-3" />
-                <span>{memberProfile.photoUrl ? 'Change Photo' : 'Upload Photo'}</span>
+                <span>{currentPhoto ? 'Change Photo' : 'Upload Photo'}</span>
               </button>
-              {memberProfile.photoUrl && (
+              {currentPhoto && (
                 <button
                   type="button"
                   onClick={handleRemovePhoto}
