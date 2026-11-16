@@ -54,12 +54,27 @@ import {
 } from 'recharts';
 
 export default function Dashboard() {
-  const { stats, transactions, investments, notifications, members, collections, dueDemands, loans, markNotificationRead, markAllNotificationsRead } = useStore();
+  const { stats, transactions, investments, notifications, members, collections, dueDemands, loans, markNotificationRead, markAllNotificationsRead, resendNotification } = useStore();
   const { user, hasPermission } = useAuth();
   const [mounted, setMounted] = useState(false);
 
   // Tab state for member notification / message history
   const [memberNotifTab, setMemberNotifTab] = useState<'all' | 'payment' | 'due' | 'notice'>('all');
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [resendToast, setResendToast] = useState<string | null>(null);
+
+  const handleResendNotification = async (id: string) => {
+    setResendingId(id);
+    try {
+      await resendNotification(id);
+      setResendToast('মেসেজ সফলভাবে পুনরায় পাঠানো হয়েছে!');
+      setTimeout(() => setResendToast(null), 3500);
+    } catch (e) {
+      alert('Failed to resend message.');
+    } finally {
+      setResendingId(null);
+    }
+  };
 
   // Modal state for viewing money receipt
   const [viewReceipt, setViewReceipt] = useState<Collection | null>(null);
@@ -1051,6 +1066,13 @@ export default function Dashboard() {
                 </div>
               </div>
 
+              {resendToast && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs flex items-center space-x-2 animate-in fade-in">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{resendToast}</span>
+                </div>
+              )}
+
               {filteredMemberNotifs.length > 0 ? (
                 <div className="space-y-2.5">
                   {filteredMemberNotifs.map((n) => {
@@ -1096,9 +1118,16 @@ export default function Dashboard() {
                             <p className="text-[11px] text-[var(--muted-foreground)] mt-1 leading-relaxed">
                               {n.message}
                             </p>
-                            <span className="text-[10px] text-[var(--muted-foreground)]/60 font-mono block mt-1">
-                              {n.date}
-                            </span>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <span className="text-[10px] text-[var(--muted-foreground)]/60 font-mono">
+                                {n.date}
+                              </span>
+                              {n.resendCount && n.resendCount > 0 && (
+                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-indigo-500/15 text-indigo-300 font-bold border border-indigo-500/20">
+                                  Resent {n.resendCount}x
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
 
@@ -1113,6 +1142,16 @@ export default function Dashboard() {
                               <ChevronRight className="w-3 h-3" />
                             </Link>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => handleResendNotification(n.id)}
+                            disabled={resendingId === n.id}
+                            className="px-2.5 py-1 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold transition-all inline-flex items-center space-x-1 cursor-pointer"
+                            title="মেসেজ বা নোটিফিকেশন আবার পাঠান"
+                          >
+                            <Send className="w-2.5 h-2.5" />
+                            <span>{resendingId === n.id ? 'পাঠানো হচ্ছে...' : 'আবার পাঠান'}</span>
+                          </button>
                           {!n.read && (
                             <button
                               type="button"

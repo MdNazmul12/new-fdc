@@ -23,12 +23,16 @@ import {
   ArrowUpDown,
   CheckCircle2,
   Clock,
-  Sparkles
+  Sparkles,
+  Users,
+  Send,
+  Loader2
 } from 'lucide-react';
 import { exportElementToPDF, exportTableToPDF } from '../../lib/pdf-export';
 import { exportToExcel } from '../../lib/excel-export';
+import { DueDemand } from '../../types';
 
-type ReportType = 'summary' | 'expense' | 'collection' | 'investment' | 'loan' | 'ledger' | 'due';
+type ReportType = 'summary' | 'expense' | 'collection' | 'member_collection' | 'investment' | 'loan' | 'ledger' | 'due';
 
 export default function ReportsPage() {
   const { 
@@ -39,9 +43,34 @@ export default function ReportsPage() {
     transactions, 
     loans = [], 
     stats, 
-    deleteTransaction 
+    deleteTransaction,
+    dueDemands = [],
+    addNotification
   } = useStore();
   const { user } = useAuth();
+
+  const [remindingMemberId, setRemindingMemberId] = useState<string | null>(null);
+  const [reminderToast, setReminderToast] = useState<string | null>(null);
+
+  const handleSendDueReminder = async (m: any) => {
+    setRemindingMemberId(m.id);
+    try {
+      await addNotification({
+        userId: m.id,
+        title: `⚠️ বকেয়া চাঁদা পরিশোধের জরুরি তাগিদ`,
+        message: `${m.name}, আপনার ${m.unpaidCount} মাসের মোট ৳${m.totalDueAmount.toLocaleString()} চাঁদা বকেয়া রয়েছে (মাস: ${m.unpaidMonths.join(', ')})। অনুগ্রহ করে দ্রুত পরিশোধের অনুরোধ করা হচ্ছে।`,
+        type: 'warning',
+        link: '/dues',
+        category: 'due'
+      });
+      setReminderToast(`সফলভাবে ${m.name}-কে বকেয়া তাগিদ পাঠানো হয়েছে!`);
+      setTimeout(() => setReminderToast(null), 3500);
+    } catch (err) {
+      alert('Failed to send reminder.');
+    } finally {
+      setRemindingMemberId(null);
+    }
+  };
 
   // ── Filters State ────────────────────────────────────────────────────────
   const [reportType, setReportType] = useState<ReportType>('expense');
@@ -149,6 +178,91 @@ export default function ReportsPage() {
     return [];
   }, [reportType, expenses, investments, loans, transactions]);
 
+  // ── Member-Wise Collection Calculation ──────────────────────────────────
+  const memberWiseCollections = useMemo(() => {
+    return members.map(m => {
+      const memberCollections = collections.filter(c => 
+        (c.memberId === m.id || 
+         c.memberName?.toLowerCase() === m.name.toLowerCase() ||
+         (m.phone && c.notes?.includes(m.phone))) && 
+        c.status === 'paid'
+      );
+
+      const filteredCols = memberCollections.filter(c => {
+        if (dateFrom && c.date < dateFrom) return false;
+        if (dateTo && c.date > dateTo) return false;
+        if (selectedPaymentType !== 'all' && c.paymentType?.toLowerCase() !== selectedPaymentType.toLowerCase()) return false;
+        return true;
+      });
+
+      const totalPaidAmount = filteredCols.reduce((sum, c) => sum + (c.amount || 0) + (c.lateFine || 0), 0);
+      const paidMonths = Array.from(new Set(filteredCols.map(c => c.month))).sort();
+      const lastPayment = filteredCols.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+      const paymentMethods = Array.from(new Set(filteredCols.map(c => c.paymentType?.toUpperCase() || 'CASH'))).join(', ');
+
+      return {
+        id: m.id,
+        name: m.name,
+        phone: m.phone,
+        monthlyFee: m.monthlyFee || 1000,
+        status: m.status,
+        collectionsCount: filteredCols.length,
+        totalPaidAmount,
+        paidMonths,
+        lastPaymentDate: lastPayment?.date || '-',
+        lastReceiptNo: lastPayment?.receiptNo || '-',
+        paymentMethods: paymentMethods || '-'
+      };
+    });
+  }, [members, collections, dateFrom, dateTo, selectedPaymentType]);
+
+  // ── Member-Wise Due Calculation ─────────────────────────────────────────
+  const memberWiseDues = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const activeList = members.filter(m => m.status === 'active');
+
+    return activeList.map(m => {
+      const unpaidList: { demand: DueDemand; baseFee: number; isOverdue: boolean }[] = [];
+
+      dueDemands.forEach(demand => {
+        const isPaid = collections.some(c => 
+          (c.memberId === m.id || c.memberName?.toLowerCase() === m.name.toLowerCase()) && 
+          c.month === demand.month && 
+          c.status === 'paid'
+        );
+        const isPending = !isPaid && collections.some(c => 
+          (c.memberId === m.id || c.memberName?.toLowerCase() === m.name.toLowerCase()) && 
+          c.month === demand.month && 
+          c.status === 'pending'
+        );
+
+        if (!isPaid && !isPending) {
+          const baseFee = demand.amountType === 'fixed' 
+            ? (demand.fixedAmount || 1000) 
+            : (m.monthlyFee || 1000);
+          const isOverdue = today > demand.dueDate;
+          unpaidList.push({ demand, baseFee, isOverdue });
+        }
+      });
+
+      const totalDueAmount = unpaidList.reduce((sum, item) => sum + item.baseFee, 0);
+      const unpaidMonths = unpaidList.map(u => u.demand.month).sort();
+      const hasOverdue = unpaidList.some(u => u.isOverdue);
+
+      return {
+        id: m.id,
+        name: m.name,
+        phone: m.phone,
+        monthlyFee: m.monthlyFee || 1000,
+        unpaidCount: unpaidList.length,
+        unpaidMonths,
+        totalDueAmount,
+        hasOverdue,
+        dueStatus: unpaidList.length === 0 ? 'cleared' : (hasOverdue ? 'overdue' : 'due')
+      };
+    });
+  }, [members, dueDemands, collections]);
+
   // ── Filtered Datasets ────────────────────────────────────────────────────
   const filteredData = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -253,21 +367,41 @@ export default function ReportsPage() {
       });
     }
 
-    // 6. MEMBER DUES
-    if (reportType === 'due') {
-      return members.filter(m => m.status === 'active').filter(item => {
+    // 6. MEMBER-WISE COLLECTIONS
+    if (reportType === 'member_collection') {
+      return memberWiseCollections.filter(item => {
+        if (selectedStatus === 'paid_only' && item.collectionsCount === 0) return false;
+        if (selectedStatus === 'no_payment' && item.collectionsCount > 0) return false;
         if (query) {
           const matchName = item.name?.toLowerCase().includes(query);
           const matchId = item.id?.toLowerCase().includes(query);
           const matchPhone = item.phone?.toLowerCase().includes(query);
-          if (!matchName && !matchId && !matchPhone) return false;
+          const matchMonth = item.paidMonths.some((m: string) => m.toLowerCase().includes(query));
+          if (!matchName && !matchId && !matchPhone && !matchMonth) return false;
+        }
+        return true;
+      });
+    }
+
+    // 7. MEMBER DUES (MEMBER-WISE DUE REPORT)
+    if (reportType === 'due') {
+      return memberWiseDues.filter(item => {
+        if (selectedStatus === 'due_only' && item.unpaidCount === 0) return false;
+        if (selectedStatus === 'overdue_only' && !item.hasOverdue) return false;
+        if (selectedStatus === 'cleared_only' && item.unpaidCount > 0) return false;
+        if (query) {
+          const matchName = item.name?.toLowerCase().includes(query);
+          const matchId = item.id?.toLowerCase().includes(query);
+          const matchPhone = item.phone?.toLowerCase().includes(query);
+          const matchMonth = item.unpaidMonths.some((m: string) => m.toLowerCase().includes(query));
+          if (!matchName && !matchId && !matchPhone && !matchMonth) return false;
         }
         return true;
       });
     }
 
     return [];
-  }, [reportType, expenses, collections, investments, loans, transactions, members, selectedCategory, selectedStatus, selectedPaymentType, selectedAccount, dateFrom, dateTo, searchQuery]);
+  }, [reportType, expenses, collections, investments, loans, transactions, members, memberWiseCollections, memberWiseDues, selectedCategory, selectedStatus, selectedPaymentType, selectedAccount, dateFrom, dateTo, searchQuery]);
 
   // ── Category Aggregation Breakdown ───────────────────────────────────────
   const categoryBreakdown = useMemo(() => {
@@ -335,6 +469,9 @@ export default function ReportsPage() {
     if (reportType === 'collection') {
       return (filteredData as any[]).reduce((sum, item) => sum + (Number(item.amount) || 0) + (Number(item.lateFine) || 0), 0);
     }
+    if (reportType === 'member_collection') {
+      return (filteredData as any[]).reduce((sum, item) => sum + (Number(item.totalPaidAmount) || 0), 0);
+    }
     if (reportType === 'investment') {
       return (filteredData as any[]).reduce((sum, item) => sum + (Number(item.principalAmount) || 0), 0);
     }
@@ -345,7 +482,7 @@ export default function ReportsPage() {
       return (filteredData as any[]).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     }
     if (reportType === 'due') {
-      return (filteredData as any[]).reduce((sum, item) => sum + (Number(item.monthlyFee) || 0), 0);
+      return (filteredData as any[]).reduce((sum, item) => sum + (Number(item.totalDueAmount) || 0), 0);
     }
     return 0;
   }, [reportType, filteredData]);
@@ -438,16 +575,56 @@ export default function ReportsPage() {
           'Credit (BDT)': t.type === 'credit' ? Number(t.amount) : 0,
           'Balance After (BDT)': Number(t.balanceAfter) || 0,
         }));
+      } else if (reportType === 'member_collection') {
+        excelRows = (filteredData as any[]).map((m, idx) => ({
+          'SL': idx + 1,
+          'Member ID': m.id,
+          'Member Name': m.name,
+          'Phone': m.phone || '-',
+          'Monthly Fee (BDT)': Number(m.monthlyFee) || 0,
+          'Paid Months Count': m.collectionsCount,
+          'Paid Months': m.paidMonths.join(', ') || '-',
+          'Last Receipt': m.lastReceiptNo,
+          'Last Payment Date': m.lastPaymentDate,
+          'Payment Methods': m.paymentMethods,
+          'Total Collected (BDT)': Number(m.totalPaidAmount) || 0,
+        }));
+        excelRows.push({
+          'SL': '',
+          'Member ID': 'TOTAL',
+          'Member Name': '',
+          'Phone': '',
+          'Monthly Fee (BDT)': '',
+          'Paid Months Count': '',
+          'Paid Months': '',
+          'Last Receipt': '',
+          'Last Payment Date': '',
+          'Payment Methods': '',
+          'Total Collected (BDT)': totalSummaryAmount,
+        });
       } else if (reportType === 'due') {
         excelRows = (filteredData as any[]).map((m, idx) => ({
           'SL': idx + 1,
           'Member ID': m.id,
           'Member Name': m.name,
-          'Phone': m.phone,
+          'Phone': m.phone || '-',
           'Monthly Fee (BDT)': Number(m.monthlyFee) || 0,
-          'Join Date': m.joinDate,
-          'Status': (m.status || '').toUpperCase(),
+          'Due Months Count': m.unpaidCount,
+          'Due Months': m.unpaidMonths.join(', ') || 'None',
+          'Status': (m.dueStatus || 'cleared').toUpperCase(),
+          'Total Due (BDT)': Number(m.totalDueAmount) || 0,
         }));
+        excelRows.push({
+          'SL': '',
+          'Member ID': 'TOTAL',
+          'Member Name': '',
+          'Phone': '',
+          'Monthly Fee (BDT)': '',
+          'Due Months Count': '',
+          'Due Months': '',
+          'Status': '',
+          'Total Due (BDT)': totalSummaryAmount,
+        });
       } else {
         // Summary
         excelRows = categoryBreakdown.map((c, idx) => ({
@@ -575,22 +752,47 @@ export default function ReportsPage() {
           debit: t.type === 'debit' ? `${(Number(t.amount) || 0).toLocaleString()} TK` : '-',
           credit: t.type === 'credit' ? `${(Number(t.amount) || 0).toLocaleString()} TK` : '-',
         }));
-      } else if (reportType === 'due') {
+      } else if (reportType === 'member_collection') {
         columns = [
           { key: 'sl', label: 'SL', align: 'center', widthRatio: 0.8 },
-          { key: 'id', label: 'Member ID', widthRatio: 2 },
-          { key: 'name', label: 'Member Name', widthRatio: 3.5 },
-          { key: 'phone', label: 'Phone', widthRatio: 2.2 },
-          { key: 'joinDate', label: 'Join Date', widthRatio: 2 },
-          { key: 'fee', label: 'Monthly Fee', align: 'right', widthRatio: 2.2 },
+          { key: 'id', label: 'Member ID', widthRatio: 1.8 },
+          { key: 'name', label: 'Member Name', widthRatio: 2.8 },
+          { key: 'phone', label: 'Phone', widthRatio: 2.0 },
+          { key: 'count', label: 'Paid Months', align: 'center', widthRatio: 1.5 },
+          { key: 'months', label: 'Months List', widthRatio: 2.8 },
+          { key: 'lastReceipt', label: 'Last Receipt', widthRatio: 2.2 },
+          { key: 'totalText', label: 'Total Paid (BDT)', align: 'right', widthRatio: 2.5 },
         ];
         rows = (filteredData as any[]).map((m, idx) => ({
           sl: idx + 1,
           id: m.id,
           name: m.name,
-          phone: m.phone,
-          joinDate: m.joinDate,
-          fee: `${(Number(m.monthlyFee) || 0).toLocaleString()} TK`,
+          phone: m.phone || '-',
+          count: m.collectionsCount,
+          months: m.paidMonths.join(', ') || '-',
+          lastReceipt: m.lastReceiptNo !== '-' ? `${m.lastReceiptNo} (${m.lastPaymentDate})` : '-',
+          totalText: `${(Number(m.totalPaidAmount) || 0).toLocaleString()} TK`,
+        }));
+      } else if (reportType === 'due') {
+        columns = [
+          { key: 'sl', label: 'SL', align: 'center', widthRatio: 0.8 },
+          { key: 'id', label: 'Member ID', widthRatio: 1.8 },
+          { key: 'name', label: 'Member Name', widthRatio: 2.8 },
+          { key: 'phone', label: 'Phone', widthRatio: 2.0 },
+          { key: 'count', label: 'Due Months', align: 'center', widthRatio: 1.5 },
+          { key: 'months', label: 'Unpaid Months', widthRatio: 3.0 },
+          { key: 'status', label: 'Status', align: 'center', widthRatio: 1.8 },
+          { key: 'totalText', label: 'Total Due (BDT)', align: 'right', widthRatio: 2.5 },
+        ];
+        rows = (filteredData as any[]).map((m, idx) => ({
+          sl: idx + 1,
+          id: m.id,
+          name: m.name,
+          phone: m.phone || '-',
+          count: m.unpaidCount,
+          months: m.unpaidMonths.join(', ') || 'None',
+          status: (m.dueStatus || 'cleared').toUpperCase(),
+          totalText: `${(Number(m.totalDueAmount) || 0).toLocaleString()} TK`,
         }));
       } else {
         // Summary
@@ -637,6 +839,12 @@ export default function ReportsPage() {
     } else if (reportType === 'collection') {
       headers = ['SL', 'Receipt No', 'Member Name', 'Month', 'Date', 'Method', 'Amount', 'Fine', 'Total'];
       rows = (filteredData as any[]).map((c, idx) => [idx + 1, c.receiptNo, c.memberName, c.month, c.date, c.paymentType, c.amount, c.lateFine, c.amount + c.lateFine]);
+    } else if (reportType === 'member_collection') {
+      headers = ['SL', 'Member ID', 'Member Name', 'Phone', 'Monthly Fee', 'Paid Months Count', 'Paid Months', 'Last Receipt', 'Last Date', 'Payment Methods', 'Total Paid'];
+      rows = (filteredData as any[]).map((m, idx) => [idx + 1, m.id, `"${m.name}"`, m.phone || '-', m.monthlyFee, m.collectionsCount, `"${m.paidMonths.join(', ')}"`, m.lastReceiptNo, m.lastPaymentDate, `"${m.paymentMethods}"`, m.totalPaidAmount]);
+    } else if (reportType === 'due') {
+      headers = ['SL', 'Member ID', 'Member Name', 'Phone', 'Monthly Fee', 'Due Months Count', 'Unpaid Months', 'Status', 'Total Due'];
+      rows = (filteredData as any[]).map((m, idx) => [idx + 1, m.id, `"${m.name}"`, m.phone || '-', m.monthlyFee, m.unpaidCount, `"${m.unpaidMonths.join(', ')}"`, m.dueStatus, m.totalDueAmount]);
     } else if (reportType === 'investment') {
       headers = ['SL', 'Provider', 'Category', 'Principal', 'Interest Rate', 'Maturity', 'Status'];
       rows = (filteredData as any[]).map((i, idx) => [idx + 1, i.provider, i.type, i.principalAmount, i.interestRate, i.maturityDate, i.status]);
@@ -708,11 +916,12 @@ export default function ReportsPage() {
         <div className="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none no-print">
           {[
             { id: 'expense', label: 'Expenses (খরচ)', icon: DollarSign, color: 'text-rose-400' },
-            { id: 'collection', label: 'Collections (চাঁদা আদায়)', icon: CreditCard, color: 'text-emerald-400' },
+            { id: 'collection', label: 'Transactions (আদায় লেনদেন)', icon: CreditCard, color: 'text-emerald-400' },
+            { id: 'member_collection', label: 'Member Collection (সদস্যভিত্তিক আদায়)', icon: Users, color: 'text-teal-400' },
+            { id: 'due', label: 'Member Dues (সদস্যভিত্তিক বকেয়া)', icon: AlertTriangle, color: 'text-orange-400' },
             { id: 'investment', label: 'Investments (বিনিয়োগ)', icon: TrendingUp, color: 'text-indigo-400' },
             { id: 'loan', label: 'Loans (ঋণ)', icon: Layers, color: 'text-amber-400' },
             { id: 'ledger', label: 'Ledger (খতিয়ান)', icon: FileText, color: 'text-cyan-400' },
-            { id: 'due', label: 'Active Dues (বকেয়া)', icon: AlertTriangle, color: 'text-orange-400' },
             { id: 'summary', label: 'Summary (আর্থিক সারাংশ)', icon: PieChart, color: 'text-purple-400' },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -778,6 +987,45 @@ export default function ReportsPage() {
                   <option value="bkash">bKash (বিকাশ)</option>
                   <option value="nagad">Nagad (নগদ)</option>
                   <option value="bank">Bank Transfer</option>
+                </select>
+              </div>
+            )}
+
+            {/* Status Filter for Member Collection */}
+            {reportType === 'member_collection' && (
+              <div>
+                <label className="block text-[var(--muted-foreground)] font-bold mb-1.5 flex items-center space-x-1">
+                  <Clock className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Member Status Filter</span>
+                </label>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-2.5 text-[var(--foreground)] font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                >
+                  <option value="all">🌟 All Members (সকল সদস্য)</option>
+                  <option value="paid_only">✅ Paid Members Only (যাদের চাঁদা আদায় হয়েছে)</option>
+                  <option value="no_payment">⏳ No Payment Records (যাদের কোনো আদায় নেই)</option>
+                </select>
+              </div>
+            )}
+
+            {/* Status Filter for Member Dues */}
+            {reportType === 'due' && (
+              <div>
+                <label className="block text-[var(--muted-foreground)] font-bold mb-1.5 flex items-center space-x-1">
+                  <AlertTriangle className="w-3.5 h-3.5 text-orange-400" />
+                  <span>Due Status Filter</span>
+                </label>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-2.5 text-[var(--foreground)] font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                >
+                  <option value="all">🌟 All Members (সকল সদস্য)</option>
+                  <option value="due_only">⚠️ With Pending Dues (বকেয়া রয়েছে)</option>
+                  <option value="overdue_only">🚨 Overdue Only (মেয়াদোত্তীর্ণ বকেয়া)</option>
+                  <option value="cleared_only">✅ Cleared / No Dues (কোনো বকেয়া নেই)</option>
                 </select>
               </div>
             )}
@@ -890,6 +1138,8 @@ export default function ReportsPage() {
             <span className="text-[10px] font-bold text-[var(--muted-foreground)] uppercase tracking-wider">
               {reportType === 'expense' ? 'Total Expenses' :
                reportType === 'collection' ? 'Total Collections' :
+               reportType === 'member_collection' ? 'Total Member Collections' :
+               reportType === 'due' ? 'Total Outstanding Dues' :
                reportType === 'investment' ? 'Total Capital' :
                reportType === 'loan' ? 'Total Loan Capital' : 'Total Amount'}
             </span>
@@ -910,6 +1160,23 @@ export default function ReportsPage() {
             </p>
           </div>
         </div>
+
+        {/* Reminder Toast Feedback */}
+        {reminderToast && (
+          <div className="p-3 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 rounded-xl text-xs font-bold flex items-center justify-between animate-in fade-in">
+            <div className="flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{reminderToast}</span>
+            </div>
+            <button 
+              type="button" 
+              onClick={() => setReminderToast(null)}
+              className="text-emerald-400 hover:text-white px-1 cursor-pointer font-bold"
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         {/* ── PREVIEW PANEL & EXPORTS ── */}
         <div className="glass-panel p-5 rounded-2xl border border-[var(--border)] space-y-5">
@@ -1095,6 +1362,34 @@ export default function ReportsPage() {
                           </>
                         )}
 
+                        {reportType === 'member_collection' && (
+                          <>
+                            <th className="py-2.5 px-3">Member ID</th>
+                            <th className="py-2.5 px-3">Member Name</th>
+                            <th className="py-2.5 px-3">Phone</th>
+                            <th className="py-2.5 px-3 text-right">Monthly Fee</th>
+                            <th className="py-2.5 px-3 text-center">Paid Months</th>
+                            <th className="py-2.5 px-3">Paid Months Breakdown</th>
+                            <th className="py-2.5 px-3">Latest Receipt & Date</th>
+                            <th className="py-2.5 px-3">Payment Method</th>
+                            <th className="py-2.5 px-3 text-right">Total Paid (TK)</th>
+                          </>
+                        )}
+
+                        {reportType === 'due' && (
+                          <>
+                            <th className="py-2.5 px-3">Member ID</th>
+                            <th className="py-2.5 px-3">Member Name</th>
+                            <th className="py-2.5 px-3">Phone</th>
+                            <th className="py-2.5 px-3 text-right">Monthly Fee</th>
+                            <th className="py-2.5 px-3 text-center">Due Months</th>
+                            <th className="py-2.5 px-3">Unpaid Months</th>
+                            <th className="py-2.5 px-3 text-center">Status</th>
+                            <th className="py-2.5 px-3 text-right">Total Due (TK)</th>
+                            <th className="py-2.5 px-3 text-center no-print">Action</th>
+                          </>
+                        )}
+
                         {reportType === 'investment' && (
                           <>
                             <th className="py-2.5 px-3">Provider</th>
@@ -1127,16 +1422,6 @@ export default function ReportsPage() {
                             <th className="py-2.5 px-3">Description</th>
                             <th className="py-2.5 px-3 text-right">Debit</th>
                             <th className="py-2.5 px-3 text-right">Credit</th>
-                          </>
-                        )}
-
-                        {reportType === 'due' && (
-                          <>
-                            <th className="py-2.5 px-3">Member ID</th>
-                            <th className="py-2.5 px-3">Name</th>
-                            <th className="py-2.5 px-3">Phone</th>
-                            <th className="py-2.5 px-3">Join Date</th>
-                            <th className="py-2.5 px-3 text-right">Monthly Fee</th>
                           </>
                         )}
                       </tr>
@@ -1178,6 +1463,127 @@ export default function ReportsPage() {
                               </td>
                               <td className="py-2.5 px-3 text-right font-black text-emerald-400">
                                 {formatCurrency((row.amount || 0) + (row.lateFine || 0))}
+                              </td>
+                            </>
+                          )}
+
+                          {/* MEMBER COLLECTION ROW */}
+                          {reportType === 'member_collection' && (
+                            <>
+                              <td className="py-2.5 px-3 font-mono text-zinc-400 font-bold">{row.id}</td>
+                              <td className="py-2.5 px-3 font-bold text-[var(--foreground)]">{row.name}</td>
+                              <td className="py-2.5 px-3 text-[var(--muted-foreground)] font-mono">{row.phone || '-'}</td>
+                              <td className="py-2.5 px-3 text-right font-medium text-zinc-300">
+                                {formatCurrency(row.monthlyFee)}
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <span className={`px-2 py-0.5 rounded-full font-bold text-[11px] ${
+                                  row.collectionsCount > 0 
+                                    ? 'bg-teal-500/15 text-teal-300 border border-teal-500/30' 
+                                    : 'bg-zinc-800 text-zinc-400'
+                                }`}>
+                                  {row.collectionsCount} মাস
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-zinc-300 max-w-xs">
+                                {row.paidMonths.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {row.paidMonths.map((pm: string) => (
+                                      <span key={pm} className="px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-300 text-[10px] font-mono border border-indigo-500/20">
+                                        {pm}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-zinc-500 italic text-[11px]">কোনো আদায় নেই</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-xs">
+                                {row.lastReceiptNo !== '-' ? (
+                                  <div>
+                                    <span className="font-mono text-indigo-400 font-bold">{row.lastReceiptNo}</span>
+                                    <span className="block text-[10px] text-zinc-500">{row.lastPaymentDate}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-zinc-500">-</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-[11px] text-zinc-400 font-semibold">{row.paymentMethods}</td>
+                              <td className="py-2.5 px-3 text-right font-black text-emerald-400">
+                                {formatCurrency(row.totalPaidAmount)}
+                              </td>
+                            </>
+                          )}
+
+                          {/* MEMBER DUE ROW */}
+                          {reportType === 'due' && (
+                            <>
+                              <td className="py-2.5 px-3 font-mono text-zinc-400 font-bold">{row.id}</td>
+                              <td className="py-2.5 px-3 font-bold text-[var(--foreground)]">{row.name}</td>
+                              <td className="py-2.5 px-3 text-[var(--muted-foreground)] font-mono">{row.phone || '-'}</td>
+                              <td className="py-2.5 px-3 text-right font-medium text-zinc-300">
+                                {formatCurrency(row.monthlyFee)}
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <span className={`px-2 py-0.5 rounded-full font-bold text-[11px] ${
+                                  row.unpaidCount === 0 
+                                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' 
+                                    : row.hasOverdue
+                                    ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                                    : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                                }`}>
+                                  {row.unpaidCount} মাস
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-zinc-300 max-w-xs">
+                                {row.unpaidMonths.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {row.unpaidMonths.map((um: string) => (
+                                      <span key={um} className="px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-300 text-[10px] font-mono border border-rose-500/20">
+                                        {um}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-emerald-400 font-semibold text-[11px]">সব পরিশোধিত</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                                  row.dueStatus === 'cleared'
+                                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                                    : row.dueStatus === 'overdue'
+                                    ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                                    : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                                }`}>
+                                  {row.dueStatus}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-black text-amber-400">
+                                {formatCurrency(row.totalDueAmount)}
+                              </td>
+                              <td className="py-2.5 px-3 text-center no-print">
+                                {row.unpaidCount > 0 ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSendDueReminder(row)}
+                                    disabled={remindingMemberId === row.id}
+                                    className="px-2.5 py-1 rounded-lg bg-orange-600/20 hover:bg-orange-600/30 text-orange-300 border border-orange-500/30 text-[10px] font-bold transition-all inline-flex items-center space-x-1 cursor-pointer disabled:opacity-50"
+                                    title="সদস্যকে বকেয়া পরিশোধের তাগিদ নোটিফিকেশন পাঠান"
+                                  >
+                                    {remindingMemberId === row.id ? (
+                                      <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                                    ) : (
+                                      <Send className="w-2.5 h-2.5" />
+                                    )}
+                                    <span>তাগিদ দিন</span>
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-emerald-400 font-bold flex items-center justify-center space-x-1">
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    <span>ক্লিয়ার</span>
+                                  </span>
+                                )}
                               </td>
                             </>
                           )}
@@ -1249,19 +1655,6 @@ export default function ReportsPage() {
                               </td>
                             </>
                           )}
-
-                          {/* DUE ROW */}
-                          {reportType === 'due' && (
-                            <>
-                              <td className="py-2.5 px-3 font-mono text-zinc-400">{row.id}</td>
-                              <td className="py-2.5 px-3 font-bold text-[var(--foreground)]">{row.name}</td>
-                              <td className="py-2.5 px-3 text-[var(--muted-foreground)]">{row.phone}</td>
-                              <td className="py-2.5 px-3 text-[var(--muted-foreground)]">{row.joinDate}</td>
-                              <td className="py-2.5 px-3 text-right font-bold text-amber-400">
-                                {formatCurrency(row.monthlyFee)}
-                              </td>
-                            </>
-                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -1269,12 +1662,18 @@ export default function ReportsPage() {
                     {/* Table Footer Totals */}
                     <tfoot>
                       <tr className="bg-[var(--accent)] border-t-2 border-[var(--border)] font-black text-xs">
-                        <td colSpan={reportType === 'collection' ? 6 : reportType === 'expense' ? 4 : 3} className="py-3 px-3 text-right uppercase tracking-wider text-[var(--foreground)]">
+                        <td colSpan={
+                          reportType === 'collection' ? 6 :
+                          reportType === 'member_collection' ? 8 :
+                          reportType === 'due' ? 7 :
+                          reportType === 'expense' ? 4 : 3
+                        } className="py-3 px-3 text-right uppercase tracking-wider text-[var(--foreground)]">
                           Total Amount:
                         </td>
                         <td className="py-3 px-3 text-right text-emerald-400 font-black text-sm">
                           {formatCurrency(totalSummaryAmount)}
                         </td>
+                        {reportType === 'due' && <td className="no-print" />}
                         {reportType === 'investment' && <td colSpan={3} />}
                         {reportType === 'loan' && <td colSpan={3} />}
                         {reportType === 'ledger' && <td />}

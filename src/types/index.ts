@@ -132,6 +132,9 @@ export interface SystemNotification {
   read: boolean;
   link?: string;
   category?: 'payment' | 'due' | 'notice' | 'loan' | 'general';
+  resentAt?: string;
+  resendCount?: number;
+  smsStatus?: 'sent' | 'delivered' | 'failed' | 'pending';
 }
 
 export interface DocumentFile {

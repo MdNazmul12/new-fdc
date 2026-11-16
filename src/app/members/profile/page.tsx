@@ -382,7 +382,7 @@ export default function MemberProfilePage() {
         : (memberProfile.monthlyFee || 1000);
       const isPending = !!pendingRecord;
       const isOverdue = !isPending && today > demand.dueDate;
-      const fine = isOverdue ? (demand.lateFine || 50) : 0;
+      const fine = 0; // Disabled auto late-fine calculation
       return { 
         ...demand, 
         baseFee, 

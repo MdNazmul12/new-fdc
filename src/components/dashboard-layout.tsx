@@ -40,12 +40,14 @@ import {
   Share2,
   Megaphone,
   Coins,
-  MessageSquare
+  MessageSquare,
+  Send,
+  RotateCcw
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logout, switchRole, hasPermission, loading } = useAuth();
-  const { notifications, markNotificationRead, markAllNotificationsRead } = useStore();
+  const { notifications, markNotificationRead, markAllNotificationsRead, resendNotification } = useStore();
   const router = useRouter();
   const pathname = usePathname();
   
@@ -58,6 +60,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [notifFilter, setNotifFilter] = useState<'all' | 'payment' | 'due' | 'notice' | 'loan'>('all');
+  const [resendingId, setResendingId] = useState<string | null>(null);
+
+  const handleResendNotif = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setResendingId(id);
+    try {
+      await resendNotification(id);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setResendingId(null);
+    }
+  };
 
   // Sync theme on mount
   useEffect(() => {
@@ -569,19 +584,48 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-1">
                                 <p className="text-xs font-semibold text-[var(--foreground)] truncate">{n.title}</p>
-                                {n.category && (
-                                  <span className="px-1.5 py-0.2 rounded text-[9px] uppercase font-bold tracking-wider bg-zinc-800 text-zinc-400 shrink-0">
-                                    {n.category}
-                                  </span>
-                                )}
+                                <div className="flex items-center space-x-1 shrink-0">
+                                  {n.resendCount && n.resendCount > 0 ? (
+                                    <span className="px-1.5 py-0.2 rounded text-[8px] font-bold bg-indigo-500/20 text-indigo-300">
+                                      {n.resendCount}x
+                                    </span>
+                                  ) : null}
+                                  {n.category && (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] uppercase font-bold tracking-wider bg-zinc-800 text-zinc-400">
+                                      {n.category}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                               <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5 leading-relaxed">{n.message}</p>
-                              <p className="text-[9px] text-[var(--muted-foreground)]/80 mt-1">{n.date}</p>
+                              <div className="flex items-center justify-between mt-1">
+                                <p className="text-[9px] text-[var(--muted-foreground)]/80">{n.date}</p>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleResendNotif(e, n.id)}
+                                  disabled={resendingId === n.id}
+                                  className="px-2 py-0.5 rounded text-[9px] font-bold bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 transition-all inline-flex items-center space-x-1 cursor-pointer"
+                                  title="মেসেজ বা নোটিফিকেশন আবার পাঠান"
+                                >
+                                  <RotateCcw className={`w-2.5 h-2.5 ${resendingId === n.id ? 'animate-spin' : ''}`} />
+                                  <span>{resendingId === n.id ? 'পাঠানো হচ্ছে...' : 'আবার পাঠান'}</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
                       ))
                     )}
+                  </div>
+                  <div className="p-2 bg-zinc-900/80 border-t border-[var(--border)] text-center">
+                    <Link
+                      href="/dashboard#message-history"
+                      onClick={() => setNotificationsOpen(false)}
+                      className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold inline-flex items-center space-x-1"
+                    >
+                      <span>মেসেজ ও নোটিফিকেশন হিস্টরি দেখুন</span>
+                      <span>→</span>
+                    </Link>
                   </div>
                 </div>
               )}

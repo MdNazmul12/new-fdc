@@ -13,6 +13,7 @@ interface AuthContextProps {
   loading: boolean;
   permissions: Record<UserRole, Record<string, string[]>>;
   updateRolePermission: (role: UserRole, module: string, action: string, grant: boolean) => void;
+  updateUserSession: (updatedFields: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -196,6 +197,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   return;
                 }
 
+                let memberPhoto: string | undefined = undefined;
                 if (freshUser.role === 'member') {
                   try {
                     const membersRes = await fetch('/api/db/members');
@@ -210,8 +212,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     );
                     if (memberRecord) {
                       freshUser = { ...freshUser, memberId: memberRecord.id };
+                      memberPhoto = memberRecord.photoUrl;
                     }
                   } catch (e) {}
+                }
+
+                // Never wipe out newly updated avatar from session or member record
+                const resolvedAvatar = freshUser.avatar || memberPhoto || parsedUser.avatar;
+                if (resolvedAvatar) {
+                  freshUser = { ...freshUser, avatar: resolvedAvatar };
                 }
 
                 setUser(freshUser);
@@ -519,6 +528,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  const updateUserSession = (updatedFields: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return null;
+      const updated = { ...prev, ...updatedFields };
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('fdc_current_user', JSON.stringify(updated));
+      }
+      return updated;
+    });
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -530,7 +550,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         hasPermission,
         loading,
         permissions,
-        updateRolePermission
+        updateRolePermission,
+        updateUserSession
       }}
     >
       {children}

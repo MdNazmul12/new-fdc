@@ -71,6 +71,7 @@ interface StoreContextProps {
   broadcastAnnouncement: (title: string, message: string, type?: 'info' | 'warning' | 'alert', target?: 'all' | 'due_members' | 'admins') => Promise<boolean>;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
+  resendNotification: (id: string) => Promise<boolean>;
   
   // Document actions
   addDocument: (doc: Omit<DocumentFile, 'id' | 'uploadDate'>) => DocumentFile;
@@ -1499,6 +1500,36 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     syncToDbAndLocal('notifications', updated, 'update', { filter: {}, update: { read: true } });
   };
 
+  const resendNotification = async (id: string): Promise<boolean> => {
+    const notif = notifications.find(n => n.id === id);
+    if (!notif) return false;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const updatedNotif: SystemNotification = {
+      ...notif,
+      date: todayStr,
+      read: false,
+      resentAt: new Date().toISOString(),
+      resendCount: (notif.resendCount || 0) + 1,
+      smsStatus: 'sent'
+    };
+
+    const updated = notifications.map(n => n.id === id ? updatedNotif : n);
+    setNotifications(updated);
+    await syncToDbAndLocal('notifications', updated, 'update', { filter: { id }, update: updatedNotif });
+
+    // Automatically trigger push notification & dispatch alert again
+    sendPushNotification({
+      title: notif.title,
+      message: notif.message,
+      url: notif.link || '/dashboard',
+      targetUserId: notif.userId || 'all',
+    });
+
+    addAuditLog(`Resent Notification/SMS: ${notif.title}`, 'super_admin', 'Admin');
+    return true;
+  };
+
   const broadcastAnnouncement = async (
     title: string,
     message: string,
@@ -2174,6 +2205,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addNotification,
         markNotificationRead,
         markAllNotificationsRead,
+        resendNotification,
         addDocument,
         deleteDocument,
         addUser,
