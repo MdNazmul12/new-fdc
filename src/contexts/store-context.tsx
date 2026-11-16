@@ -42,6 +42,7 @@ interface StoreContextProps {
   importMembers: (members: Omit<Member, 'id'>[]) => Promise<Member[]>;
   updateMember: (id: string, member: Partial<Member>) => void;
   updateMemberPhoto: (id: string, photoUrl: string) => void;
+  updateUserPhoto: (id: string, avatar: string) => void;
   deleteMember: (id: string, permanent?: boolean) => void;
   
   // Collection actions
@@ -235,13 +236,8 @@ const initialUsers: User[] = [
   { id: 'u-6', name: 'Kabir Ahmed', email: 'kabir@fdc.org', role: 'member', phone: '+8801711223344', status: 'active', lastLogin: '2026-08-01 07:15 PM', password: 'password123', memberId: 'm-1' },
 ];
 
-const initialDueDemands: DueDemand[] = [
-  { id: 'dd-2026-05', month: '2026-05', title: 'Monthly Subscription Fee - May 2026', dueDate: '2026-05-10', amountType: 'member_fee', lateFine: 50, applicableTo: 'all', createdAt: '2026-05-01', createdBy: 'Super Admin' },
-  { id: 'dd-2026-06', month: '2026-06', title: 'Monthly Subscription Fee - June 2026', dueDate: '2026-06-10', amountType: 'member_fee', lateFine: 50, applicableTo: 'all', createdAt: '2026-06-01', createdBy: 'Super Admin' },
-  { id: 'dd-2026-07', month: '2026-07', title: 'Monthly Subscription Fee - July 2026', dueDate: '2026-07-10', amountType: 'member_fee', lateFine: 50, applicableTo: 'all', createdAt: '2026-07-01', createdBy: 'Super Admin' },
-  { id: 'dd-2026-08', month: '2026-08', title: 'Monthly Subscription Fee - August 2026', dueDate: '2026-08-10', amountType: 'member_fee', lateFine: 50, applicableTo: 'all', createdAt: '2026-08-01', createdBy: 'Super Admin' },
-  { id: 'dd-2026-09', month: '2026-09', title: 'Monthly Subscription Fee - September 2026', dueDate: '2026-09-10', amountType: 'member_fee', lateFine: 50, applicableTo: 'all', createdAt: '2026-09-01', createdBy: 'Super Admin' },
-];
+// No pre-seeded due demands — admin must generate them manually from the Generate Dues page
+const initialDueDemands: DueDemand[] = [];
 
 const isRealPhone = (phone?: string): boolean => {
   if (!phone) return false;
@@ -660,16 +656,50 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const matched = updated.find(m => m.id === id);
     syncToDbAndLocal('members', updated, exists ? 'update' : 'create', exists ? { filter: { id }, update: { photoUrl } } : matched);
 
-    if (matched && matched.email) {
-      const updatedUsers = users.map(u => 
-        (u.memberId === id || u.email?.toLowerCase() === matched.email.toLowerCase() || u.id === id.replace('m-', 'u-')) 
-          ? { ...u, avatar: photoUrl } 
-          : u
-      );
-      setUsers(updatedUsers);
-      syncToDbAndLocal('users', updatedUsers, 'update', { filter: { email: matched.email }, update: { avatar: photoUrl } });
-    }
+    // Update users collection and state across all linked criteria
+    const updatedUsers = users.map(u => {
+      const isMatch = 
+        u.memberId === id ||
+        u.id === id ||
+        u.id === id.replace('m-', 'u-') ||
+        (matched?.email && u.email && u.email.toLowerCase() === matched.email.toLowerCase()) ||
+        (matched?.phone && u.phone && u.phone === matched.phone);
+      return isMatch ? { ...u, avatar: photoUrl } : u;
+    });
+    setUsers(updatedUsers);
+
+    const userOrFilters: any[] = [{ memberId: id }, { id: id }, { id: id.replace('m-', 'u-') }];
+    if (matched?.email) userOrFilters.push({ email: matched.email });
+    if (matched?.phone) userOrFilters.push({ phone: matched.phone });
+    syncToDbAndLocal('users', updatedUsers, 'update', { filter: { $or: userOrFilters }, update: { avatar: photoUrl } });
+
     addAuditLog(`Updated Profile Photo for ID: ${id}`, 'member', matched?.name || id);
+  };
+
+  const updateUserPhoto = (userId: string, avatar: string) => {
+    const updatedUsers = users.map(u => u.id === userId ? { ...u, avatar } : u);
+    setUsers(updatedUsers);
+    syncToDbAndLocal('users', updatedUsers, 'update', { filter: { id: userId }, update: { avatar } });
+
+    const matchedUser = updatedUsers.find(u => u.id === userId);
+    if (matchedUser) {
+      const updatedMembers = members.map(m => {
+        const isMatch = 
+          (matchedUser.memberId && m.id === matchedUser.memberId) ||
+          m.id === userId ||
+          m.id === userId.replace('u-', 'm-') ||
+          (matchedUser.email && m.email && m.email.toLowerCase() === matchedUser.email.toLowerCase()) ||
+          (matchedUser.phone && m.phone && m.phone === matchedUser.phone);
+        return isMatch ? { ...m, photoUrl: avatar } : m;
+      });
+      setMembers(updatedMembers);
+      const memberOrFilters: any[] = [{ id: userId }, { id: userId.replace('u-', 'm-') }];
+      if (matchedUser.memberId) memberOrFilters.push({ id: matchedUser.memberId });
+      if (matchedUser.email) memberOrFilters.push({ email: matchedUser.email });
+      if (matchedUser.phone) memberOrFilters.push({ phone: matchedUser.phone });
+      syncToDbAndLocal('members', updatedMembers, 'update', { filter: { $or: memberOrFilters }, update: { photoUrl: avatar } });
+    }
+    addAuditLog(`Updated Profile Photo for User: ${userId}`, 'user', matchedUser?.name || userId);
   };
 
   const updateMember = (id: string, updatedFields: Partial<Member>) => {
@@ -2165,6 +2195,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         importMembers,
         updateMember,
         updateMemberPhoto,
+        updateUserPhoto,
         deleteMember,
         addCollection,
         approveCollection,

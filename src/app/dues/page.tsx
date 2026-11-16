@@ -235,7 +235,8 @@ export default function DuesPage() {
       );
 
       const isOverdue = !isPaid && !isPending && today > demand.dueDate;
-      const fine = (!isPaid && !isPending && !isWaived && isOverdue) ? (demand.lateFine || 50) : 0;
+      // Late fine is NOT auto-applied — it must be added manually at collection time
+      const fine = 0;
       const totalAmount = isPaid 
         ? (paidRecord.amount + (paidRecord.lateFine || 0)) 
         : isPending 
@@ -311,7 +312,8 @@ export default function DuesPage() {
             w => w.memberId === member.id && w.month === demand.month
           );
           const isOverdue = today > demand.dueDate;
-          const lateFine = !isWaived && isOverdue ? (demand.lateFine || 50) : 0;
+          // Late fine is NOT auto-applied — must be collected manually
+          const lateFine = 0;
           const total = baseFee + lateFine;
 
           unpaidList.push({ demand, baseFee, lateFine, total, isOverdue });
@@ -387,8 +389,8 @@ export default function DuesPage() {
         w => (w.memberId === member.id || (user?.memberId && w.memberId === user.memberId)) && w.month === targetMonth
       );
 
-      // Calculate late fine: if not paid & not pending and selected date is after cutoff (and not waived)
-      const lateFine = !isPaid && !isPending && !isWaived && isSelectedDateAfterCutoff ? activeDemand.lateFine : 0;
+      // Late fine is NOT auto-applied — collector manually enters it at collection time
+      const lateFine = 0;
       const totalPayable = isPaid 
         ? (paidRecord.amount + (paidRecord.lateFine || 0)) 
         : isPending 
