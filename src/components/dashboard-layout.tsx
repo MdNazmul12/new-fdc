@@ -180,7 +180,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     // ── COLLECTIONS & DUES (PARENT WITH SUBMENU) ──
     { 
-      name: '\u0986\u09a6\u09be\u09af\u09bc \u0993 \u09a1\u09bf\u0989',
+      name: 'Collections & Dues',
       path: '/collections',
       icon: DollarSign, 
       permission: { module: 'collections', action: 'view' as const },
@@ -218,7 +218,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     // ── REPORTS (PARENT WITH SUBMENU) ──
     { 
-      name: '\u09b0\u09bf\u09aa\u09cb\u09b0\u09cd\u099f',
+      name: 'Reports',
       path: '/reports',
       icon: FileSpreadsheet, 
       permission: { module: 'collections', action: 'view' as const },
@@ -250,7 +250,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     // ── FINANCE & ACCOUNTS (PARENT WITH SUBMENU) ──
     { 
-      name: '\u09b9\u09bf\u09b8\u09be\u09ac \u0993 \u09ab\u09be\u0987\u09a8\u09cd\u09af\u09be\u09a8\u09cd\u09b8',
+      name: 'Finance & Accounts',
       path: '/expenses',
       icon: CreditCard, 
       permission: { module: 'expenses', action: 'view' as const },
@@ -284,7 +284,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     // ── COMMUNICATION & SYSTEM (PARENT WITH SUBMENU) ──
     { 
-      name: '\u09b8\u09bf\u09b8\u09cd\u099f\u09c7\u09ae \u0993 \u09af\u09cb\u0997\u09be\u09af\u09cb\u0997',
+      name: 'Communication & System',
       path: '/dashboard#message-history',
       icon: UserCog, 
       permission: { module: 'dashboard', action: 'view' as const },
