@@ -24,13 +24,37 @@ import {
   AlertCircle,
   Edit2,
   Eye,
-  EyeOff
+  EyeOff,
+  LayoutDashboard,
+  DollarSign,
+  Coins,
+  CreditCard,
+  Banknote,
+  TrendingUp,
+  BookOpen,
+  UserCog,
+  History,
+  Database,
+  Shield,
+  MessageSquare,
+  CheckCheck,
+  CheckSquare,
+  Square,
+  Sparkles,
+  UserCheck
 } from 'lucide-react';
 import ConfirmModal from '../../components/confirm-modal';
 
 export default function UsersPage() {
   const { users, addUser, updateUserStatus, resetUserPassword, updateUser, deleteUser, documents, addDocument, deleteDocument, auditLogs } = useStore();
-  const { user: currentUser, hasPermission, permissions, updateRolePermission } = useAuth();
+  const { 
+    user: currentUser, 
+    hasPermission, 
+    permissions, 
+    updateRolePermission, 
+    saveAllRolePermissions, 
+    saveUserCustomPermissions 
+  } = useAuth();
 
   // Tabs state: 'users' | 'rbac' | 'files'
   const [activeTab, setActiveTab] = useState<'users' | 'rbac' | 'files'>('users');
@@ -77,6 +101,11 @@ export default function UsersPage() {
 
   // Local state for RBAC permissions editing
   const [localPermissions, setLocalPermissions] = useState<Record<UserRole, Record<string, string[]>> | null>(null);
+
+  // Menu-wise Permissions Configurator State
+  const [configTargetType, setConfigTargetType] = useState<'role' | 'user'>('role');
+  const [selectedUserIdForPerms, setSelectedUserIdForPerms] = useState<string>('');
+  const [localUserPermissions, setLocalUserPermissions] = useState<Record<string, Record<string, string[]>>>({});
 
   // Create Role modal state
   const [createRoleModalOpen, setCreateRoleModalOpen] = useState(false);
@@ -280,32 +309,274 @@ export default function UsersPage() {
     showFeedback(`Document uploaded successfully: ${fileName}`);
   };
 
-  // Modules & Actions list
-  const modulesList = [
-    { key: 'dashboard', name: 'Dashboard Module' },
-    { key: 'members', name: 'Member Management' },
-    { key: 'collections', name: 'Collection Management' },
-    { key: 'advance_payment', name: 'Advance Payment (অগ্রিম চাঁদা)' },
-    { key: 'investments', name: 'Investment Management' },
-    { key: 'expenses', name: 'Expense Management' },
-    { key: 'loans', name: 'Loan Management' },
-    { key: 'accounting', name: 'Accounting Bookkeeping' },
-    { key: 'reports', name: 'Financial Reports' },
-    { key: 'users', name: 'User Accounts' },
-    { key: 'audit', name: 'Audit Logs' },
-    { key: 'documents', name: 'File Repository' },
-    { key: 'backup', name: 'Database Backup & Restore' },
+  // Menu-Wise Permission Structures
+  interface MenuPermissionItem {
+    key: string;
+    name: string;
+    nameBn: string;
+    icon: any;
+    availableActions: ('view' | 'create' | 'update' | 'delete' | 'approve' | 'export' | 'print')[];
+  }
+
+  interface MenuGroup {
+    groupName: string;
+    groupNameBn: string;
+    icon: any;
+    items: MenuPermissionItem[];
+  }
+
+  const menuGroups: MenuGroup[] = [
+    {
+      groupName: 'Main Navigation',
+      groupNameBn: 'প্রধান মেনু',
+      icon: LayoutDashboard,
+      items: [
+        { key: 'dashboard', name: 'Dashboard', nameBn: 'ড্যাশবোর্ড', icon: LayoutDashboard, availableActions: ['view'] },
+        { key: 'members', name: 'Member Management', nameBn: 'সদস্য ব্যবস্থাপনা', icon: Users, availableActions: ['view', 'create', 'update', 'delete', 'export'] },
+        { key: 'chat', name: 'Community Chat', nameBn: 'কমিউনিটি চ্যাট', icon: MessageSquare, availableActions: ['view', 'create', 'delete'] },
+      ]
+    },
+    {
+      groupName: 'Collections & Dues',
+      groupNameBn: 'আদায় ও ডিউ',
+      icon: DollarSign,
+      items: [
+        { key: 'collections', name: 'Collections', nameBn: 'চাঁদা আদায় ও কালেকশন', icon: DollarSign, availableActions: ['view', 'create', 'update', 'delete', 'approve', 'export', 'print'] },
+        { key: 'advance_payment', name: 'Advance Payment', nameBn: 'অগ্রিম চাঁদা', icon: Coins, availableActions: ['view', 'create', 'update', 'delete', 'approve', 'export', 'print'] },
+        { key: 'generate_dues', name: 'Generate Dues', nameBn: 'ডিউ জেনারেট', icon: PlusCircle, availableActions: ['view', 'create', 'delete'] },
+      ]
+    },
+    {
+      groupName: 'Reports & Statements',
+      groupNameBn: 'রিপোর্ট ও বিবরণী',
+      icon: FileSpreadsheet,
+      items: [
+        { key: 'reports', name: 'Financial & Member Reports', nameBn: 'আর্থিক ও মেম্বার কালেকশন রিপোর্ট', icon: FileSpreadsheet, availableActions: ['view', 'export', 'print'] }
+      ]
+    },
+    {
+      groupName: 'Finance & Accounts',
+      groupNameBn: 'হিসাব ও ফাইন্যান্স',
+      icon: CreditCard,
+      items: [
+        { key: 'expenses', name: 'Expenses', nameBn: 'খরচ / ব্যয়', icon: CreditCard, availableActions: ['view', 'create', 'update', 'delete', 'export'] },
+        { key: 'loans', name: 'Loans Management', nameBn: 'ঋণ / লোন ব্যবস্থাপনা', icon: Banknote, availableActions: ['view', 'create', 'update', 'delete', 'approve', 'export'] },
+        { key: 'investments', name: 'Investments', nameBn: 'বিনিয়োগ ব্যবস্থাপনা', icon: TrendingUp, availableActions: ['view', 'create', 'update', 'delete', 'approve', 'export'] },
+        { key: 'accounting', name: 'Accounting Ledger', nameBn: 'হিসাব খাতা ও লেজার', icon: BookOpen, availableActions: ['view', 'create', 'update', 'delete', 'export'] }
+      ]
+    },
+    {
+      groupName: 'Communication & System',
+      groupNameBn: 'সিস্টেম ও যোগাযোগ',
+      icon: UserCog,
+      items: [
+        { key: 'messages', name: 'Message History & Tracker', nameBn: 'মেসেজ হিস্টোরি ও ট্র্যাকার', icon: History, availableActions: ['view', 'create', 'delete'] },
+        { key: 'users', name: 'User Accounts & Roles', nameBn: 'ইউজার ও রোল পারমিশন', icon: UserCog, availableActions: ['view', 'create', 'update', 'delete'] },
+        { key: 'backup', name: 'Backup & Restore', nameBn: 'ব্যাকআপ ও রিস্টোর', icon: Database, availableActions: ['view', 'create', 'update', 'delete', 'export'] },
+        { key: 'documents', name: 'Document Center', nameBn: 'ডকুমেন্ট ও ফাইল সেন্টার', icon: FileText, availableActions: ['view', 'create', 'delete'] },
+        { key: 'audit', name: 'System Audit Logs', nameBn: 'অডিট ও নিরাপত্তা লগ', icon: Shield, availableActions: ['view', 'export'] }
+      ]
+    }
   ];
 
-  const actionsList = [
-    { key: 'view', name: 'View Screen' },
-    { key: 'create', name: 'Add/Create' },
-    { key: 'update', name: 'Update/Edit' },
-    { key: 'delete', name: 'Delete/Void' },
-    { key: 'approve', name: 'Approve' },
-    { key: 'export', name: 'Export Data' },
-    { key: 'print', name: 'Print Copy' },
-  ];
+  const actionsMeta: Record<string, { label: string; labelBn: string; color: string }> = {
+    view: { label: 'View', labelBn: 'দেখা', color: 'bg-sky-500/10 text-sky-400 border-sky-500/30' },
+    create: { label: 'Create', labelBn: 'যোগ', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' },
+    update: { label: 'Update', labelBn: 'সম্পাদনা', color: 'bg-amber-500/10 text-amber-400 border-amber-500/30' },
+    delete: { label: 'Delete', labelBn: 'মুছে ফেলা', color: 'bg-rose-500/10 text-rose-400 border-rose-500/30' },
+    approve: { label: 'Approve', labelBn: 'অনুমোদন', color: 'bg-purple-500/10 text-purple-400 border-purple-500/30' },
+    export: { label: 'Export', labelBn: 'এক্সপোর্ট', color: 'bg-teal-500/10 text-teal-400 border-teal-500/30' },
+    print: { label: 'Print', labelBn: 'প্রিন্ট', color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30' },
+  };
+
+  // Helper to read currently active actions for a module
+  const getActiveModuleActions = (moduleKey: string): string[] => {
+    if (configTargetType === 'user' && selectedUserIdForPerms) {
+      const userPerms = localUserPermissions[selectedUserIdForPerms];
+      if (userPerms && userPerms[moduleKey] !== undefined) {
+        return userPerms[moduleKey];
+      }
+      const targetUser = users.find(u => u.id === selectedUserIdForPerms);
+      if (targetUser?.customPermissions && targetUser.customPermissions[moduleKey] !== undefined) {
+        return targetUser.customPermissions[moduleKey];
+      }
+      const role = targetUser?.role || 'member';
+      return (localPermissions?.[role] || permissions?.[role] || {})[moduleKey] || [];
+    }
+    return (localPermissions?.[selectedRoleForPerms] || permissions?.[selectedRoleForPerms] || {})[moduleKey] || [];
+  };
+
+  // Helper to toggle a single action
+  const handleToggleAction = (moduleKey: string, action: string, grant: boolean) => {
+    if (configTargetType === 'user' && selectedUserIdForPerms) {
+      setLocalUserPermissions(prev => {
+        const currentUserPerms = prev[selectedUserIdForPerms] || (() => {
+          const u = users.find(usr => usr.id === selectedUserIdForPerms);
+          return u?.customPermissions ? JSON.parse(JSON.stringify(u.customPermissions)) : JSON.parse(JSON.stringify((localPermissions || permissions)?.[u?.role || 'member'] || {}));
+        })();
+        const actions = [...(currentUserPerms[moduleKey] || [])];
+        const nextActions = grant ? (actions.includes(action) ? actions : [...actions, action]) : actions.filter(a => a !== action);
+        return {
+          ...prev,
+          [selectedUserIdForPerms]: {
+            ...currentUserPerms,
+            [moduleKey]: nextActions
+          }
+        };
+      });
+      return;
+    }
+    handleToggleLocalPermission(selectedRoleForPerms, moduleKey, action, grant);
+  };
+
+  // One-click Toggle ALL actions for a single menu
+  const handleToggleModuleAll = (moduleKey: string, allActions: string[]) => {
+    const currentActions = getActiveModuleActions(moduleKey);
+    const allSelected = allActions.every(a => currentActions.includes(a));
+    const newActions = allSelected ? [] : [...allActions];
+
+    if (configTargetType === 'user' && selectedUserIdForPerms) {
+      setLocalUserPermissions(prev => {
+        const currentUserPerms = prev[selectedUserIdForPerms] || (() => {
+          const u = users.find(usr => usr.id === selectedUserIdForPerms);
+          return u?.customPermissions ? JSON.parse(JSON.stringify(u.customPermissions)) : JSON.parse(JSON.stringify((localPermissions || permissions)?.[u?.role || 'member'] || {}));
+        })();
+        return {
+          ...prev,
+          [selectedUserIdForPerms]: {
+            ...currentUserPerms,
+            [moduleKey]: newActions
+          }
+        };
+      });
+      return;
+    }
+
+    if (!localPermissions) return;
+    const updated = JSON.parse(JSON.stringify(localPermissions));
+    if (!updated[selectedRoleForPerms]) updated[selectedRoleForPerms] = {};
+    updated[selectedRoleForPerms][moduleKey] = newActions;
+    setLocalPermissions(updated);
+  };
+
+  // One-click Toggle ALL actions for an entire menu group
+  const handleToggleGroupAll = (group: MenuGroup, select: boolean) => {
+    if (configTargetType === 'user' && selectedUserIdForPerms) {
+      setLocalUserPermissions(prev => {
+        const currentUserPerms = prev[selectedUserIdForPerms] || (() => {
+          const u = users.find(usr => usr.id === selectedUserIdForPerms);
+          return u?.customPermissions ? JSON.parse(JSON.stringify(u.customPermissions)) : JSON.parse(JSON.stringify((localPermissions || permissions)?.[u?.role || 'member'] || {}));
+        })();
+        const updatedGroup = { ...currentUserPerms };
+        group.items.forEach(item => {
+          updatedGroup[item.key] = select ? [...item.availableActions] : [];
+        });
+        return {
+          ...prev,
+          [selectedUserIdForPerms]: updatedGroup
+        };
+      });
+      return;
+    }
+
+    if (!localPermissions) return;
+    const updated = JSON.parse(JSON.stringify(localPermissions));
+    if (!updated[selectedRoleForPerms]) updated[selectedRoleForPerms] = {};
+    group.items.forEach(item => {
+      updated[selectedRoleForPerms][item.key] = select ? [...item.availableActions] : [];
+    });
+    setLocalPermissions(updated);
+  };
+
+  // Select ALL across all menus
+  const handleSelectAllAll = () => {
+    const allConfig: Record<string, string[]> = {};
+    menuGroups.forEach(g => {
+      g.items.forEach(i => {
+        allConfig[i.key] = [...i.availableActions];
+      });
+    });
+
+    if (configTargetType === 'user' && selectedUserIdForPerms) {
+      setLocalUserPermissions(prev => ({
+        ...prev,
+        [selectedUserIdForPerms]: allConfig
+      }));
+      return;
+    }
+
+    if (!localPermissions) return;
+    const updated = JSON.parse(JSON.stringify(localPermissions));
+    updated[selectedRoleForPerms] = allConfig;
+    setLocalPermissions(updated);
+  };
+
+  // Clear ALL across all menus
+  const handleClearAllAll = () => {
+    const emptyConfig: Record<string, string[]> = {};
+    menuGroups.forEach(g => {
+      g.items.forEach(i => {
+        emptyConfig[i.key] = [];
+      });
+    });
+
+    if (configTargetType === 'user' && selectedUserIdForPerms) {
+      setLocalUserPermissions(prev => ({
+        ...prev,
+        [selectedUserIdForPerms]: emptyConfig
+      }));
+      return;
+    }
+
+    if (!localPermissions) return;
+    const updated = JSON.parse(JSON.stringify(localPermissions));
+    updated[selectedRoleForPerms] = emptyConfig;
+    setLocalPermissions(updated);
+  };
+
+  // Save permissions (Role-wise or User-wise)
+  const handleSaveActivePermissions = async () => {
+    if (configTargetType === 'user') {
+      if (!selectedUserIdForPerms) {
+        showFeedback('অনুগ্রহ করে প্রথমে একজন ইউজার নির্বাচন করুন');
+        return;
+      }
+      const targetUser = users.find(u => u.id === selectedUserIdForPerms);
+      const modulesToSave = localUserPermissions[selectedUserIdForPerms] || targetUser?.customPermissions || {};
+      showFeedback(`ইউজার ${targetUser?.name || selectedUserIdForPerms}-এর জন্য পারমিশন সেভ করা হচ্ছে...`);
+      const ok = await saveUserCustomPermissions(selectedUserIdForPerms, modulesToSave);
+      if (ok) {
+        showFeedback(`✓ ইউজার ${targetUser?.name || selectedUserIdForPerms}-এর মেনুভিত্তিক পারমিশন সফলভাবে সেভ হয়েছে!`);
+      } else {
+        showFeedback('পারমিশন সেভ করতে ব্যর্থ হয়েছে।');
+      }
+      return;
+    }
+
+    // Role saving
+    await handleSavePermissions();
+  };
+
+  // Reset user custom permissions to role default
+  const handleResetUserToRole = async () => {
+    if (!selectedUserIdForPerms) return;
+    const targetUser = users.find(u => u.id === selectedUserIdForPerms);
+    if (!targetUser) return;
+
+    triggerConfirm(
+      'রোল পারমিশনে রিসেট করুন',
+      `আপনি কি নিশ্চিত যে ইউজার ${targetUser.name}-এর কাস্টম পারমিশন মুছে ফেলে তাকে তার রোল (${targetUser.role})-এর ডিফল্ট পারমিশনে ফিরিয়ে নিতে চান?`,
+      async () => {
+        await saveUserCustomPermissions(selectedUserIdForPerms, {});
+        setLocalUserPermissions(prev => {
+          const next = { ...prev };
+          delete next[selectedUserIdForPerms];
+          return next;
+        });
+        showFeedback(`✓ ইউজার ${targetUser.name}-কে রোল (${targetUser.role})-এ রিসেট করা হয়েছে!`);
+      }
+    );
+  };
 
   const getDocIcon = (type: string) => {
     switch (type) {
@@ -477,6 +748,21 @@ export default function UsersPage() {
                               <RefreshCw className="w-3.5 h-3.5" />
                             </button>
 
+                            {/* Configure User Menu Permissions */}
+                            {currentUser?.role === 'super_admin' && (
+                              <button
+                                onClick={() => {
+                                  setSelectedUserIdForPerms(u.id);
+                                  setConfigTargetType('user');
+                                  setActiveTab('rbac');
+                                }}
+                                className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg cursor-pointer transition-colors"
+                                title="এই ইউজারের মেনুভিত্তিক পারমিশন কনফিগার করুন"
+                              >
+                                <Shield className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
                             {/* Lock/Unlock profile */}
                             {u.id !== currentUser?.id && hasPermission('users', 'update') && (
                               <button
@@ -505,82 +791,279 @@ export default function UsersPage() {
           </div>
         )}
 
-        {/* ---------------- TAB 2: RBAC MATRIX ---------------- */}
+        {/* ---------------- TAB 2: RBAC MATRIX (MENU-WISE PERMISSION CONFIGURATOR) ---------------- */}
         {activeTab === 'rbac' && (
           <div className="space-y-6 animate-fade-in-up">
             
-            {/* Header selector */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-[var(--border)] pb-4 space-y-3 sm:space-y-0 text-xs">
-              <div>
-                <h3 className="text-xs font-bold text-[var(--card-foreground)]">Role Permissions Configurator</h3>
-                <p className="text-[10px] text-[var(--muted-foreground)]/70">Toggle screen views or CRUD permissions dynamically below. Changes apply instantly.</p>
-              </div>
-              
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs text-[var(--muted-foreground)] font-semibold">Configuring Role:</span>
-                  <select
-                    value={selectedRoleForPerms}
-                    onChange={(e) => setSelectedRoleForPerms(e.target.value as UserRole)}
-                    className="bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--foreground)]/80 focus:outline-none cursor-pointer"
-                  >
-                    {allAvailableRoles.map((r) => (
-                      <option key={r.key} value={r.key}>{r.name}</option>
-                    ))}
-                  </select>
+            {/* Top Control Bar */}
+            <div className="p-5 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-sm space-y-4">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+                      <Shield className="w-4 h-4" />
+                    </div>
+                    <h3 className="text-base font-black text-[var(--foreground)] tracking-tight">
+                      মেনুভিত্তিক পারমিশন কনফিগারেটর (Menu-Wise Permissions)
+                    </h3>
+                  </div>
+                  <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                    প্রতিটি মেনু ও সাবমেনুর জন্য আলাদাভাবে দেখা (View), তৈরি (Create), সম্পাদনা (Edit), ডিলিট (Delete) ও অনুমোদন (Approve) নিয়ন্ত্রণ করুন।
+                  </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setCreateRoleModalOpen(true)}
-                  className="px-3 py-2 bg-[var(--secondary)] border border-[var(--border)] hover:bg-[var(--accent)] text-indigo-400 text-xs font-semibold rounded-xl transition-all cursor-pointer inline-flex items-center space-x-1.5"
-                >
-                  <PlusCircle className="w-3.5 h-3.5" />
-                  <span>+ Create Role</span>
-                </button>
-
-                {currentUser?.role === 'super_admin' && (
+                {/* Quick Global Action Buttons */}
+                <div className="flex items-center space-x-2 flex-wrap">
                   <button
-                    onClick={handleSavePermissions}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-md shadow-indigo-600/10"
+                    type="button"
+                    onClick={handleSelectAllAll}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all inline-flex items-center space-x-1.5 cursor-pointer shadow-sm"
+                    title="সব মেনুর সকল পারমিশন একসাথে নির্বাচন করুন"
                   >
-                    Save Permissions
+                    <CheckCheck className="w-3.5 h-3.5" />
+                    <span>সব মেনু নির্বাচন (Select All)</span>
                   </button>
-                )}
+
+                  <button
+                    type="button"
+                    onClick={handleClearAllAll}
+                    className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold transition-all inline-flex items-center space-x-1.5 cursor-pointer shadow-sm"
+                    title="সব মেনুর পারমিশন মুছে ফেলুন"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>সব বাতিল (Clear All)</span>
+                  </button>
+
+                  {currentUser?.role === 'super_admin' && (
+                    <button
+                      type="button"
+                      onClick={handleSaveActivePermissions}
+                      className="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white text-xs font-black transition-all shadow-md shadow-indigo-600/20 inline-flex items-center space-x-1.5 cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>সংরক্ষণ করুন (Save Permissions)</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Target Type Switcher & Selector */}
+              <div className="pt-3 border-t border-[var(--border)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                {/* Mode Switcher */}
+                <div className="flex items-center space-x-1.5 p-1 bg-[var(--secondary)] rounded-xl w-fit">
+                  <button
+                    type="button"
+                    onClick={() => setConfigTargetType('role')}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center space-x-1.5 ${
+                      configTargetType === 'role'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                    }`}
+                  >
+                    <Shield className="w-3.5 h-3.5" />
+                    <span>রোলভিত্তিক পারমিশন (By Role)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfigTargetType('user');
+                      if (!selectedUserIdForPerms && users.length > 0) {
+                        setSelectedUserIdForPerms(users[0].id);
+                      }
+                    }}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center space-x-1.5 ${
+                      configTargetType === 'user'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>ইউজারভিত্তিক কাস্টম পারমিশন (By User)</span>
+                  </button>
+                </div>
+
+                {/* Specific Target Selector */}
+                <div className="flex items-center space-x-2 flex-wrap">
+                  {configTargetType === 'role' ? (
+                    <>
+                      <span className="text-xs text-[var(--muted-foreground)] font-semibold">রোল নির্বাচন:</span>
+                      <select
+                        value={selectedRoleForPerms}
+                        onChange={(e) => setSelectedRoleForPerms(e.target.value as UserRole)}
+                        className="bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-1.5 text-xs font-bold text-[var(--foreground)] focus:outline-none focus:border-indigo-500 cursor-pointer shadow-sm"
+                      >
+                        {allAvailableRoles.map((r) => (
+                          <option key={r.key} value={r.key}>
+                            {r.name}
+                          </option>
+                        ))}
+                      </select>
+
+                      <button
+                        type="button"
+                        onClick={() => setCreateRoleModalOpen(true)}
+                        className="px-3 py-1.5 bg-[var(--secondary)] border border-[var(--border)] hover:bg-[var(--accent)] text-indigo-400 text-xs font-semibold rounded-xl transition-all cursor-pointer inline-flex items-center space-x-1"
+                      >
+                        <PlusCircle className="w-3 h-3" />
+                        <span>+ নতুন রোল</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xs text-[var(--muted-foreground)] font-semibold">ইউজার নির্বাচন:</span>
+                      <select
+                        value={selectedUserIdForPerms}
+                        onChange={(e) => setSelectedUserIdForPerms(e.target.value)}
+                        className="bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-1.5 text-xs font-bold text-[var(--foreground)] focus:outline-none focus:border-indigo-500 cursor-pointer shadow-sm max-w-xs"
+                      >
+                        {users.map((u) => {
+                          const hasCustom = u.customPermissions && Object.keys(u.customPermissions).length > 0;
+                          return (
+                            <option key={u.id} value={u.id}>
+                              {u.name} ({u.role}) {hasCustom ? '★ Custom' : ''}
+                            </option>
+                          );
+                        })}
+                      </select>
+
+                      <button
+                        type="button"
+                        onClick={handleResetUserToRole}
+                        className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-semibold rounded-xl transition-all cursor-pointer inline-flex items-center space-x-1"
+                        title="কাস্টম পারমিশন মুছে ফেলে রোলের ডিফল্ট পারমিশনে ফেরত যান"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>রোল পারমিশনে রিসেট</span>
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Matrix cards grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              {modulesList.map((mod) => {
-                const rolePermissions = localPermissions?.[selectedRoleForPerms] || permissions?.[selectedRoleForPerms] || {};
-                const moduleActions = rolePermissions[mod.key] || [];
+            {/* Menu Groups - Tree structure matching uploaded reference */}
+            <div className="space-y-4">
+              {menuGroups.map((group) => {
+                const GroupIcon = group.icon;
+                const totalGroupItems = group.items.length;
 
                 return (
-                  <div key={mod.key} className="bg-[var(--secondary)] border border-[var(--border)] rounded-xl p-4 space-y-3 shadow-sm">
-                    <h4 className="font-bold text-xs text-[var(--foreground)] flex items-center space-x-2 border-b border-[var(--border)] pb-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0"></span>
-                      <span>{mod.name}</span>
-                    </h4>
-                    
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {actionsList.map((act) => {
-                        const isGranted = moduleActions.includes(act.key);
+                  <div 
+                    key={group.groupName} 
+                    className="p-5 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-sm space-y-3"
+                  >
+                    {/* Group Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-[var(--border)] gap-2">
+                      <div className="flex items-center space-x-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0">
+                          <GroupIcon className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-black text-[var(--foreground)]">
+                            {group.groupName}
+                            <span className="ml-2 text-xs font-semibold text-[var(--muted-foreground)]">
+                              ({group.groupNameBn})
+                            </span>
+                          </h4>
+                        </div>
+                      </div>
+
+                      {/* Group Quick Select / Deselect */}
+                      <div className="flex items-center space-x-2 self-end sm:self-center">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleGroupAll(group, true)}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[var(--secondary)] hover:bg-[var(--accent)] text-emerald-400 transition-colors cursor-pointer border border-[var(--border)]"
+                          title="এই গ্রুপের সকল মেনুর সব পারমিশন সিলেক্ট করুন"
+                        >
+                          ✓ গ্রুপ সব নির্বাচন
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleGroupAll(group, false)}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[var(--secondary)] hover:bg-[var(--accent)] text-rose-400 transition-colors cursor-pointer border border-[var(--border)]"
+                          title="এই গ্রুপের সব পারমিশন বাতিল করুন"
+                        >
+                          ✕ গ্রুপ বাতিল
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Submenu Items List */}
+                    <div className="space-y-2">
+                      {group.items.map((item) => {
+                        const ItemIcon = item.icon;
+                        const currentActions = getActiveModuleActions(item.key);
+                        const isAllSelected = item.availableActions.every(a => currentActions.includes(a));
+                        const hasAnySelected = item.availableActions.some(a => currentActions.includes(a));
+
                         return (
-                          <label 
-                            key={act.key} 
-                            className="flex items-center space-x-2 p-2 bg-[var(--background)]/40 hover:bg-[var(--background)] rounded border border-[var(--border)]/50 cursor-pointer select-none"
+                          <div
+                            key={item.key}
+                            className={`p-3 rounded-xl border transition-all flex flex-col md:flex-row md:items-center md:justify-between gap-3 ${
+                              hasAnySelected 
+                                ? 'bg-[var(--secondary)]/40 border-[var(--border)]' 
+                                : 'bg-[var(--background)]/40 border-[var(--border)]/50 opacity-80'
+                            }`}
                           >
-                            <input
-                              type="checkbox"
-                              checked={isGranted}
-                              onChange={(e) => {
-                                handleToggleLocalPermission(selectedRoleForPerms, mod.key, act.key, e.target.checked);
-                              }}
-                              className="rounded border-[var(--border)] bg-[var(--secondary)] text-indigo-500 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
-                            />
-                            <span className="text-[10px] text-[var(--muted-foreground)] font-semibold">{act.key.toUpperCase()}</span>
-                          </label>
+                            {/* Left: Menu Title & One-click Select All Checkbox */}
+                            <div className="flex items-center space-x-3 min-w-[240px]">
+                              {/* One-Click Select All for this Submenu */}
+                              <label 
+                                className="flex items-center space-x-2 cursor-pointer select-none group"
+                                title="এক ক্লিকে এই মেনুর সব পারমিশন সিলেক্ট/আনসিলেক্ট করুন"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isAllSelected}
+                                  onChange={() => handleToggleModuleAll(item.key, item.availableActions)}
+                                  className="w-4 h-4 rounded border-[var(--border)] bg-[var(--background)] text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                />
+                                <div className="w-6 h-6 rounded-md bg-[var(--background)] flex items-center justify-center shrink-0 border border-[var(--border)] text-[var(--muted-foreground)] group-hover:text-indigo-400 transition-colors">
+                                  <ItemIcon className="w-3.5 h-3.5" />
+                                </div>
+                              </label>
+
+                              <div>
+                                <span className="text-xs font-bold text-[var(--foreground)] block">
+                                  {item.name}
+                                </span>
+                                <span className="text-[10px] text-[var(--muted-foreground)]">
+                                  {item.nameBn}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Right: Individual Action Checkboxes */}
+                            <div className="flex items-center flex-wrap gap-1.5 self-start md:self-center">
+                              {item.availableActions.map((act) => {
+                                const isGranted = currentActions.includes(act);
+                                const meta = actionsMeta[act] || { label: act, labelBn: act, color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30' };
+
+                                return (
+                                  <label
+                                    key={act}
+                                    className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 select-none ${
+                                      isGranted
+                                        ? `${meta.color} shadow-xs font-extrabold`
+                                        : 'bg-[var(--background)]/60 text-[var(--muted-foreground)]/60 border-[var(--border)]/60 hover:text-[var(--foreground)] hover:border-[var(--border)]'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isGranted}
+                                      onChange={(e) => handleToggleAction(item.key, act, e.target.checked)}
+                                      className="w-3 h-3 rounded border-[var(--border)] bg-[var(--background)] text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                    />
+                                    <span className="text-[10px] uppercase tracking-wide">
+                                      {meta.label} <span className="text-[9px] font-normal opacity-80">({meta.labelBn})</span>
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
                         );
                       })}
                     </div>
@@ -589,8 +1072,12 @@ export default function UsersPage() {
               })}
             </div>
 
-            <div className="p-3.5 bg-[var(--background)] border border-[var(--border)] text-[10px] text-[var(--muted-foreground)] rounded-xl leading-relaxed text-center">
-              ⚠️ Warning: Restricting View permissions for any module will instantly hide that section from the user sidebar menu.
+            {/* Warning Note */}
+            <div className="p-4 bg-indigo-500/5 border border-indigo-500/20 text-xs text-[var(--muted-foreground)] rounded-2xl leading-relaxed flex items-center space-x-2.5">
+              <Shield className="w-4 h-4 text-indigo-400 shrink-0" />
+              <span>
+                💡 <strong>নোট:</strong> কোনো মেনুর <strong>View (দেখা)</strong> পারমিশন আনচেক করলে সেই মেনুটি ব্যবহারকারীর সাইডবার ও ড্যাশবোর্ডে সম্পূর্ণ লুকানো থাকবে। আর শুধুমাত্র <strong>View</strong> পারমিশন থাকলে ব্যবহারকারী তথ্য দেখতে পারবেন, কিন্তু কোনো কিছু যোগ (Create), সম্পাদনা (Edit), ডিলিট (Delete) বা অনুমোদন (Approve) করতে পারবেন না।
+              </span>
             </div>
 
           </div>

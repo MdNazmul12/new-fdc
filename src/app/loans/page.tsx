@@ -234,8 +234,9 @@ export default function LoansPage() {
 
   const canManageLoans =
     user?.role === 'super_admin' ||
-    user?.role === 'president' ||
-    user?.role === 'treasurer';
+    hasPermission('loans', 'approve') ||
+    hasPermission('loans', 'update') ||
+    hasPermission('loans', 'create');
 
   const getStatusBadge = (status: LoanStatus) => {
     switch (status) {

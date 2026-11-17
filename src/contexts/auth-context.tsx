@@ -13,6 +13,8 @@ interface AuthContextProps {
   loading: boolean;
   permissions: Record<UserRole, Record<string, string[]>>;
   updateRolePermission: (role: UserRole, module: string, action: string, grant: boolean) => void;
+  saveAllRolePermissions: (role: UserRole, modules: Record<string, string[]>) => Promise<boolean>;
+  saveUserCustomPermissions: (userId: string, modules: Record<string, string[]>) => Promise<boolean>;
   updateUserSession: (updatedFields: Partial<User>) => void;
 }
 
@@ -141,15 +143,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const merged: any = {};
         (Object.keys(DEFAULT_PERMISSIONS) as UserRole[]).forEach((role) => {
           const defaultRolePerms = DEFAULT_PERMISSIONS[role] || {};
-          const loadedRolePerms = loaded?.[role] || {};
-          merged[role] = { ...defaultRolePerms, ...loadedRolePerms };
-          // Ensure every module from default is present with at least default actions
-          Object.keys(defaultRolePerms).forEach((mod) => {
-            if (!merged[role][mod] || merged[role][mod].length === 0) {
-              merged[role][mod] = defaultRolePerms[mod];
+          const loadedRolePerms = loaded?.[role];
+          if (loadedRolePerms && typeof loadedRolePerms === 'object') {
+            // Keep loaded modules as configured without forcing defaults back into unchecked modules!
+            merged[role] = { ...defaultRolePerms, ...loadedRolePerms };
+          } else {
+            merged[role] = { ...defaultRolePerms };
+          }
+        });
+        if (loaded) {
+          Object.keys(loaded).forEach(k => {
+            if (!merged[k]) {
+              merged[k] = loaded[k];
             }
           });
-        });
+        }
         return merged;
       };
 
@@ -467,11 +475,95 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Super admin has full unrestricted access to all modules and actions
     if (user.role === 'super_admin') return true;
 
-    const rolePermissions = permissions[user.role] || DEFAULT_PERMISSIONS[user.role];
-    if (!rolePermissions) return false;
-    const modulePermissions = rolePermissions[module] || DEFAULT_PERMISSIONS[user.role]?.[module];
-    if (!modulePermissions) return false;
-    return modulePermissions.includes(action);
+    // 1. User-specific custom permission override if configured
+    if (user.customPermissions && user.customPermissions[module] !== undefined) {
+      return user.customPermissions[module].includes(action);
+    }
+
+    // 2. Role-level permissions (if module configured, strictly respect it)
+    const rolePermissions = permissions[user.role];
+    if (rolePermissions && rolePermissions[module] !== undefined) {
+      return rolePermissions[module].includes(action);
+    }
+
+    // 3. Fallback to default only if role or module was never defined
+    const defaultRolePerms = DEFAULT_PERMISSIONS[user.role];
+    if (defaultRolePerms && defaultRolePerms[module] !== undefined) {
+      return defaultRolePerms[module].includes(action);
+    }
+
+    return false;
+  };
+
+  const saveAllRolePermissions = async (roleToUpdate: UserRole, modules: Record<string, string[]>): Promise<boolean> => {
+    try {
+      const updated = {
+        ...permissions,
+        [roleToUpdate]: modules
+      };
+      setPermissions(updated);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('fdc_permissions', JSON.stringify(updated));
+      }
+
+      await fetch('/api/db/permissions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filter: { role: roleToUpdate },
+          update: { role: roleToUpdate, modules }
+        })
+      }).then(async res => {
+        const data = await res.json();
+        if (data.matchedCount === 0) {
+          await fetch('/api/db/permissions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role: roleToUpdate, modules })
+          });
+        }
+      });
+      return true;
+    } catch (e) {
+      console.error('Failed to save role permissions:', e);
+      return false;
+    }
+  };
+
+  const saveUserCustomPermissions = async (userId: string, modules: Record<string, string[]>): Promise<boolean> => {
+    try {
+      // 1. Update in localStorage fdc_users
+      if (typeof window !== 'undefined') {
+        const storedUsersText = localStorage.getItem('fdc_users');
+        if (storedUsersText) {
+          try {
+            const usersList: User[] = JSON.parse(storedUsersText);
+            const updated = usersList.map(u => u.id === userId ? { ...u, customPermissions: modules } : u);
+            localStorage.setItem('fdc_users', JSON.stringify(updated));
+          } catch (e) {}
+        }
+        // If current user is this user, update active session
+        if (user && user.id === userId) {
+          const updatedUser = { ...user, customPermissions: modules };
+          setUser(updatedUser);
+          localStorage.setItem('fdc_current_user', JSON.stringify(updatedUser));
+        }
+      }
+
+      // 2. Sync to MongoDB
+      await fetch('/api/db/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filter: { id: userId },
+          update: { customPermissions: modules }
+        })
+      });
+      return true;
+    } catch (e) {
+      console.error('Failed to save user custom permissions:', e);
+      return false;
+    }
   };
 
   const updateRolePermission = (roleToUpdate: UserRole, module: string, action: string, grant: boolean) => {
@@ -551,6 +643,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         permissions,
         updateRolePermission,
+        saveAllRolePermissions,
+        saveUserCustomPermissions,
         updateUserSession
       }}
     >

@@ -547,7 +547,7 @@ export default function CollectionsPage() {
   const pendingCount = collections.filter(c => c.status === 'pending').length;
   const totalReceived = filteredCollections.filter(c => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0);
   const totalFines = filteredCollections.filter(c => c.status === 'paid').reduce((sum, c) => sum + c.lateFine, 0);
-  const canApprove = user?.role !== 'member';
+  const canApprove = hasPermission('collections', 'approve');
 
   return (
     <DashboardLayout>

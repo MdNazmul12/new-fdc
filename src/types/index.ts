@@ -11,6 +11,7 @@ export interface User {
   password?: string;
   avatar?: string;
   memberId?: string; // Links user account to a Member record (for role === 'member')
+  customPermissions?: Record<string, string[]>; // Menu-wise custom user permissions
 }
 
 export interface Member {

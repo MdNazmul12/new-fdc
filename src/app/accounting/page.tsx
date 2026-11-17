@@ -32,8 +32,8 @@ export default function AccountingPage() {
   const [ledgerFilter, setLedgerFilter] = useState<'all' | 'cash' | 'bank' | 'investment'>('all');
 
   // Permission checks for accounting deletion actions
-  const canDeleteAccounting = hasPermission('accounting', 'delete') || user?.role === 'super_admin' || user?.role === 'treasurer' || user?.role === 'president';
-  const canClearAll = user?.role === 'super_admin' || user?.role === 'treasurer' || hasPermission('accounting', 'delete');
+  const canDeleteAccounting = hasPermission('accounting', 'delete') || user?.role === 'super_admin';
+  const canClearAll = hasPermission('accounting', 'delete') || user?.role === 'super_admin';
 
   // Confirmation modal state
   const [confirmOpen, setConfirmOpen] = useState(false);

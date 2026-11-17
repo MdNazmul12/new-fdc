@@ -63,7 +63,7 @@ export default function DuesPage() {
   } = useStore();
   const { user, hasPermission } = useAuth();
 
-  const canManageDues = user?.role === 'super_admin' || user?.role === 'treasurer' || user?.role === 'president';
+  const canManageDues = user?.role === 'super_admin' || hasPermission('collections', 'update') || hasPermission('collections', 'create');
   const isMember = user?.role === 'member';
 
   // Receipt Modal State
