@@ -285,13 +285,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     // ── COMMUNICATION & SYSTEM (PARENT WITH SUBMENU) ──
     { 
       name: 'Communication & System',
-      path: '/dashboard#message-history',
+      path: '/messages',
       icon: UserCog, 
       permission: { module: 'dashboard', action: 'view' as const },
       children: [
         { 
           name: 'Message History', 
-          path: '/dashboard#message-history', 
+          path: '/messages', 
           icon: History, 
           permission: { module: 'dashboard', action: 'view' as const },
           badge: 'NEW',
@@ -1000,7 +1000,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </div>
                   <div className="p-2 bg-zinc-900/80 border-t border-[var(--border)] text-center">
                     <Link
-                      href="/dashboard#message-history"
+                      href="/messages"
                       onClick={() => setNotificationsOpen(false)}
                       className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold inline-flex items-center space-x-1"
                     >

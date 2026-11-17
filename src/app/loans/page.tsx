@@ -599,7 +599,7 @@ export default function LoansPage() {
                     <option value="">-- Choose Member --</option>
                     {members.map((m) => (
                       <option key={m.id} value={m.id}>
-                        {m.name} ({m.id}) - {m.phone}
+                        {m.name}
                       </option>
                     ))}
                   </select>

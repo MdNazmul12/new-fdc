@@ -824,7 +824,7 @@ export default function AdvancePaymentPage() {
                       <option value="">— Select Member —</option>
                       {members.filter(m => m.status === 'active').map(m => (
                         <option key={m.id} value={m.id}>
-                          {m.name} ({m.id}) — Fee: ৳{m.monthlyFee || 1000}
+                          {m.name}
                         </option>
                       ))}
                     </select>

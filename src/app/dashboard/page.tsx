@@ -1020,7 +1020,7 @@ export default function Dashboard() {
             </div>
 
             {/* Section 3: My Notification & Message/SMS History */}
-            <div className="glass-panel p-5 rounded-2xl space-y-4">
+            <div id="message-history" className="glass-panel p-5 rounded-2xl space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-[var(--border)] gap-2">
                 <div className="flex items-center space-x-2.5">
                   <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">

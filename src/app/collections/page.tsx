@@ -878,7 +878,7 @@ export default function CollectionsPage() {
                     {members
                       .filter(m => m.status === 'active')
                       .map(m => (
-                        <option key={m.id} value={m.id}>{m.name} ({m.phone})</option>
+                        <option key={m.id} value={m.id}>{m.name}</option>
                       ))
                     }
                   </select>
