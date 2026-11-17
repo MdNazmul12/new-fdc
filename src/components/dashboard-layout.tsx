@@ -46,7 +46,8 @@ import {
   History,
   Sparkles,
   UserCheck,
-  FileSpreadsheet
+  FileSpreadsheet,
+  PanelLeftClose
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -65,6 +66,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [notifFilter, setNotifFilter] = useState<'all' | 'payment' | 'due' | 'notice' | 'loan'>('all');
   const [resendingId, setResendingId] = useState<string | null>(null);
+
+  // Main menu sidebar visibility & collapsible section states
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('fdc_sidebar_open');
+      if (saved !== null) {
+        setSidebarOpen(saved === 'true');
+      }
+    }
+  }, []);
+
+  const toggleSidebar = () => {
+    setSidebarOpen(prev => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('fdc_sidebar_open', String(next));
+      }
+      return next;
+    });
+  };
+
+  const toggleSection = (sectionName: string) => {
+    setCollapsedSections(prev => ({
+      ...prev,
+      [sectionName]: !prev[sectionName]
+    }));
+  };
 
   const handleResendNotif = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -334,17 +365,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen flex bg-[var(--background)]">
       {/* ---------------- SIDEBAR (DESKTOP) ---------------- */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-[var(--card)] border-r border-[var(--border)] p-4 shrink-0 justify-between h-screen sticky top-0 overflow-y-auto scrollbar-thin">
+      <aside className={`${sidebarOpen ? 'lg:flex' : 'hidden'} hidden lg:flex-col lg:w-64 bg-[var(--card)] border-r border-[var(--border)] p-4 shrink-0 justify-between h-screen sticky top-0 overflow-y-auto scrollbar-thin transition-all duration-300`}>
         <div>
           {/* Logo */}
-          <div className="flex items-center space-x-3 px-2 py-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-lg shadow-emerald-500/10 overflow-hidden shrink-0">
-              <img src="/logo.jpg" alt="FDC Logo" className="w-full h-full object-contain" />
+          <div className="flex items-center justify-between px-2 py-3 mb-4">
+            <div className="flex items-center space-x-3 overflow-hidden">
+              <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-lg shadow-emerald-500/10 overflow-hidden shrink-0">
+                <img src="/logo.jpg" alt="FDC Logo" className="w-full h-full object-contain" />
+              </div>
+              <div className="truncate">
+                <span className="font-extrabold text-base tracking-tight text-[var(--foreground)] block truncate">FDC Management</span>
+                <span className="block text-[10px] text-emerald-500 font-semibold tracking-wider uppercase truncate">Friends Dreams Corp</span>
+              </div>
             </div>
-            <div>
-              <span className="font-extrabold text-base tracking-tight text-[var(--foreground)]">FDC Management</span>
-              <span className="block text-[10px] text-emerald-500 font-semibold tracking-wider uppercase">Friends Dreams Corp</span>
-            </div>
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="p-1.5 rounded-lg text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors cursor-pointer shrink-0"
+              title="Hide Main Menu (মেনু লুকান)"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
           </div>
 
           {/* Navigation Links */}
@@ -352,33 +393,45 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {filteredNavItems.map((item, idx) => {
               const isActive = isItemActive(item.path);
               const showSection = item.section && (idx === 0 || filteredNavItems[idx - 1]?.section !== item.section);
+              const isCollapsed = item.section ? collapsedSections[item.section] : false;
+
               return (
                 <React.Fragment key={item.name}>
                   {showSection && (
-                    <div className="pt-3 pb-1 px-3">
-                      <span className="text-[10px] font-extrabold text-[var(--muted-foreground)]/80 uppercase tracking-wider">
+                    <button
+                      type="button"
+                      onClick={() => toggleSection(item.section!)}
+                      className="w-full flex items-center justify-between pt-3 pb-1 px-3 text-left group cursor-pointer hover:bg-[var(--accent)]/50 rounded-lg transition-colors mt-1"
+                      title={`${isCollapsed ? 'Show' : 'Hide'} ${item.section}`}
+                    >
+                      <span className="text-[10px] font-extrabold text-[var(--muted-foreground)]/80 uppercase tracking-wider group-hover:text-[var(--foreground)] transition-colors">
                         {item.section}
                       </span>
-                    </div>
+                      <ChevronDown className={`w-3.5 h-3.5 text-[var(--muted-foreground)] transition-transform duration-200 ${
+                        isCollapsed ? '-rotate-90' : 'rotate-0'
+                      }`} />
+                    </button>
                   )}
-                  <Link
-                    href={item.path}
-                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 group ${
-                      isActive 
-                        ? 'bg-[var(--primary)]/10 text-[var(--primary)] border-l-2 border-[var(--primary)] font-bold shadow-sm' 
-                        : 'text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-2.5 min-w-0">
-                      <item.icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? 'text-[var(--primary)]' : 'text-[var(--muted-foreground)]'}`} />
-                      <span className="truncate">{item.name}</span>
-                    </div>
-                    {item.badge && (
-                      <span className={`text-[9px] px-1.5 py-0.2 rounded font-black tracking-wider uppercase shrink-0 ${item.badgeColor || 'bg-indigo-500/20 text-indigo-300'}`}>
-                        {item.badge}
-                      </span>
-                    )}
-                  </Link>
+                  {!isCollapsed && (
+                    <Link
+                      href={item.path}
+                      className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 group ${
+                        isActive 
+                          ? 'bg-[var(--primary)]/10 text-[var(--primary)] border-l-2 border-[var(--primary)] font-bold shadow-sm' 
+                          : 'text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2.5 min-w-0">
+                        <item.icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? 'text-[var(--primary)]' : 'text-[var(--muted-foreground)]'}`} />
+                        <span className="truncate">{item.name}</span>
+                      </div>
+                      {item.badge && (
+                        <span className={`text-[9px] px-1.5 py-0.2 rounded font-black tracking-wider uppercase shrink-0 ${item.badgeColor || 'bg-indigo-500/20 text-indigo-300'}`}>
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  )}
                 </React.Fragment>
               );
             })}
@@ -444,37 +497,49 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </button>
               </div>
 
-              <nav className="space-y-1" onClick={() => setMobileMenuOpen(false)}>
+              <nav className="space-y-1">
                 {filteredNavItems.map((item, idx) => {
                   const isActive = isItemActive(item.path);
                   const showSection = item.section && (idx === 0 || filteredNavItems[idx - 1]?.section !== item.section);
+                  const isCollapsed = item.section ? collapsedSections[item.section] : false;
                   return (
                     <React.Fragment key={item.name}>
                       {showSection && (
-                        <div className="pt-3 pb-1 px-3">
-                          <span className="text-[10px] font-extrabold text-[var(--muted-foreground)]/80 uppercase tracking-wider">
+                        <button
+                          type="button"
+                          onClick={() => toggleSection(item.section!)}
+                          className="w-full flex items-center justify-between pt-3 pb-1 px-3 text-left group cursor-pointer hover:bg-[var(--accent)]/50 rounded-lg transition-colors mt-1"
+                          title={`${isCollapsed ? 'Show' : 'Hide'} ${item.section}`}
+                        >
+                          <span className="text-[10px] font-extrabold text-[var(--muted-foreground)]/80 uppercase tracking-wider group-hover:text-[var(--foreground)] transition-colors">
                             {item.section}
                           </span>
-                        </div>
+                          <ChevronDown className={`w-3.5 h-3.5 text-[var(--muted-foreground)] transition-transform duration-200 ${
+                            isCollapsed ? '-rotate-90' : 'rotate-0'
+                          }`} />
+                        </button>
                       )}
-                      <Link
-                        href={item.path}
-                        className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                          isActive 
-                            ? 'bg-[var(--primary)]/10 text-[var(--primary)] border-l-2 border-[var(--primary)] font-bold' 
-                            : 'text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-2.5 min-w-0">
-                          <item.icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[var(--primary)]' : 'text-[var(--muted-foreground)]'}`} />
-                          <span className="truncate">{item.name}</span>
-                        </div>
-                        {item.badge && (
-                          <span className={`text-[9px] px-1.5 py-0.2 rounded font-black tracking-wider uppercase shrink-0 ${item.badgeColor || 'bg-indigo-500/20 text-indigo-300'}`}>
-                            {item.badge}
-                          </span>
-                        )}
-                      </Link>
+                      {!isCollapsed && (
+                        <Link
+                          href={item.path}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                            isActive 
+                              ? 'bg-[var(--primary)]/10 text-[var(--primary)] border-l-2 border-[var(--primary)] font-bold' 
+                              : 'text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2.5 min-w-0">
+                            <item.icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[var(--primary)]' : 'text-[var(--muted-foreground)]'}`} />
+                            <span className="truncate">{item.name}</span>
+                          </div>
+                          {item.badge && (
+                            <span className={`text-[9px] px-1.5 py-0.2 rounded font-black tracking-wider uppercase shrink-0 ${item.badgeColor || 'bg-indigo-500/20 text-indigo-300'}`}>
+                              {item.badge}
+                            </span>
+                          )}
+                        </Link>
+                      )}
                     </React.Fragment>
                   );
                 })}
@@ -535,8 +600,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* Left: Mobile Toggle & Page Title */}
           <div className="flex items-center space-x-3">
             <button 
-              onClick={() => setMobileMenuOpen(true)}
-              className="p-2 -ml-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] rounded-md lg:hidden hover:bg-[var(--accent)]"
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+                  toggleSidebar();
+                } else {
+                  setMobileMenuOpen(true);
+                }
+              }}
+              className="p-2 -ml-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] rounded-md hover:bg-[var(--accent)] transition-colors"
+              title={sidebarOpen ? 'মেনু লুকান (Hide Menu)' : 'মেনু দেখান (Show Menu)'}
             >
               <Menu className="w-5 h-5" />
             </button>
