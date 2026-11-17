@@ -67,9 +67,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [notifFilter, setNotifFilter] = useState<'all' | 'payment' | 'due' | 'notice' | 'loan'>('all');
   const [resendingId, setResendingId] = useState<string | null>(null);
 
-  // Main menu sidebar visibility & collapsible section states
+  // Main menu sidebar visibility & submenu toggle states
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -90,11 +90,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     });
   };
 
-  const toggleSection = (sectionName: string) => {
-    setCollapsedSections(prev => ({
-      ...prev,
-      [sectionName]: !prev[sectionName]
-    }));
+  const toggleSubmenu = (itemName: string, defaultOpen: boolean) => {
+    setOpenSubmenus(prev => {
+      const current = prev[itemName] !== undefined ? prev[itemName] : defaultOpen;
+      return {
+        ...prev,
+        [itemName]: !current
+      };
+    });
   };
 
   const handleResendNotif = async (e: React.MouseEvent, id: string) => {
@@ -141,7 +144,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  // Navigation Links definition with categorized sections & badges for new features
+  // Navigation Links definition with parent-child submenu structure
   type NavItem = {
     name: string;
     path: string;
@@ -149,13 +152,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     permission: { module: string; action: 'view' | 'create' | 'update' | 'delete' | 'approve' | 'export' | 'print' };
     badge?: string;
     badgeColor?: string;
-    section?: string;
+    children?: NavItem[];
   };
 
   const navigationItems: NavItem[] = [
-    // ── MAIN SECTION ──
+    // ── TOP-LEVEL STANDALONE ITEMS ──
     { 
-      section: 'Main Menu (প্রধান)',
       name: 'Dashboard', 
       path: '/dashboard', 
       icon: LayoutDashboard, 
@@ -176,116 +178,156 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       badgeColor: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
     },
 
-    // ── COLLECTIONS & DUES ──
+    // ── COLLECTIONS & DUES (PARENT WITH SUBMENU) ──
     { 
-      section: 'Collections & Dues (আদায় ও ডিউ)',
-      name: 'Collections', 
-      path: '/collections', 
+      name: '\u0986\u09a6\u09be\u09af\u09bc \u0993 \u09a1\u09bf\u0989',
+      path: '/collections',
       icon: DollarSign, 
-      permission: { module: 'collections', action: 'view' as const } 
-    },
-    { 
-      name: 'Due List', 
-      path: '/dues', 
-      icon: CalendarClock, 
-      permission: { module: 'collections', action: 'view' as const } 
-    },
-    { 
-      name: 'Advance Payment', 
-      path: '/advance-payment', 
-      icon: Coins, 
-      permission: { module: 'advance_payment', action: 'view' as const },
-      badge: 'NEW',
-      badgeColor: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-    },
-    { 
-      name: 'Generate Dues', 
-      path: '/generate-dues', 
-      icon: PlusCircle, 
-      permission: { module: 'collections', action: 'create' as const },
-      badge: '12M',
-      badgeColor: 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
+      permission: { module: 'collections', action: 'view' as const },
+      children: [
+        { 
+          name: 'Collections', 
+          path: '/collections', 
+          icon: DollarSign, 
+          permission: { module: 'collections', action: 'view' as const } 
+        },
+        { 
+          name: 'Due List', 
+          path: '/dues', 
+          icon: CalendarClock, 
+          permission: { module: 'collections', action: 'view' as const } 
+        },
+        { 
+          name: 'Advance Payment', 
+          path: '/advance-payment', 
+          icon: Coins, 
+          permission: { module: 'advance_payment', action: 'view' as const },
+          badge: 'NEW',
+          badgeColor: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+        },
+        { 
+          name: 'Generate Dues', 
+          path: '/generate-dues', 
+          icon: PlusCircle, 
+          permission: { module: 'collections', action: 'create' as const },
+          badge: '12M',
+          badgeColor: 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
+        },
+      ]
     },
 
-    // ── REPORTS (NEW FEATURES) ──
+    // ── REPORTS (PARENT WITH SUBMENU) ──
     { 
-      section: 'Reports & Statements (রিপোর্ট)',
-      name: 'Member Collections', 
-      path: '/reports?type=member_collection', 
-      icon: UserCheck, 
-      permission: { module: 'collections', action: 'view' as const },
-      badge: 'NEW',
-      badgeColor: 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
-    },
-    { 
-      name: 'Member Dues Report', 
-      path: '/reports?type=due', 
-      icon: AlertTriangle, 
-      permission: { module: 'collections', action: 'view' as const },
-      badge: 'NEW',
-      badgeColor: 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-    },
-    { 
-      name: 'All Financial Reports', 
-      path: '/reports', 
+      name: '\u09b0\u09bf\u09aa\u09cb\u09b0\u09cd\u099f',
+      path: '/reports',
       icon: FileSpreadsheet, 
-      permission: { module: 'reports', action: 'view' as const } 
+      permission: { module: 'collections', action: 'view' as const },
+      children: [
+        { 
+          name: 'Member Collections', 
+          path: '/reports?type=member_collection', 
+          icon: UserCheck, 
+          permission: { module: 'collections', action: 'view' as const },
+          badge: 'NEW',
+          badgeColor: 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
+        },
+        { 
+          name: 'Member Dues Report', 
+          path: '/reports?type=due', 
+          icon: AlertTriangle, 
+          permission: { module: 'collections', action: 'view' as const },
+          badge: 'NEW',
+          badgeColor: 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+        },
+        { 
+          name: 'All Financial Reports', 
+          path: '/reports', 
+          icon: FileSpreadsheet, 
+          permission: { module: 'reports', action: 'view' as const } 
+        },
+      ]
     },
 
-    // ── FINANCE & ACCOUNTS ──
+    // ── FINANCE & ACCOUNTS (PARENT WITH SUBMENU) ──
     { 
-      section: 'Finance & Accounts (হিসাব)',
-      name: 'Expenses', 
-      path: '/expenses', 
+      name: '\u09b9\u09bf\u09b8\u09be\u09ac \u0993 \u09ab\u09be\u0987\u09a8\u09cd\u09af\u09be\u09a8\u09cd\u09b8',
+      path: '/expenses',
       icon: CreditCard, 
-      permission: { module: 'expenses', action: 'view' as const } 
-    },
-    { 
-      name: 'Loans', 
-      path: '/loans', 
-      icon: Banknote, 
-      permission: { module: 'loans', action: 'view' as const } 
-    },
-    { 
-      name: 'Investments', 
-      path: '/investments', 
-      icon: TrendingUp, 
-      permission: { module: 'investments', action: 'view' as const } 
-    },
-    { 
-      name: 'Accounting Ledger', 
-      path: '/accounting', 
-      icon: BookOpen, 
-      permission: { module: 'accounting', action: 'view' as const } 
+      permission: { module: 'expenses', action: 'view' as const },
+      children: [
+        { 
+          name: 'Expenses', 
+          path: '/expenses', 
+          icon: CreditCard, 
+          permission: { module: 'expenses', action: 'view' as const } 
+        },
+        { 
+          name: 'Loans', 
+          path: '/loans', 
+          icon: Banknote, 
+          permission: { module: 'loans', action: 'view' as const } 
+        },
+        { 
+          name: 'Investments', 
+          path: '/investments', 
+          icon: TrendingUp, 
+          permission: { module: 'investments', action: 'view' as const } 
+        },
+        { 
+          name: 'Accounting Ledger', 
+          path: '/accounting', 
+          icon: BookOpen, 
+          permission: { module: 'accounting', action: 'view' as const } 
+        },
+      ]
     },
 
-    // ── COMMUNICATION & SYSTEM ──
+    // ── COMMUNICATION & SYSTEM (PARENT WITH SUBMENU) ──
     { 
-      section: 'Communication & System (সিস্টেম)',
-      name: 'Message History', 
-      path: '/dashboard#message-history', 
-      icon: History, 
-      permission: { module: 'dashboard', action: 'view' as const },
-      badge: 'NEW',
-      badgeColor: 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
-    },
-    { 
-      name: 'User Management', 
-      path: '/users', 
+      name: '\u09b8\u09bf\u09b8\u09cd\u099f\u09c7\u09ae \u0993 \u09af\u09cb\u0997\u09be\u09af\u09cb\u0997',
+      path: '/dashboard#message-history',
       icon: UserCog, 
-      permission: { module: 'users', action: 'view' as const } 
-    },
-    { 
-      name: 'Backup & Restore', 
-      path: '/backup', 
-      icon: Database, 
-      permission: { module: 'backup', action: 'view' as const } 
+      permission: { module: 'dashboard', action: 'view' as const },
+      children: [
+        { 
+          name: 'Message History', 
+          path: '/dashboard#message-history', 
+          icon: History, 
+          permission: { module: 'dashboard', action: 'view' as const },
+          badge: 'NEW',
+          badgeColor: 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+        },
+        { 
+          name: 'User Management', 
+          path: '/users', 
+          icon: UserCog, 
+          permission: { module: 'users', action: 'view' as const } 
+        },
+        { 
+          name: 'Backup & Restore', 
+          path: '/backup', 
+          icon: Database, 
+          permission: { module: 'backup', action: 'view' as const } 
+        },
+      ]
     },
   ];
 
+  // Filter top-level items AND children by permission
   const filteredNavItems = navigationItems.filter(item => {
     if (user.role === 'super_admin') return true;
+    if (item.children) {
+      return item.children.some(child => hasPermission(child.permission.module, child.permission.action));
+    }
     return hasPermission(item.permission.module, item.permission.action);
+  }).map(item => {
+    if (item.children && user.role !== 'super_admin') {
+      return {
+        ...item,
+        children: item.children.filter(child => hasPermission(child.permission.module, child.permission.action))
+      };
+    }
+    return item;
   });
 
   const isItemActive = (itemPath: string) => {
@@ -302,6 +344,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
     }
     return pathname === itemPath || (itemPath !== '/dashboard' && pathname.startsWith(itemPath));
+  };
+
+  // Check if any child of a parent is currently active
+  const isParentActive = (item: NavItem) => {
+    if (!item.children) return false;
+    return item.children.some(child => isItemActive(child.path));
   };
 
   const userNotifications = notifications.filter(n => {
@@ -389,30 +437,74 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           {/* Navigation Links */}
-          <nav className="space-y-1">
-            {filteredNavItems.map((item, idx) => {
+          <nav className="space-y-0.5">
+            {filteredNavItems.map((item) => {
               const isActive = isItemActive(item.path);
-              const showSection = item.section && (idx === 0 || filteredNavItems[idx - 1]?.section !== item.section);
-              const isCollapsed = item.section ? collapsedSections[item.section] : false;
+              const hasChildren = Boolean(item.children && item.children.length > 0);
+              const parentActive = Boolean(hasChildren && isParentActive(item));
+              const isExpanded = Boolean(hasChildren && (
+                openSubmenus[item.name] !== undefined 
+                  ? openSubmenus[item.name] 
+                  : parentActive
+              ));
 
               return (
                 <React.Fragment key={item.name}>
-                  {showSection && (
-                    <button
-                      type="button"
-                      onClick={() => toggleSection(item.section!)}
-                      className="w-full flex items-center justify-between pt-3 pb-1 px-3 text-left group cursor-pointer hover:bg-[var(--accent)]/50 rounded-lg transition-colors mt-1"
-                      title={`${isCollapsed ? 'Show' : 'Hide'} ${item.section}`}
-                    >
-                      <span className="text-[10px] font-extrabold text-[var(--muted-foreground)]/80 uppercase tracking-wider group-hover:text-[var(--foreground)] transition-colors">
-                        {item.section}
-                      </span>
-                      <ChevronDown className={`w-3.5 h-3.5 text-[var(--muted-foreground)] transition-transform duration-200 ${
-                        isCollapsed ? '-rotate-90' : 'rotate-0'
-                      }`} />
-                    </button>
-                  )}
-                  {!isCollapsed && (
+                  {hasChildren ? (
+                    <>
+                      {/* Parent menu item with submenu */}
+                      <button
+                        type="button"
+                        onClick={() => toggleSubmenu(item.name, parentActive)}
+                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all duration-200 group cursor-pointer mt-1 ${
+                          parentActive
+                            ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
+                            : 'text-[var(--foreground)] hover:bg-[var(--accent)]'
+                        }`}
+                        title={`${isExpanded ? 'Hide' : 'Show'} ${item.name}`}
+                      >
+                        <div className="flex items-center space-x-2.5 min-w-0">
+                          <item.icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${
+                            parentActive ? 'text-[var(--primary)]' : 'text-[var(--muted-foreground)]'
+                          }`} />
+                          <span className="truncate">{item.name}</span>
+                        </div>
+                        <ChevronDown className={`w-3.5 h-3.5 text-[var(--muted-foreground)] transition-transform duration-200 ${
+                          isExpanded ? 'rotate-0' : '-rotate-90'
+                        }`} />
+                      </button>
+                      {/* Submenu items */}
+                      {isExpanded && (
+                        <div className="ml-3 pl-3 border-l-2 border-[var(--border)] space-y-0.5 py-0.5">
+                          {item.children!.map((child) => {
+                            const childActive = isItemActive(child.path);
+                            return (
+                              <Link
+                                key={child.name}
+                                href={child.path}
+                                className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 group ${
+                                  childActive
+                                    ? 'bg-[var(--primary)]/10 text-[var(--primary)] font-bold shadow-sm'
+                                    : 'text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]'
+                                }`}
+                              >
+                                <div className="flex items-center space-x-2 min-w-0">
+                                  <child.icon className={`w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-110 ${childActive ? 'text-[var(--primary)]' : 'text-[var(--muted-foreground)]'}`} />
+                                  <span className="truncate">{child.name}</span>
+                                </div>
+                                {child.badge && (
+                                  <span className={`text-[8px] px-1 py-0.5 rounded font-black tracking-wider uppercase shrink-0 ${child.badgeColor || 'bg-indigo-500/20 text-indigo-300'}`}>
+                                    {child.badge}
+                                  </span>
+                                )}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    /* Standalone menu item (no submenu) */
                     <Link
                       href={item.path}
                       className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 group ${
@@ -497,40 +589,86 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </button>
               </div>
 
-              <nav className="space-y-1">
-                {filteredNavItems.map((item, idx) => {
+              <nav className="space-y-0.5">
+                {filteredNavItems.map((item) => {
                   const isActive = isItemActive(item.path);
-                  const showSection = item.section && (idx === 0 || filteredNavItems[idx - 1]?.section !== item.section);
-                  const isCollapsed = item.section ? collapsedSections[item.section] : false;
+                  const hasChildren = Boolean(item.children && item.children.length > 0);
+                  const parentActive = Boolean(hasChildren && isParentActive(item));
+                  const isExpanded = Boolean(hasChildren && (
+                    openSubmenus[item.name] !== undefined 
+                      ? openSubmenus[item.name] 
+                      : parentActive
+                  ));
+
                   return (
                     <React.Fragment key={item.name}>
-                      {showSection && (
-                        <button
-                          type="button"
-                          onClick={() => toggleSection(item.section!)}
-                          className="w-full flex items-center justify-between pt-3 pb-1 px-3 text-left group cursor-pointer hover:bg-[var(--accent)]/50 rounded-lg transition-colors mt-1"
-                          title={`${isCollapsed ? 'Show' : 'Hide'} ${item.section}`}
-                        >
-                          <span className="text-[10px] font-extrabold text-[var(--muted-foreground)]/80 uppercase tracking-wider group-hover:text-[var(--foreground)] transition-colors">
-                            {item.section}
-                          </span>
-                          <ChevronDown className={`w-3.5 h-3.5 text-[var(--muted-foreground)] transition-transform duration-200 ${
-                            isCollapsed ? '-rotate-90' : 'rotate-0'
-                          }`} />
-                        </button>
-                      )}
-                      {!isCollapsed && (
+                      {hasChildren ? (
+                        <>
+                          {/* Parent menu item with submenu */}
+                          <button
+                            type="button"
+                            onClick={() => toggleSubmenu(item.name, parentActive)}
+                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all duration-200 group cursor-pointer mt-1 ${
+                              parentActive
+                                ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
+                                : 'text-[var(--foreground)] hover:bg-[var(--accent)]'
+                            }`}
+                            title={`${isExpanded ? 'Hide' : 'Show'} ${item.name}`}
+                          >
+                            <div className="flex items-center space-x-2.5 min-w-0">
+                              <item.icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${
+                                parentActive ? 'text-[var(--primary)]' : 'text-[var(--muted-foreground)]'
+                              }`} />
+                              <span className="truncate">{item.name}</span>
+                            </div>
+                            <ChevronDown className={`w-3.5 h-3.5 text-[var(--muted-foreground)] transition-transform duration-200 ${
+                              isExpanded ? 'rotate-0' : '-rotate-90'
+                            }`} />
+                          </button>
+                          {/* Submenu items */}
+                          {isExpanded && (
+                            <div className="ml-3 pl-3 border-l-2 border-[var(--border)] space-y-0.5 py-0.5">
+                              {item.children!.map((child) => {
+                                const childActive = isItemActive(child.path);
+                                return (
+                                  <Link
+                                    key={child.name}
+                                    href={child.path}
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 group ${
+                                      childActive
+                                        ? 'bg-[var(--primary)]/10 text-[var(--primary)] font-bold shadow-sm'
+                                        : 'text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]'
+                                    }`}
+                                  >
+                                    <div className="flex items-center space-x-2 min-w-0">
+                                      <child.icon className={`w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-110 ${childActive ? 'text-[var(--primary)]' : 'text-[var(--muted-foreground)]'}`} />
+                                      <span className="truncate">{child.name}</span>
+                                    </div>
+                                    {child.badge && (
+                                      <span className={`text-[8px] px-1 py-0.5 rounded font-black tracking-wider uppercase shrink-0 ${child.badgeColor || 'bg-indigo-500/20 text-indigo-300'}`}>
+                                        {child.badge}
+                                      </span>
+                                    )}
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        /* Standalone menu item (no submenu) */
                         <Link
                           href={item.path}
                           onClick={() => setMobileMenuOpen(false)}
-                          className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                          className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 group ${
                             isActive 
-                              ? 'bg-[var(--primary)]/10 text-[var(--primary)] border-l-2 border-[var(--primary)] font-bold' 
+                              ? 'bg-[var(--primary)]/10 text-[var(--primary)] border-l-2 border-[var(--primary)] font-bold shadow-sm' 
                               : 'text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]'
                           }`}
                         >
                           <div className="flex items-center space-x-2.5 min-w-0">
-                            <item.icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[var(--primary)]' : 'text-[var(--muted-foreground)]'}`} />
+                            <item.icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? 'text-[var(--primary)]' : 'text-[var(--muted-foreground)]'}`} />
                             <span className="truncate">{item.name}</span>
                           </div>
                           {item.badge && (
